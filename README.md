@@ -1,4 +1,4 @@
-cyp
+cyp<sup>[1](#footnote1)</sup>
 ===
 
 cyp (short for "Check Your Proof") verifies proofs about Haskell-like programs. It is designed as an teaching aid for undergraduate courses in functional programming. 
@@ -11,6 +11,8 @@ The use of this tool to verify Haskell functions is justified by the following c
 
   * [Fast and Loose Reasoning is Morally Correct](http://www.cse.chalmers.se/~nad/publications/danielsson-et-al-popl2006.html).
   * We convinced ourselves that for a type-correct background-theory and a type-correct proposition a proof exists if and only if a type-correct proof exists. A formal proof is still missing. Here, type-correct is meant in the sense of Haskell's type system, but without type-classes.
+  
+<a name="footnote1">1</a>: This is a modified version of cyp which requires the user to be explicit about generalization. This version is used in the "Formal Methods and Functional Programming" lecture at ETH Zürich
 
 
 Getting started
