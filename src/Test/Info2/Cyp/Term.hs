@@ -7,10 +7,13 @@ module Test.Info2.Cyp.Term
     , Prop
     , RawProp
     , collectFrees
+    , collectFreesProp
     , defaultConsts
     , defaultToFree
     , generalizeExcept
     , generalizeExceptProp
+    , generalizeOnly
+    , generalizeOnlyProp
     , iparseTerm
     , iparseProp
     , isFree
@@ -124,6 +127,16 @@ generalizeExcept vs (Free v)
     | otherwise = Schematic v
 generalizeExcept _ t = t
 
+-- Generalizes a term by turning Frees into Schematics.
+-- XXX: Result may not be as general as intended, as
+-- generalizing may reuse names ...
+generalizeOnly :: Eq a => [a] -> AbsTerm a -> AbsTerm a
+generalizeOnly vs (Application s t) = Application (generalizeOnly vs s) (generalizeOnly vs t)
+generalizeOnly vs (Free v)
+    | v `elem` vs = Schematic v
+    | otherwise = Free v
+generalizeOnly _ t = t
+
 collectFrees :: Eq a => AbsTerm a -> [a]-> [a]
 collectFrees t xs = nub $ collect t xs
   where
@@ -132,6 +145,9 @@ collectFrees t xs = nub $ collect t xs
     collect (Free v) xs = v : xs
     collect (Literal _) xs = xs
     collect (Schematic _) xs = xs
+
+collectFreesProp :: Eq a => AbsProp a -> [a]-> [a]
+collectFreesProp (Prop t u) xs = nub $ collectFrees t (collectFrees u xs)
 
 isFree :: AbsTerm a -> Bool
 isFree (Free _) = True
@@ -174,6 +190,12 @@ substFreeProp p s = propMap (flip substFree s) p
 -- generalizing may reuse names ...
 generalizeExceptProp :: Eq a => [a] -> AbsProp a -> AbsProp a
 generalizeExceptProp vs = propMap (generalizeExcept vs)
+
+-- Generalizes a prop by turning Frees into Schematics.
+-- XXX: Result may not be as general as intended, as
+-- generalizing may reuse names ...
+generalizeOnlyProp :: Eq a => [a] -> AbsProp a -> AbsProp a
+generalizeOnlyProp vs = propMap (generalizeOnly vs)
 
 
 {- Parsing ----------------------------------------------------------}

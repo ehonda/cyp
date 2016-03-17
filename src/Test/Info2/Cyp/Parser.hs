@@ -12,10 +12,8 @@ module Test.Info2.Cyp.Parser
     )
 where
 
-import Control.Applicative ((<$>), (<*), (<*>))
 import Data.Char
 import Data.Maybe
-import Data.Traversable (traverse)
 import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Parser as P
 import qualified Language.Haskell.Exts.Syntax as Exts
@@ -38,13 +36,14 @@ data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
 
 data ParseCase = ParseCase
     { pcCons :: RawTerm
-    , pcToShow :: Maybe RawProp
-    , pcAssms :: [Named RawProp]
+    , pcGens :: Maybe [RawTerm] -- generalized variables
+    , pcToShow :: Maybe RawProp -- goal
+    , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
     , pcProof :: ParseProof
     }
 
 data ParseProof
-    = ParseInduction String RawTerm [ParseCase] -- data type, induction variable, cases
+    = ParseInduction String RawTerm [RawTerm] [ParseCase] -- data type, induction variable, generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
     | ParseCases String RawTerm [ParseCase] -- data type, term, cases
@@ -141,16 +140,24 @@ funParser = do
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
 
+varParser = fmap (\v -> if v `elem` defaultConsts then Const v else Free v) idParser
+varsParser = varParser `sepBy1` (keyword ",")
+
 inductionProofParser :: Parsec [Char] Env ParseProof
 inductionProofParser = do
     keyword "on"
     datatype <- many1 (noneOf " \t\r\n" <?> "datatype")
     lineSpaces
-    over <- termParser defaultToFree
+    over <- varParser
+    manySpacesOrComment
+    gens <- option [] (do
+      keyword "generalizing"
+      lineSpaces
+      varsParser)
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
-    return $ ParseInduction datatype over cases
+    return $ ParseInduction datatype over gens cases
 
 caseProofParser :: Parsec [Char] Env ParseProof
 caseProofParser = do
@@ -188,6 +195,21 @@ propParser mode = do
             iparseProp (mode $ constants env) s
     toParsec show prop
 
+propGenParser :: PropParserMode -> Parsec [Char] Env ([RawTerm], RawProp)
+propGenParser mode = do
+    gens <- option [] (do
+      keyword "forall"
+      gens <- varsParser
+      char ':'
+      lineSpaces
+      return gens)
+    s <- trim <$> toEol1 <?> "expression"
+    env <- getState
+    let prop = errCtxtStr "Failed to parse expression" $
+            iparseProp (mode $ constants env) s
+    prop <- toParsec show prop
+    return (gens, prop)
+
 termParser :: PropParserMode -> Parsec [Char] Env RawTerm
 termParser mode = flip label "term" $ do
     s <- trim <$> toEol1 <?> "expression"
@@ -202,6 +224,14 @@ namedPropParser mode p = do
     char ':'
     prop <- propParser mode
     return (name, prop)
+
+namedPropGenParser :: PropParserMode -> Parsec [Char] Env String -> Parsec [Char] Env (String, [RawTerm], RawProp)
+namedPropGenParser mode p = do
+    name <- option "" p
+    char ':'
+    lineSpaces
+    (gens, prop) <- propGenParser mode
+    return (name, gens, prop)
 
 lemmaParser :: Parsec [Char] Env ParseLemma
 lemmaParser =
@@ -286,6 +316,9 @@ caseParser = do
     lineSpaces
     t <- termParser defaultToFree
     manySpacesOrComment
+    gens <- optionMaybe $ do
+      keyword "For arbitrary"
+      varsParser <* manySpacesOrComment
     toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
     assms <- assmsP
     manySpacesOrComment
@@ -293,6 +326,7 @@ caseParser = do
     manySpacesOrComment
     return $ ParseCase
         { pcCons = t
+        , pcGens = gens
         , pcToShow = toShow
         , pcAssms = assms
         , pcProof = proof
@@ -303,8 +337,8 @@ caseParser = do
         manySpacesOrComment
         return assm
     assmP = do
-        (name, prop) <- namedPropParser defaultToFree idParser
-        return $ Named (if name == "" then "assumption" else name) prop
+        (name, gens, prop) <- namedPropGenParser defaultToFree idParser
+        return $ Named (if name == "" then "assumption" else name) (gens, prop)
 
 
 manySpacesOrComment :: Parsec [Char] u ()
@@ -395,7 +429,7 @@ readFunc syms pds = do
     parseFunc :: ParseDeclTree -> Maybe (Err (String, [Exts.Pat], Exts.Exp))
     parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
         case P.parseDecl s of
-            P.ParseOk (Exts.FunBind [Exts.Match _ name pat _ (Exts.UnGuardedRhs rhs) (Exts.BDecls [])])
+            P.ParseOk (Exts.FunBind [Exts.Match _ name pat _ (Exts.UnGuardedRhs rhs) Nothing])
                 -> Right (translateName name, pat, rhs)
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f

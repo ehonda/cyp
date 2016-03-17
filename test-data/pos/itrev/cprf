@@ -1,8 +1,9 @@
 Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 
-Proof by induction on List xs
+Proof by induction on List xs generalizing ys
 
 Case [] -- base case
+For arbitrary ys
 
     To show: itrev [] ys .=. reverse [] ++ ys
 
@@ -16,9 +17,10 @@ Case [] -- base case
     QED
 
 Case x:xs  -- induction step
+For arbitrary ys
 
     To show: itrev (x:xs) ys .=. reverse (x:xs) ++ ys
-    IH1: itrev xs ys .=. reverse xs ++ ys
+    IH1: forall ys: itrev xs ys .=. reverse xs ++ ys
 
     Proof
                                 itrev (x:xs) ys

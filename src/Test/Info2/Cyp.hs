@@ -12,7 +12,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Text.Parsec as Parsec
-import Text.PrettyPrint (colon, comma, fsep, punctuate, quotes, text, vcat, (<>), (<+>), ($+$))
+import Text.PrettyPrint (colon, comma, empty, fsep, int, punctuate, hsep, quotes, text, vcat, (<>), (<+>), ($+$))
 
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser
@@ -101,39 +101,74 @@ checkProof prop (ParseExt withRaw toShowRaw proof) env = errCtxt ctxtMsg $
         return prop'
       where
         bail msg t = lift $ err $ text msg <+> quotes (unparseTerm t)
-checkProof prop (ParseInduction dtRaw overRaw casesRaw) env = errCtxt ctxtMsg $ do
+checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ctxtMsg $ do
     dt <- validDatatype dtRaw env
     flip evalStateT env $ do
-        over <- validateOver overRaw
+        over <- validateVar "induction" overRaw
+        gens <- traverse (validateVar "generalization") gensRaw
         env <- get
-        lift $ validateCases dt over casesRaw env
+        validateGens over gens prop
+        lift $ validateCases dt over gens casesRaw env
         return prop
   where
     ctxtMsg = text "Induction over variable"
         <+> quotes (unparseRawTerm overRaw) <+> text "of type" <+> quotes (text dtRaw)
+        <+> if null gensRaw then empty else text "generalizing over" <+> fsep (map (quotes . unparseRawTerm) gensRaw)
 
-    validateOver t = do
+    unparseVarList vars = fsep (intersperse (text ",") (map (unparseTerm . Free) vars))
+    unparseGenProp gens prop =
+        (if null gens then empty else text "forall" <+> unparseVarList gens <+> text ":") <+> unparseProp prop
+
+    checkGenNum lv lg = do
+        when (lv < lg) $ err $ text "Not enough variables universally quantified:" <+> int lv <+> text "out of" <+> int lg
+        when (lv > lg) $ err $ text "Too many variables universally quantified:" <+> int lv <+> text "instead of" <+> int lg
+
+    validateVar s t = do
         t' <- state (declareTerm t)
         case t' of
             Free v -> return v
             _ -> lift $ err $ text "Term" <+> quotes (unparseTerm t')
-                <+> text "is not a valid induction variable"
+                <+> text ("is not a valid " ++ s ++ " variable")
 
-    validateCases dt over cases env = do
-        caseNames <- traverse (validateCase dt over env) cases
+    validateGens over gens prop =
+       if over `elem` gens then lift $ err $
+           text "Cannot generalize induction variable" <+> quotes (unparseTerm (Free over))
+       else case find (\x -> not (x `elem` frees)) gens of
+           Nothing -> return ()
+           Just v -> lift $ err $
+               text "Cannot generalize variable" <+> quotes (unparseTerm (Free v)) <+>
+               text "that does not occur in the goal"
+       where
+         frees = delete over (collectFreesProp prop [])
+
+
+    validateCases dt over gens cases env = do
+        caseNames <- traverse (validateCase dt over gens env) cases
         case missingCase caseNames of
             Nothing -> return ()
             Just (name, _) -> errStr $ "Missing case '" ++ name ++ "'"
       where
         missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
 
-    validateCase dt over env pc = errCtxt (text "Case" <+> quotes (unparseRawTerm $ pcCons pc)) $ do
+    validateCase dt over gens env pc = errCtxt (text "Case" <+> quotes (unparseRawTerm $ pcCons pc) <+>
+          case pcGens pc of
+             Nothing -> empty
+             Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars)) $ do
         flip evalStateT env $ do
             caseT <- state (variantFixesTerm $ pcCons pc)
             (consName, consArgNs) <- lift $ validConsCase caseT dt
             let recArgNames = map snd $ filter (\x -> fst x == TRec) consArgNs
 
             let subgoal = substFreeProp prop [(over, caseT)]
+
+            case pcGens pc of
+                Nothing -> when (not $ null gens) $ lift $ err $ text "Missing 'For arbitrary ...'"
+                Just rawVars -> do
+                    vars <- traverse (validateVar "generalization") rawVars
+                    when (vars /= gens) $ lift . err
+                         $ text "Variable names do not match"
+                         `indent` (text "Generalization variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) gens))
+                         $+$ text "'arbitrary' variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) vars)))
 
             case pcToShow pc of
                 Nothing ->
@@ -143,25 +178,29 @@ checkProof prop (ParseInduction dtRaw overRaw casesRaw) env = errCtxt ctxtMsg $ 
                     when (subgoal /= toShow) $ lift . err
                          $ text "'To show' does not match subgoal:"
                          `indent` (
-                            text "To show:" <+> unparseProp toShow
-                            $+$ debug (text "Subgoal:" <+> unparseProp subgoal))
+                            text "To show:" <+> unparseGenProp gens toShow
+                            $+$ debug (text "Subgoal:" <+> unparseGenProp gens subgoal))
 
-                    userHyps <- checkPcHyps over recArgNames $ pcAssms pc
+                    userHyps <- checkPcHyps over gens recArgNames $ pcAssms pc
 
                     modify (\env -> env { axioms = userHyps ++ axioms env })
                     env <- get
                     Prop _ _ <- lift $ checkProof subgoal (pcProof pc) env
                     return consName
 
-    checkPcHyps over recVars rpcHyps = do
-        pcHyps <- traverse (traverse (state . declareProp)) rpcHyps
+    checkPcHyps over gens recVars rpcHyps = do
+        pcHyps <- traverse (traverse (\(rawVars, raw) -> do
+            vars <- traverse (validateVar "generalization") rawVars
+            prop <- state (declareProp raw)
+            lift $ checkGenNum (length rawVars) (length gens)
+            validateGens over vars prop
+            return $ substFreeProp prop (zip vars (map Free gens)))) rpcHyps
         let indHyps = map (substFreeProp prop . instOver) recVars
         lift $ for_ pcHyps $ \(Named name prop) -> case prop `elem` indHyps of
             True -> return ()
             False -> err $
-                text ("Induction hypothesis " ++ name ++ " is not valid")
-                `indent` (debug (unparseProp prop))
-        return $ map (fmap $ generalizeExceptProp recVars) pcHyps
+                text ("Induction hypothesis " ++ name ++ " is not valid") `indent` (unparseGenProp gens prop)
+        return $ fmap (fmap (generalizeOnlyProp gens)) pcHyps
       where
         instOver n = [(over, Free n)]
 checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
@@ -189,6 +228,9 @@ checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
             caseT <- state (variantFixesTerm $ pcCons pc)
             (consName, _) <- lift $ validConsCase caseT dt
 
+            when (isJust $ pcGens pc) $
+                lift $ errStr "Superfluous 'for arbitrary'"
+
             when (isJust $ pcToShow pc) $
                 lift $ errStr "Superfluous 'To show'"
 
@@ -199,8 +241,8 @@ checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
             Prop _ _ <- lift $ checkProof prop (pcProof pc) env
             return consName
 
-    checkPcAssms :: Term -> Term -> [Named RawProp] -> StateT Env Err (Named Prop)
-    checkPcAssms on caseT [Named name rawProp] = do
+    checkPcAssms :: Term -> Term -> [Named ([RawTerm], RawProp)] -> StateT Env Err (Named Prop)
+    checkPcAssms on caseT [Named name ([], rawProp)] = do
         prop <- state (declareProp rawProp)
         let Prop lhs rhs = prop
         when (lhs /= on) $ bail "Invalid left-hand side of assumption, expected:" on
@@ -208,6 +250,7 @@ checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
         return $ Named name prop
       where
         bail msg t = lift $ err $ text msg <+> quotes (unparseTerm t)
+    checkPcAssms _ _ [_] = lift $ errStr "No generalization in a case distinction"
     checkPcAssms _ _ _ = lift $ errStr "Expected exactly one assumption"
 
 
