@@ -15,8 +15,8 @@ where
 import Data.Char
 import Data.Maybe
 import Text.Parsec as Parsec
-import qualified Language.Haskell.Exts.Parser as P
-import qualified Language.Haskell.Exts.Syntax as Exts
+import qualified Language.Haskell.Exts.Simple.Parser as P
+import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import Text.PrettyPrint (quotes, text, (<+>))
 
 import Test.Info2.Cyp.Env
@@ -429,8 +429,10 @@ readFunc syms pds = do
     parseFunc :: ParseDeclTree -> Maybe (Err (String, [Exts.Pat], Exts.Exp))
     parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
         case P.parseDecl s of
-            P.ParseOk (Exts.FunBind [Exts.Match _ name pat _ (Exts.UnGuardedRhs rhs) Nothing])
+            P.ParseOk (Exts.FunBind [Exts.Match name pat (Exts.UnGuardedRhs rhs) Nothing])
                 -> Right (translateName name, pat, rhs)
+            P.ParseOk (Exts.FunBind [Exts.InfixMatch pat0 name pat (Exts.UnGuardedRhs rhs) Nothing])
+                -> Right (translateName name, pat0 : pat, rhs)
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
     parseFunc _ = Nothing

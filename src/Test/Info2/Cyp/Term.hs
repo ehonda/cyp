@@ -46,10 +46,9 @@ where
 
 import Control.Monad ((>=>), liftM2, when)
 import Data.List (find, nub)
-import qualified Language.Haskell.Exts.Parser as P
-import Language.Haskell.Exts.Fixity (Fixity (..), baseFixities)
-import qualified Language.Haskell.Exts.Syntax as Exts
-import Language.Haskell.Exts.Syntax (Assoc (..),  Boxed(..), Exp(..), Literal (..), QName (..), QOp (..), SpecialCon (..), Name (..), ModuleName (..))
+import qualified Language.Haskell.Exts.Simple.Parser as P
+import Language.Haskell.Exts.Simple.Fixity (Fixity (..), baseFixities)
+import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import Text.PrettyPrint (parens, quotes, text, (<+>), Doc)
 
 import Test.Info2.Cyp.Util
@@ -61,7 +60,7 @@ data AbsTerm a
     | Const String
     | Free a
     | Schematic a
-    | Literal Literal
+    | Literal Exts.Literal
     deriving (Show, Eq)
 
 type Term = AbsTerm IdxName
@@ -209,7 +208,8 @@ iparseTermRaw f s = errCtxt (text "Parsing term" <+> quotes (text s)) $
         P.ParseOk p -> translateExp (withDefConsts f) p
         x@(P.ParseFailed _ _) -> err $ renderSrcExtsFail "expression" x
   where
-    mode = P.defaultParseMode { P.fixities = Just $ Fixity AssocNone (-1) (UnQual $ Symbol symPropEq) : baseFixities }
+    mode = P.defaultParseMode
+      { P.fixities = Just $ Fixity Exts.AssocNone (-1) (Exts.UnQual $ Exts.Symbol symPropEq) : baseFixities }
     withDefConsts f x = if x `elem` defaultConsts then return (Const x) else f x
 
 defaultToFree :: [String] -> String -> Err RawTerm
@@ -243,19 +243,19 @@ iparseProp f s = do
 
 {- Transform Exp to Term ---------------------------------------------}
 
-translateExp :: (String -> Err (AbsTerm a)) -> Exp -> Err (AbsTerm a)
-translateExp f (Var v) = f $ translateQName v
-translateExp _ (Con c) = return . Const $ translateQName c
-translateExp _ (Lit l) = return $ Literal l
-translateExp f (If b c1 c2) = Right (Const symIf)
+translateExp :: (String -> Err (AbsTerm a)) -> Exts.Exp -> Err (AbsTerm a)
+translateExp f (Exts.Var v) = f $ translateQName v
+translateExp _ (Exts.Con c) = return . Const $ translateQName c
+translateExp _ (Exts.Lit l) = return $ Literal l
+translateExp f (Exts.If b c1 c2) = Right (Const symIf)
     `mApp` translateExp f b `mApp` translateExp f c1 `mApp` translateExp f c2
-translateExp f (InfixApp e1 op e2) =
+translateExp f (Exts.InfixApp e1 op e2) =
     translateQOp f op `mApp` translateExp f e1 `mApp` translateExp f e2
-translateExp f (App e1 e2) = translateExp f e1 `mApp` translateExp f e2
-translateExp f (NegApp e) = return (Const symUMinus) `mApp` translateExp f e
-translateExp f (LeftSection e op) = translateQOp f op `mApp` translateExp f e
-translateExp f (Paren e) = translateExp f e
-translateExp f (List l) = foldr (\e es -> Right (Const symCons) `mApp` translateExp f e `mApp` es) (Right $ Const "[]") l
+translateExp f (Exts.App e1 e2) = translateExp f e1 `mApp` translateExp f e2
+translateExp f (Exts.NegApp e) = return (Const symUMinus) `mApp` translateExp f e
+translateExp f (Exts.LeftSection e op) = translateQOp f op `mApp` translateExp f e
+translateExp f (Exts.Paren e) = translateExp f e
+translateExp f (Exts.List l) = foldr (\e es -> Right (Const symCons) `mApp` translateExp f e `mApp` es) (Right $ Const "[]") l
 translateExp _ e = errStr $ "Unsupported expression syntax used: " ++ show e
 
 translatePat :: Exts.Pat -> Err RawTerm
@@ -274,34 +274,34 @@ translatePat (Exts.PAsPat _ _) = errStr "as patterns are not supported"
 translatePat Exts.PWildCard = errStr "wildcard patterns are not supported"
 translatePat f = errStr $ "unsupported pattern type: " ++ show f
 
-translateQOp :: (String -> Err (AbsTerm a)) -> QOp -> Err (AbsTerm a)
-translateQOp _ (QConOp op) = return . Const $ translateQName op
-translateQOp f (QVarOp op) = f $ translateQName op
+translateQOp :: (String -> Err (AbsTerm a)) -> Exts.QOp -> Err (AbsTerm a)
+translateQOp _ (Exts.QConOp op) = return . Const $ translateQName op
+translateQOp f (Exts.QVarOp op) = f $ translateQName op
 
-translateQName :: QName -> String
-translateQName (Qual (ModuleName m) (Ident n)) = m ++ "." ++ n
-translateQName (Qual (ModuleName m) (Symbol n)) = m ++ "." ++ n
-translateQName (UnQual (Ident n)) = n
-translateQName (UnQual (Symbol n)) = n
-translateQName (Special UnitCon) = "()"
-translateQName (Special ListCon) = "[]"
-translateQName (Special FunCon) = "->"
-translateQName (Special Cons) = ":"
-translateQName (Special (TupleCon b n)) = case b of
-    Boxed -> "(#" ++ replicate n ',' ++ "#)"
-    Unboxed -> "(" ++ replicate n ',' ++ ")"
-translateQName (Special UnboxedSingleCon) = "(# #)"
+translateQName :: Exts.QName -> String
+translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Ident n)) = m ++ "." ++ n
+translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Symbol n)) = m ++ "." ++ n
+translateQName (Exts.UnQual (Exts.Ident n)) = n
+translateQName (Exts.UnQual (Exts.Symbol n)) = n
+translateQName (Exts.Special Exts.UnitCon) = "()"
+translateQName (Exts.Special Exts.ListCon) = "[]"
+translateQName (Exts.Special Exts.FunCon) = "->"
+translateQName (Exts.Special Exts.Cons) = ":"
+translateQName (Exts.Special (Exts.TupleCon b n)) = case b of
+    Exts.Boxed -> "(#" ++ replicate n ',' ++ "#)"
+    Exts.Unboxed -> "(" ++ replicate n ',' ++ ")"
+translateQName (Exts.Special Exts.UnboxedSingleCon) = "(# #)"
 
-translateName :: Name -> String
-translateName (Ident s) = s
-translateName (Symbol s) = s
+translateName :: Exts.Name -> String
+translateName (Exts.Ident s) = s
+translateName (Exts.Symbol s) = s
 
 
 
 {- Pretty printing --------------------------------------------------}
 
 data Prio = IntPrio Int | AppPrio | AtomPrio deriving (Eq, Show)
-data CypFixity = CypFixity Assoc Prio String deriving Show
+data CypFixity = CypFixity Exts.Assoc Prio String deriving Show
 data CypApplied = Applied0 | Applied1 | AppliedFull deriving (Eq, Show)
 
 instance Ord Prio where
@@ -323,12 +323,12 @@ upModeIdx = UnparseMode
     { unparseFree = \(x,n) -> x ++ "~" ++ show n
     , unparseSchematic = \(x,n) -> "?" ++ x ++ "~" ++ show n }
 
-data Unparse = Unparse Doc (Assoc, Prio, CypApplied)
+data Unparse = Unparse Doc (Exts.Assoc, Prio, CypApplied)
 
 upDoc :: Unparse -> Doc
 upDoc (Unparse d _) = d
 
-upAssoc :: Unparse -> Assoc
+upAssoc :: Unparse -> Exts.Assoc
 upAssoc (Unparse _ (a, _, _)) = a
 
 upPrio :: Unparse -> Prio
@@ -341,8 +341,8 @@ upApplied (Unparse _ (_, _, x)) = x
 unparseFixities :: [CypFixity]
 unparseFixities = map (\(Fixity assoc prio name) -> CypFixity assoc (IntPrio prio) $ translateQName name) baseFixities
 
-atomFixity :: (Assoc, Prio, CypApplied)
-atomFixity = (AssocNone, AtomPrio, AppliedFull)
+atomFixity :: (Exts.Assoc, Prio, CypApplied)
+atomFixity = (Exts.AssocNone, AtomPrio, AppliedFull)
 
 finalizePartialApp :: Unparse -> Unparse
 finalizePartialApp up
@@ -379,11 +379,11 @@ unparseAbsTermRaw mode (Application tl tr) = Unparse doc' fixity'
     doc' = case upApplied l of
         Applied0
             | upPrio r > upPrio l -> upDoc r <+> upDoc l
-            | upPrio l == upPrio r && assocsTo AssocLeft l r -> (upDoc r) <+> (upDoc l)
+            | upPrio l == upPrio r && assocsTo Exts.AssocLeft l r -> (upDoc r) <+> (upDoc l)
             | otherwise -> close r <+> (upDoc l)
         Applied1
             | upPrio r > upPrio l -> upDoc l <+> upDoc r
-            | upPrio l == upPrio r && assocsTo AssocRight l r -> upDoc l <+> upDoc r
+            | upPrio l == upPrio r && assocsTo Exts.AssocRight l r -> upDoc l <+> upDoc r
             | otherwise -> upDoc l <+> close r
         AppliedFull
             | upPrio l < AppPrio -> close l <+> close r
@@ -392,7 +392,7 @@ unparseAbsTermRaw mode (Application tl tr) = Unparse doc' fixity'
     fixity' = case upApplied l of
         Applied0 -> (upAssoc l, upPrio l, Applied1)
         Applied1 -> (upAssoc l, upPrio l, AppliedFull)
-        AppliedFull -> (AssocLeft, AppPrio, AppliedFull)
+        AppliedFull -> (Exts.AssocLeft, AppPrio, AppliedFull)
 
     close u = case upPrio u of
         AtomPrio -> upDoc u
@@ -408,14 +408,14 @@ unparseAbsTermRaw _ (Const c) =
 unparseAbsTermRaw mode (Free v) = Unparse (text $ unparseFree mode v) atomFixity
 unparseAbsTermRaw mode (Schematic v) = Unparse (text $ unparseSchematic mode v) atomFixity
 
-unparseLiteral :: Literal -> String
-unparseLiteral (Char c) = show c
-unparseLiteral (String s) = show s
-unparseLiteral (Int c) = show c
-unparseLiteral (Frac c) = show c
-unparseLiteral (PrimInt c) = show c
-unparseLiteral (PrimWord c) = show c
-unparseLiteral (PrimFloat c) = show c
-unparseLiteral (PrimDouble c) = show c
-unparseLiteral (PrimChar c) = show c
-unparseLiteral (PrimString c) = show c
+unparseLiteral :: Exts.Literal -> String
+unparseLiteral (Exts.Char c) = show c
+unparseLiteral (Exts.String s) = show s
+unparseLiteral (Exts.Int c) = show c
+unparseLiteral (Exts.Frac c) = show c
+unparseLiteral (Exts.PrimInt c) = show c
+unparseLiteral (Exts.PrimWord c) = show c
+unparseLiteral (Exts.PrimFloat c) = show c
+unparseLiteral (Exts.PrimDouble c) = show c
+unparseLiteral (Exts.PrimChar c) = show c
+unparseLiteral (Exts.PrimString c) = show c
