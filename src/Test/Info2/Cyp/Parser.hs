@@ -36,6 +36,7 @@ data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
 
 data ParseCase = ParseCase
     { pcCons :: RawTerm
+    , pcFixs :: Maybe [RawTerm] -- fixed variables
     , pcGens :: Maybe [RawTerm] -- generalized variables
     , pcToShow :: Maybe RawProp -- goal
     , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
@@ -306,7 +307,7 @@ equationsParser = do
 
 toShowParser :: Parsec [Char] Env RawProp
 toShowParser = do
-    keyword "To show"
+    keyword "Show"
     char ':'
     propParser defaultToFree
 
@@ -316,26 +317,37 @@ caseParser = do
     lineSpaces
     t <- termParser defaultToFree
     manySpacesOrComment
-    gens <- optionMaybe $ do
-      keyword "For arbitrary"
-      varsParser <* manySpacesOrComment
-    toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
+    fxs <- optionMaybe $ do
+      keyword "For fixed"
+      varsParser <* manySpacesOrComment  
     assms <- assmsP
     manySpacesOrComment
+    gens <- optionMaybe $ do
+      choice [char 'f', char 'F']
+      keyword "or arbitrary"
+      varsParser <* manySpacesOrComment
+    toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
+    manyTill anyChar (lookAhead (string "Proof"))
     proof <- proofParser
     manySpacesOrComment
     return $ ParseCase
         { pcCons = t
+        , pcFixs = fxs
         , pcGens = gens
         , pcToShow = toShow
         , pcAssms = assms
         , pcProof = proof
         }
   where
-    assmsP = flip manyTill (lookAhead (string "Proof")) $ do
-        assm <- assmP
+    assmsP = option [] $ do
+        keyword "Assume"
         manySpacesOrComment
-        return assm
+        assms <- flip manyTill (lookAhead (string "Then")) $ do
+            assm <- assmP
+            manySpacesOrComment
+            return assm
+        keyword "Then"
+        return assms
     assmP = do
         (name, gens, prop) <- namedPropGenParser defaultToFree idParser
         return $ Named (if name == "" then "assumption" else name) (gens, prop)

@@ -4,7 +4,7 @@ Proof by induction on List xs
 
 Case []
 
-    To show: snoc [] y .=. [] ++ [y]
+    Show: snoc [] y .=. [] ++ [y]
 
     Proof
                             snoc [] y
@@ -14,8 +14,11 @@ Case []
     QED
 
 Case x:xs
-    To show: snoc (x:xs) y .=. (x:xs) ++ [y]
-    IH: snoc xs y .=. xs ++ [y]
+    For fixed x, xs
+    Assume
+        IH: snoc xs y .=. xs ++ [y]
+    Then
+    Show: snoc (x:xs) y .=. (x:xs) ++ [y]
 
     Proof
                             snoc (x:xs) y

@@ -4,7 +4,7 @@ Proof by induction on List xs
 
 Case []
 
-    To show: reverse (snoc [] x) .=. x : reverse []
+    Show: reverse (snoc [] x) .=. x : reverse []
 
     Proof
                                 reverse (snoc [] x)
@@ -19,9 +19,11 @@ Case []
     QED
 
 Case y:ys
-
-    To show: reverse (snoc (y:ys) x) .=. x : reverse (y:ys)
-    IH: reverse (snoc ys x) .=. x : reverse ys
+    For fixed y, ys
+    Assume
+        IH: reverse (snoc ys x) .=. x : reverse ys
+    Then
+    Show: reverse (snoc (y:ys) x) .=. x : reverse (y:ys)
 
     Proof
                                 reverse (snoc (y:ys) x)

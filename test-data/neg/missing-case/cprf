@@ -4,7 +4,7 @@ Proof by induction on List xs
 
 Case []
 
-    To show: length ([] ++ ys) .=. length [] + length ys
+    Show: length ([] ++ ys) .=. length [] + length ys
 
     Proof
                                  length ([] ++ ys)

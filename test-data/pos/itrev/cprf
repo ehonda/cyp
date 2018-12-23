@@ -3,9 +3,8 @@ Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 Proof by induction on List xs generalizing ys
 
 Case [] -- base case
-For arbitrary ys
-
-    To show: itrev [] ys .=. reverse [] ++ ys
+    For arbitrary ys
+    Show: itrev [] ys .=. reverse [] ++ ys
 
     Proof
                                 itrev [] ys
@@ -17,10 +16,12 @@ For arbitrary ys
     QED
 
 Case x:xs  -- induction step
-For arbitrary ys
+    For fixed x, xs
+    Assume
+        IH1: forall ys: itrev xs ys .=. reverse xs ++ ys
 
-    To show: itrev (x:xs) ys .=. reverse (x:xs) ++ ys
-    IH1: forall ys: itrev xs ys .=. reverse xs ++ ys
+    Then for arbitrary ys
+    Show: itrev (x:xs) ys .=. reverse (x:xs) ++ ys
 
     Proof
                                 itrev (x:xs) ys
@@ -42,8 +43,7 @@ Lemma app_Nil: xs ++ [] .=. xs
 Proof by induction on List xs
 
 Case []
-
-    To show: [] ++ [] .=. []
+    Show: [] ++ [] .=. []
 
     Proof
                                 [] ++ []
@@ -51,9 +51,12 @@ Case []
     QED
 
 Case x:xs
+    For fixed x, xs
+    Assume
+        IH: xs ++ [] .=. xs
 
-    To show: (x:xs) ++ [] .=. (x:xs)
-    IH: xs ++ [] .=. xs
+    Then 
+    Show: (x:xs) ++ [] .=. (x:xs)
 
     Proof
                                 (x:xs) ++ []

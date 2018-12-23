@@ -4,7 +4,7 @@ Proof by induction on List xs
 
 Case []
 
-    To show: length ([] ++ ys) .=. length [] + length ys
+    Show: length ([] ++ ys) .=. length [] + length ys
 
     Proof
                                  length ([] ++ ys)
@@ -16,9 +16,11 @@ Case []
     QED
 
 Case x:xs
-
-    To show: length ((x : xs) ++ ys) .=. length (x : xs) + length ys
-    IH: length (xs ++ ys) .=. length xs + length ys
+    For fixed x, xs
+    Assume 
+        IH: length (xs ++ ys) .=. length xs + length ys
+    Then
+    Show: length ((x : xs) ++ ys) .=. length (x : xs) + length ys
 
     Proof
                                  length ((x:xs) ++ ys)

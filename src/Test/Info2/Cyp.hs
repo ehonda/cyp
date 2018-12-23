@@ -150,16 +150,27 @@ checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ct
       where
         missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
 
-    validateCase dt over gens env pc = errCtxt (text "Case" <+> quotes (unparseRawTerm $ pcCons pc) <+>
-          case pcGens pc of
-             Nothing -> empty
-             Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars)) $ do
-        flip evalStateT env $ do
+    validateCase dt over gens env pc = errCtxt 
+      (text "Case" <+> quotes (unparseRawTerm $ pcCons pc) <+>
+        (case pcFixs pc of
+           Nothing -> empty
+           Just rawVars -> text "Fixing" <+> hsep (map (quotes . unparseRawTerm) rawVars)) <+>
+        case pcGens pc of
+           Nothing -> empty
+           Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars)) 
+      $ do flip evalStateT env $ do
             caseT <- state (variantFixesTerm $ pcCons pc)
             (consName, consArgNs) <- lift $ validConsCase caseT dt
             let recArgNames = map snd $ filter (\x -> fst x == TRec) consArgNs
 
             let subgoal = substFreeProp prop [(over, caseT)]
+
+            case pcFixs pc of
+                Nothing -> when (not $ null recArgNames) $ lift $ err $ text "Missing 'For fixed {constructor arguments...}'"
+                Just rawVars -> do
+                    let conNs = map (Free . fst . snd) consArgNs
+                    when (sort rawVars /= sort conNs) $ lift . err
+                        $ text "Fixed variables do not match with the Case"
 
             case pcGens pc of
                 Nothing -> when (not $ null gens) $ lift $ err $ text "Missing 'For arbitrary ...'"
@@ -172,13 +183,13 @@ checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ct
 
             case pcToShow pc of
                 Nothing ->
-                    lift $ err $ text "Missing 'To show'"
+                    lift $ err $ text "Missing 'Show'"
                 Just raw -> do
                     toShow <- state (declareProp raw)
                     when (subgoal /= toShow) $ lift . err
-                         $ text "'To show' does not match subgoal:"
+                         $ text "'Show' does not match subgoal:"
                          `indent` (
-                            text "To show:" <+> unparseGenProp gens toShow
+                            text "Show:" <+> unparseGenProp gens toShow
                             $+$ debug (text "Subgoal:" <+> unparseGenProp gens subgoal))
 
                     userHyps <- checkPcHyps over gens recArgNames $ pcAssms pc
@@ -232,7 +243,7 @@ checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
                 lift $ errStr "Superfluous 'for arbitrary'"
 
             when (isJust $ pcToShow pc) $
-                lift $ errStr "Superfluous 'To show'"
+                lift $ errStr "Superfluous 'Show'"
 
             userAssm <- checkPcAssms on caseT $ pcAssms pc
 

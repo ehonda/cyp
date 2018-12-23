@@ -2,12 +2,13 @@ Lemma: reverse . reverse .=. id
 
 Proof by extensionality with xs
 
-  To show: (reverse . reverse) xs .=. id xs
+  Show: (reverse . reverse) xs .=. id xs
 
   Proof by induction on List xs
 
     Case []
-      To show: (reverse . reverse) [] .=. id []
+
+      Show: (reverse . reverse) [] .=. id []
 
       Proof
 
@@ -20,8 +21,11 @@ Proof by extensionality with xs
       QED
 
     Case x:xs
-      To show: (reverse . reverse) (x:xs) .=. id (x:xs)
-      IH: (reverse . reverse) xs .=. id xs
+      For fixed x, xs
+      Assume
+        IH: (reverse . reverse) xs .=. id xs
+      Then
+      Show: (reverse . reverse) (x:xs) .=. id (x:xs)
 
       Proof
 

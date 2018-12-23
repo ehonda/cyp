@@ -73,6 +73,10 @@ data AbsProp a = Prop (AbsTerm a) (AbsTerm a)
 type Prop = AbsProp IdxName
 type RawProp = AbsProp String
 
+instance Ord a => Ord (AbsTerm a) where
+    compare (Free x) (Free y) = compare x y
+    compare _ _ = EQ
+
 instance Functor AbsTerm where
     fmap f (Application x y) = Application (fmap f x) (fmap f y)
     fmap _ (Const x) = Const x

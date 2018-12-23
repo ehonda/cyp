@@ -2,12 +2,12 @@ Lemma: filter p . map f .=. map f . filter (p . f)
 
 Proof by extensionality with xs
 
-  To show: (filter p . map f) xs .=. (map f . filter (p . f)) xs
+  Show: (filter p . map f) xs .=. (map f . filter (p . f)) xs
 
   Proof by induction on List xs
 
     Case []
-      To show: (filter p . map f) [] .=. (map f . filter (p . f)) []
+      Show: (filter p . map f) [] .=. (map f . filter (p . f)) []
 
       Proof
 
@@ -24,13 +24,18 @@ Proof by extensionality with xs
       QED
 
     Case y:ys
-      To show: (filter p . map f) (y:ys) .=. (map f . filter (p . f)) (y:ys)
-      IH: (filter p . map f) ys .=. (map f . filter (p . f)) ys
+      For fixed y, ys
+      Assume
+        IH: (filter p . map f) ys .=. (map f . filter (p . f)) ys
+      Then
+      Show: (filter p . map f) (y:ys) .=. (map f . filter (p . f)) (y:ys)
 
       Proof by case analysis on Bool p (f y)
 
         Case True
-          Assumption: p (f y) .=. True
+          Assume
+            AS: p (f y) .=. True
+          Then
 
           Proof
 
@@ -38,7 +43,7 @@ Proof by extensionality with xs
             (by def .)      .=. filter p (map f (y:ys))
             (by def map)    .=. filter p (f y : map f ys)
             (by def filter) .=. if p (f y) then f y : filter p (map f ys) else filter p (map f ys)
-            (by Assumption) .=. if True then f y : filter p (map f ys) else filter p (map f ys)
+            (by AS)         .=. if True then f y : filter p (map f ys) else filter p (map f ys)
             (by if_True)    .=. f y : filter p (map f ys)
             (by def .)      .=. f y : (filter p . map f) ys
             (by IH)         .=. f y : (map f . filter (p . f)) ys
@@ -47,7 +52,7 @@ Proof by extensionality with xs
             (by def .)      .=. map f (filter (p . f) (y:ys))
             (by def filter) .=. map f (if (p . f) y then y : filter (p . f) ys else filter (p . f) ys)
             (by def .)      .=. map f (if p (f y) then y : filter (p . f) ys else filter (p . f) ys)
-            (by Assumption) .=. map f (if True then y : filter (p . f) ys else filter (p . f) ys)
+            (by AS)         .=. map f (if True then y : filter (p . f) ys else filter (p . f) ys)
             (by if_True)    .=. map f (y : filter (p . f) ys)
             (by def map)    .=. f y : (map f (filter (p . f) ys))
             (by def .)      .=. f y : (map f . filter (p . f)) ys
@@ -56,7 +61,9 @@ Proof by extensionality with xs
           QED
 
         Case False
-          Assumption: p (f y) .=. False
+          Assume
+            AS: p (f y) .=. False
+          Then
 
           Proof
 
@@ -64,7 +71,7 @@ Proof by extensionality with xs
             (by def .)      .=. filter p (map f (y:ys))
             (by def map)    .=. filter p (f y : map f ys)
             (by def filter) .=. if p (f y) then f y : filter p (map f ys) else filter p (map f ys)
-            (by Assumption) .=. if False then f y : filter p (map f ys) else filter p (map f ys)
+            (by AS)         .=. if False then f y : filter p (map f ys) else filter p (map f ys)
             (by if_False)   .=. filter p (map f ys)
             (by def .)      .=. (filter p . map f) ys
             (by IH)         .=. (map f . filter (p . f)) ys
@@ -73,7 +80,7 @@ Proof by extensionality with xs
             (by def .)      .=. map f (filter (p . f) (y:ys))
             (by def filter) .=. map f (if (p . f) y then y : filter (p . f) ys else filter (p . f) ys)
             (by def .)      .=. map f (if p (f y) then y : filter (p . f) ys else filter (p . f) ys)
-            (by Assumption) .=. map f (if False then y : filter (p . f) ys else filter (p . f) ys)
+            (by AS)         .=. map f (if False then y : filter (p . f) ys else filter (p . f) ys)
             (by if_False)   .=. map f (filter (p . f) ys)
             (by def .)      .=. (map f . filter (p . f)) ys
 
