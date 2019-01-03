@@ -3,7 +3,7 @@ Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 Proof by induction on List xs generalizing ys
 
 Case [] -- base case
-    For arbitrary ys
+    For fixed ys
     Show: itrev [] ys .=. reverse [] ++ ys
 
     Proof
@@ -16,11 +16,11 @@ Case [] -- base case
     QED
 
 Case x:xs  -- induction step
-    For fixed x, xs
+    Fix x, xs
     Assume
         IH1: forall ys: itrev xs ys .=. reverse xs ++ ys
 
-    Then for arbitrary ys
+    Then for fixed ys
     Show: itrev (x:xs) ys .=. reverse (x:xs) ++ ys
 
     Proof
@@ -51,7 +51,7 @@ Case []
     QED
 
 Case x:xs
-    For fixed x, xs
+    Fix x, xs
     Assume
         IH: xs ++ [] .=. xs
 

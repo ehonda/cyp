@@ -19,7 +19,7 @@ Case []
     QED
 
 Case y:ys
-    For fixed y, ys
+    Fix y, ys
     Assume
         IH: reverse (snoc ys x) .=. x : reverse ys
     Then

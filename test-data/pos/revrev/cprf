@@ -21,7 +21,7 @@ Proof by extensionality with xs
       QED
 
     Case x:xs
-      For fixed x, xs
+      Fix x, xs
       Assume
         IH: (reverse . reverse) xs .=. id xs
       Then

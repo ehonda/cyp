@@ -166,20 +166,20 @@ checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ct
             let subgoal = substFreeProp prop [(over, caseT)]
 
             case pcFixs pc of
-                Nothing -> when (not $ null recArgNames) $ lift $ err $ text "Missing 'For fixed {constructor arguments...}'"
+                Nothing -> when (not $ null recArgNames) $ lift $ err $ text "Missing 'Fix {constructor arguments...}'"
                 Just rawVars -> do
                     let conNs = map (Free . fst . snd) consArgNs
                     when (sort rawVars /= sort conNs) $ lift . err
                         $ text "Fixed variables do not match with the Case"
 
             case pcGens pc of
-                Nothing -> when (not $ null gens) $ lift $ err $ text "Missing 'For arbitrary ...'"
+                Nothing -> when (not $ null gens) $ lift $ err $ text "Missing 'For fixed ...'"
                 Just rawVars -> do
                     vars <- traverse (validateVar "generalization") rawVars
                     when (vars /= gens) $ lift . err
                          $ text "Variable names do not match"
                          `indent` (text "Generalization variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) gens))
-                         $+$ text "'arbitrary' variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) vars)))
+                         $+$ text "'fixed' variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) vars)))
 
             case pcToShow pc of
                 Nothing ->
@@ -240,7 +240,7 @@ checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
             (consName, _) <- lift $ validConsCase caseT dt
 
             when (isJust $ pcGens pc) $
-                lift $ errStr "Superfluous 'for arbitrary'"
+                lift $ errStr "Superfluous 'For fixed'"
 
             when (isJust $ pcToShow pc) $
                 lift $ errStr "Superfluous 'Show'"

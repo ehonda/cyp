@@ -318,13 +318,13 @@ caseParser = do
     t <- termParser defaultToFree
     manySpacesOrComment
     fxs <- optionMaybe $ do
-      keyword "For fixed"
+      keyword "Fix"
       varsParser <* manySpacesOrComment  
     assms <- assmsP
     manySpacesOrComment
     gens <- optionMaybe $ do
       choice [char 'f', char 'F']
-      keyword "or arbitrary"
+      keyword "or fixed"
       varsParser <* manySpacesOrComment
     toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
     manyTill anyChar (lookAhead (string "Proof"))

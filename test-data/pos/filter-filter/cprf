@@ -14,7 +14,7 @@ Proof by induction on List xs
     QED
 
   Case x:xs
-    For fixed x, xs
+    Fix x, xs
     Assume
       IH: filter p (filter p xs) .=. filter p xs
     Then

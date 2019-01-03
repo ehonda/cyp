@@ -24,7 +24,7 @@ Proof by extensionality with xs
       QED
 
     Case y:ys
-      For fixed y, ys
+      Fix y, ys
       Assume
         IH: (filter p . map f) ys .=. (map f . filter (p . f)) ys
       Then

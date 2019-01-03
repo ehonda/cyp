@@ -25,7 +25,7 @@ Proof by extensionality with xs
       QED
 
     Case x:xs
-      For fixed x, xs
+      Fix x, xs
       Assume
         IH: (reverse . filter p) xs .=. (filter p . reverse) xs
       Then
