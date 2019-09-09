@@ -1,4 +1,4 @@
-+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Test.Info2.Cyp.Util
     ( Err
