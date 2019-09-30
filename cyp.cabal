@@ -10,8 +10,8 @@ library
   exposed-modules:
       Test.Info2.Cyp
     , Test.Info2.Cyp.Tasty
-  other-modules:
-      Test.Info2.Cyp.Env
+--  other-modules:
+    , Test.Info2.Cyp.Env
     , Test.Info2.Cyp.Parser
     , Test.Info2.Cyp.Term
     , Test.Info2.Cyp.Trace
