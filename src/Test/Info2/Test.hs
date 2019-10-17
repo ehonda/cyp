@@ -19,7 +19,7 @@ revPrf = "test-data/pos/revrev/cprf"
 lenThy = "test-data/pos/length-append/cthy"
 lenPrf = "test-data/pos/length-append/cprf"
 
-wcThy = "test-data/pos/wildcard/cthy"
+wcThy = "test-data/no_unit/wildcard/cthy"
 
 -- Contents of a typical Env, as extracted in processMasterFile
 ---------------------------------------------------------------
@@ -57,6 +57,11 @@ inspectTheory path f = do
         Right nodes -> mapM_ print nodes
         Left err -> print err
     
+thyParse path = do
+    c <- readFile path
+    case eitherToErr $ Parsec.parse cthyParser path c of
+        Right nodes -> mapM_ print nodes
+        Left err -> print err
 
 -- Proof file inspection as in processProofFile
 ---------------------------------------------------------------

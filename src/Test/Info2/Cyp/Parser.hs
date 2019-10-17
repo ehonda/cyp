@@ -32,6 +32,7 @@ data ParseDeclTree
     | Axiom String String
     | FunDef String
     | Goal String
+    | TypeSig String String     -- Symbol, Type
     deriving Show
 
 data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
@@ -90,6 +91,11 @@ eol = do
         <?> "end of line"
     return ()
 
+doubleColon :: Parsec [Char] u ()
+doubleColon = do
+    string "::"
+    return ()
+
 lineBreak :: Parsec [Char] u ()
 lineBreak = (eof <|> eol <|> commentParser) >> manySpacesOrComment
 
@@ -120,7 +126,13 @@ cthyParser =
 cthyParsers :: Parsec [Char] () ParseDeclTree
 cthyParsers =
     do manySpacesOrComment
-       result <- (goalParser <|> dataParser <|> axiomParser <|> symParser <|> try funParser)
+       result <- 
+            (goalParser 
+            <|> dataParser 
+            <|> axiomParser 
+            <|> symParser
+            <|> try typeSigParser 
+            <|> try funParser)
        return result
 
 keywordToEolParser :: String -> (String -> a) -> Parsec [Char] () a
@@ -150,6 +162,12 @@ funParser :: Parsec [Char] () ParseDeclTree
 funParser = do
     cs <- toEol1 <?> "Function definition"
     return (FunDef cs)
+
+typeSigParser :: Parsec [Char] () ParseDeclTree
+typeSigParser = do
+    sym <- trim <$> toDoubleColon
+    sig <- trim <$> toEol
+    return $ TypeSig sym sig
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -288,6 +306,9 @@ keywordCase = keyword "Case"
 
 keywordQED :: Parsec [Char] u ()
 keywordQED = keyword "QED"
+
+toDoubleColon :: Parsec [Char] u String
+toDoubleColon = manyTill anyChar doubleColon
 
 toEol :: Parsec [Char] u String
 toEol = manyTill anyChar (eof <|> eol <|> commentParser)

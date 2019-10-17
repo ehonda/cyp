@@ -1,5 +1,6 @@
 data List a = [] | a : List a
 
+reverse :: [a] -> [a]
 reverse [] = []
 reverse (x:xs) = reverse xs ++ [x]
 
