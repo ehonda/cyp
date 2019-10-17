@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Test.Info2.Cyp (
-  proof
-, proofFile
-) where
+-- module Test.Info2.Cyp (
+--   proof
+-- , proofFile
+-- ) where
+
+module Test.Info2.Cyp where
 
 import Prelude hiding ((<>))
 import Control.Monad

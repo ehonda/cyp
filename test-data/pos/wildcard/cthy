@@ -1,0 +1,4 @@
+data Bool = True | False
+
+f x = True
+f _ = False

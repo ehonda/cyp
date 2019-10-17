@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-} -- ONLY FOR TEST PARSE FUNCTIONS
+
 module Test.Info2.Cyp.Parser
     ( ParseLemma (..)
     , ParseCase (..)
@@ -33,6 +35,7 @@ data ParseDeclTree
     deriving Show
 
 data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
+    deriving Show
 
 data ParseCase = ParseCase
     { pcCons :: RawTerm
@@ -42,6 +45,7 @@ data ParseCase = ParseCase
     , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
     , pcProof :: ParseProof
     }
+    deriving Show
 
 data ParseProof
     = ParseInduction String RawTerm [RawTerm] [ParseCase] -- data type, induction variable, generalized variables, cases
@@ -49,6 +53,7 @@ data ParseProof
     | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
     | ParseCases String RawTerm [ParseCase] -- data type, term, cases
     | ParseCheating
+    deriving Show
 
 
 trim :: String -> String
@@ -57,6 +62,14 @@ trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 toParsec :: (a -> String) -> Either a b -> Parsec c u b
 toParsec f = either (fail . f) return
 
+-- Test Functions
+----------------------------------------------------------------
+
+testParse parser file = do
+    content <- readFile file
+    print $ parse parser "test" content
+
+testParseStr parser str = print $ parse parser "test" str
 
 {- Custom combinators ------------------------------------------------}
 

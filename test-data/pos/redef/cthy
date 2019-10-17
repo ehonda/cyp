@@ -1,0 +1,5 @@
+data List a = [] | a : (List a)
+
+xs ++ ys = 0
+
+goal [] ++ [] .=. 0
