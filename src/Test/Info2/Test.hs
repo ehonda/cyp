@@ -21,6 +21,9 @@ lenPrf = "test-data/pos/length-append/cprf"
 
 wcThy = "test-data/no_unit/wildcard/cthy"
 
+cthy base = base ++ "cthy"
+cprf base = base ++ "cprf"
+
 -- Contents of a typical Env, as extracted in processMasterFile
 ---------------------------------------------------------------
 
