@@ -7,6 +7,7 @@ import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
+import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Util
 import Test.Info2.Cyp
 
@@ -66,6 +67,12 @@ thyParse path = do
         Right nodes -> mapM_ print nodes
         Left err -> print err
 
+envTheory path = do
+    thy <- readFile path
+    case processMasterFile "thy" thy of
+        Right env -> print env
+        Left err -> print err
+
 -- Proof file inspection as in processProofFile
 ---------------------------------------------------------------
 
@@ -122,6 +129,11 @@ testRe1 =
 --        Just t' -> print t'
 --        Nothing -> print "rewrite failed"
         
+
+--tiSeq :: String -> Env -> Err [TI Type]
+--tiSeq prf env = do
+--    eqns <- declEqns prf env
+--    
 
 inspectProofFunc pthy pprf f = do
     thy <- readFile pthy

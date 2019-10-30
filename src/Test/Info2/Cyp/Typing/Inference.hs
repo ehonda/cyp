@@ -1,11 +1,11 @@
-module Test.Info2.Cyp.Typing where
+module Test.Info2.Cyp.Typing.Inference where
 
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
 import Data.List (union, nub, intersect)
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
-import qualified Test.Info2.Cyp.Term as CypTerm
+import qualified Test.Info2.Cyp.Term as CT
 
 -- SECTION 4 (TYPES)
 --------------------------------------------------------------
@@ -207,6 +207,14 @@ toScheme t = Forall [] t
 tsPair1 = quantify [tvA, tvB] (pair (TVar tvA) (TVar tvB))
 tsPair2 = quantify [tvA, tvB, tvC] (pair (TVar tvA) (TVar tvB))
 
+-- forall a . [a]
+tsListA = quantify [tvA] $ list $ TVar tvA
+
+-- (:) :: a -> [a] -> [a]
+tsCons = quantify [tvA] $ tA `fn` ((list tA) `fn` (list tA))
+    where tA = TVar tvA
+
+-- 
 
 -- SECTION 9 (Assumptions)
 --------------------------------------------------------------
@@ -287,10 +295,10 @@ type Infer e t = [Assump] -> e -> TI t
 -- Type inference for Terms
 ---------------------------------
 
-tiTerm :: Infer (CypTerm.AbsTerm a) Type
+tiRawTerm :: Infer CT.RawTerm Type
 
 -- Literals
-tiTerm as (CypTerm.Literal l) = tiLit l
+tiRawTerm as (CT.Literal l) = tiLit l
     where
         -- See unparesLiteral in Term.hs, add support for Prim Variants
         tiLit (Exts.Char _) = return tChar
@@ -298,10 +306,101 @@ tiTerm as (CypTerm.Literal l) = tiLit l
         tiLit (Exts.Int _) = return tInt
         tiLit (Exts.Frac _) = return tFrac
 
--- 
+-- Free
+tiRawTerm as (CT.Free x) = do
+    sc <- find x as
+    freshInst sc
+    
+-- Const
+tiRawTerm as (CT.Const x) = do
+    sc <- find x as
+    freshInst sc
 
+-- Application
+tiRawTerm as (CT.Application e f) = do
+    te <- tiRawTerm as e
+    tf <- tiRawTerm as f
+    t <- newTVar Star
+    unify (tf `fn` t) te
+    return t
+
+-- Code duplication: Use Generics!
+tiTerm :: Infer CT.Term Type
+tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
+tiTerm as (CT.Free (s, n)) = tiRawTerm as (CT.Free s)
+tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
+tiTerm as (CT.Application e f) = do
+    te <- tiTerm as e
+    tf <- tiTerm as f
+    t <- newTVar Star
+    unify (tf `fn` t) te
+    return t
+
+
+--tiTerm as = tiRawTerm as
 
 -- TESTS (CAN BE REMOVED LATER)
 ---------------------------------
 
-t1 = runTI $ tiTerm [] (CypTerm.Literal (Exts.Char 'c'))
+-- Literal
+t1 = runTI $ tiRawTerm [] (CT.Literal (Exts.Char 'c'))
+
+-- Free
+t2 = runTI $ tiRawTerm ["x" :>: (toScheme tInt)] (CT.Free "x")
+t3 = runTI $ tiRawTerm [] (CT.Free "x")   -- Fails
+
+-- Const
+t4 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt))]
+    (CT.Const "f")
+
+-- Application
+t5 = runTI $ tiRawTerm ["x" :>: (toScheme tInt), "y" :>: (toScheme tInt)] 
+    (CT.Application (CT.Free "x") (CT.Free "y"))     -- Fails
+t6 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
+    (CT.Application (CT.Free "f") (CT.Free "x"))
+
+-- Apptest
+appAs = ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
+appApp = (CT.Application (CT.Free "f") (CT.Free "x"))
+
+appTest as (CT.Application e f) = do
+    te <- tiRawTerm as e
+    tf <- tiRawTerm as f
+    t <- newTVar Star
+    unify (tf `fn` t) te
+    getSubst
+
+testApp = runTI $ appTest appAs appApp
+
+
+-- Show Substition
+
+showSub as t = do
+    tiRawTerm as t
+    getSubst
+
+runAndSub as t = runTI $ f as t where
+    f = \as t -> do
+        ti <- tiRawTerm as t
+        s <- getSubst
+        return $ apply s ti
+
+
+-- Trivial theory test
+
+trivAs1 = 
+    [":" :>: tsCons
+    , "z" :>: (toScheme tInt)
+    , "zs" :>: (toScheme (list tInt))]
+
+trivTerm1 = CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Free "zs")
+
+-- z : zs with expicit types (ie Int and [Int])
+ttriv1 = runTI $ tiRawTerm 
+    [":" :>: tsCons
+    , "z" :>: (toScheme tInt)
+    , "zs" :>: (toScheme (list tInt))] $ 
+        CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Free "zs")
+
+ttriv2 = runTI $ tiRawTerm [] $
+    CT.Application (CT.Application (CT.Const "++") (CT.Free "zs")) (CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Const "[]"))

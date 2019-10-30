@@ -17,6 +17,7 @@ library
     , Test.Info2.Cyp.Trace
     , Test.Info2.Cyp.Types
     , Test.Info2.Cyp.Util
+    , Test.Info2.Cyp.Typing.Inference
   build-depends:
       base ==4.*
     , containers ==0.5.*
