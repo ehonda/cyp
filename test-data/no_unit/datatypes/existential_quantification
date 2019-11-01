@@ -1,0 +1,25 @@
+*Test.Info2.Cyp.Parser> P.parseDeclWithMode modeExQ $ 
+	"data Worker x b = forall b. Num b => Worker {buf :: b, input :: x}" 
+
+ParseOk 
+	(DataDecl 
+		() 
+		(DataType ()) 
+		Nothing 
+		(DHApp 
+			() 
+			(DHApp 
+				() 
+				(DHead 
+					() 
+					(Ident () "Worker")
+				) 
+				(UnkindedVar () (Ident () "x"))
+			) 
+			(UnkindedVar () (Ident () "b"))
+		) 
+		[QualConDecl 
+			() 
+			(Just [UnkindedVar () (Ident () "b")])		-- from ex q. 
+			(Just (CxSingle () (ClassA () (UnQual () (Ident () "Num")) [TyVar () (Ident () "b")])))  -- from ex q. 
+			(RecDecl () (Ident () "Worker") [FieldDecl () [Ident () "buf"] (TyVar () (Ident () "b")),FieldDecl () [Ident () "input"] (TyVar () (Ident () "x"))])] [])

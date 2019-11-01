@@ -20,6 +20,7 @@ import Data.Maybe
 import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
+import qualified Language.Haskell.Exts.Extension as HE      -- THIS CAN BE REMOVED AGAIN
 import Text.PrettyPrint (quotes, text, (<+>))
 
 import Test.Info2.Cyp.Env
@@ -429,6 +430,10 @@ listStr = "List a = [] | a : (List a)"
 listStr' = "List a = Nil | Cons a (List a)"
 dtList = DataDecl listStr
 
+-- Existential quantification, we do not allow this!
+exQStr = "Worker x b = forall b. Num b => Worker {buf :: b, input :: x}"
+
+modeExQ = P.defaultParseMode { P.extensions = [HE.EnableExtension HE.ExistentialQuantification] }
 
 dtInfix = DataDecl "Assump = Id :>: Scheme"
 dtHeadFail = DataDecl "(a : b) = Con a"
@@ -445,42 +450,59 @@ dtABFail = DataDecl "Tree a = Leaf b"
 -- that is, no newtypes, no context, no deriving and additional constraints on datatype etc
 readDataTypeFixed = sequence . mapMaybe parseDataType
     where
-        parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
+        parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $
             -- The 'data' keyword consumed by the datatype parser needs to be
             -- added again. This also means that we can't get a newtype
             -- declaration out of this parse, therefore we need not be concerned
             -- about that possibility
             case P.parseDecl $ "data " ++ s of
-                P.ParseOk p@(Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> 
-                    --let tyname = typeName dh
-                    return $ DataType (typeName dh) []
+                P.ParseOk (Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> do
+                    tyname <- typeName dh
+                    dacons <- traverse (convertDataCon tyname) cons
+--                    let dacons = []
+                    return $ DataType tyname dacons
                 -- This could use a better error message
-                otherwise -> errStr "Forbidden datatype declaration"
+                _ -> errStr "Forbidden datatype declaration"
         parseDataType _ = Nothing
 
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)
         -- only expressions of the form
         --      D a b c
-        validDataHead (Exts.DHInfix _ _) = False
-        validDataHead (Exts.DHParen _) = False
+        --validDataHead (Exts.DHInfix _ _) = False
+        --validDataHead (Exts.DHParen _) = False
         validDataHead (Exts.DHApp head _) = validDataHead head
         validDataHead (Exts.DHead _) = True
+        validDataHead _ = False
 
         -- Extracts the typename from a datahead declaration
-        typeName (Exts.DHead (Exts.Ident s)) = s
-        typeName (Exts.DHead (Exts.Symbol s)) = s   -- Can a dh be a symbol?
+        typeName (Exts.DHead name) = return $ extractName name
         typeName (Exts.DHApp head _ ) = typeName head
         -- This branch should never be reached since we fail earlier
         -- by disallowing them in the parse (validDataHead)
-        --typeName _ = errStr "Could not extract typename"
+        typeName _ = errStr "Could not extract typename"
 
-        --typeName (Exts.DHead (Exts.Ident s)) = return s
-        --typeName (Exts.DHead (Exts.Symbol s)) = return s   -- Can a dh be a symbol?
-        --typeName (Exts.DHApp head _ ) = return $ typeName head
-        ---- This branch should never be reached since we fail earlier
-        ---- by disallowing them in the parse (validDataHead)
-        --typeName _ = errStr "Could not extract typename"
+        -- Extract name String out of a Exts.Name
+        extractName (Exts.Ident s) = s
+        extractName (Exts.Symbol s) = s
+
+        -- Convert data constructors into internal representation
+        -- We can ignore the first two arguments to QualConDecl since we
+        -- do not allow existential quantification
+        convertDataCon tyname (Exts.QualConDecl _ _ (Exts.ConDecl name typeArgs)) = do
+            cypArgs <- traverse (convertToCypArg tyname) typeArgs
+            return (extractName name, cypArgs)
+                
+        -- Converts Type Argument to Cyp Type Argument
+        convertToCypArg tyname (Exts.TyVar name) = return TNRec
+        -- TODO: HANDLE QUALIFIED AND SPECIAL NAMES
+        convertToCypArg tyname (Exts.TyCon (Exts.UnQual name))
+                | extractName name == tyname = return TRec
+                | otherwise = return TNRec
+        convertToCypArg tyname (Exts.TyParen arg) = convertToCypArg tyname arg
+        convertToCypArg tyname (Exts.TyApp _ _) = return TRec -- TODO: THIS IS INCOMPLETE, THINK ABOUT NESTED CONSTRUCTORS
+        convertToCypArg tyname _ = errStr "Illegal Data Constructor Argument" -- TODO: PRINT ARG
+
 
 readAxiom :: [String] -> [ParseDeclTree] -> Err [Named Prop]
 readAxiom consts = sequence . mapMaybe parseAxiom

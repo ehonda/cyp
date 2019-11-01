@@ -1,4 +1,5 @@
 data List a = [] | a : List a
+--data List a = Nil | Cons a (List a)
 
 reverse :: [a] -> [a]
 reverse [] = []
