@@ -47,6 +47,7 @@ where
 import Control.Monad ((>=>), liftM2, when)
 import Data.List (find, nub)
 import qualified Language.Haskell.Exts.Simple.Parser as P
+--import qualified Language.Haskell.Exts.Extension as PE      -- For ViewPatterns
 import Language.Haskell.Exts.Simple.Fixity (Fixity (..), baseFixities)
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import Text.PrettyPrint (parens, quotes, text, (<+>), Doc)
@@ -213,7 +214,9 @@ iparseTermRaw f s = errCtxt (text "Parsing term" <+> quotes (text s)) $
         x@(P.ParseFailed _ _) -> err $ renderSrcExtsFail "expression" x
   where
     mode = P.defaultParseMode
-      { P.fixities = Just $ Fixity Exts.AssocNone (-1) (Exts.UnQual $ Exts.Symbol symPropEq) : baseFixities }
+      { P.fixities = Just $ Fixity Exts.AssocNone (-1) (Exts.UnQual $ Exts.Symbol symPropEq) : baseFixities
+--      , P.extensions = [PE.EnableExtension PE.ViewPatterns]
+      }
     withDefConsts f x = if x `elem` defaultConsts then return (Const x) else f x
 
 defaultToFree :: [String] -> String -> Err RawTerm

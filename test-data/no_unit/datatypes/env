@@ -1,0 +1,34 @@
+Env 
+	{ datatypes = 
+		[ DataType 
+			{ dtName = "Bool"
+			, dtConss = 
+				[ ("True",[])
+				, ("False",[])
+				]
+			}
+		, DataType 
+			{ dtName = "Tree"
+			, dtConss = 
+				[ ("Leaf",[TNRec])
+				, ("Node",[TNRec,TRec,TRec])
+				]
+			}
+		, DataType 
+			{ dtName = "Mixed"
+			, dtConss = 
+				[ ("AB",[TNRec,TNRec])
+				, ("BA",[TNRec,TNRec])
+				]
+			}
+		, DataType 
+			{ dtName = "MyType"
+			, dtConss = 
+				[ ("MInt",[TNRec])
+				, ("MString",[TNRec])
+				, ("MMissing",[TNRec])
+				]
+			}
+		]
+	, ...
+	}

@@ -1,0 +1,30 @@
+-- Only 0-ary Constructors
+data Bool = True | False
+
+-- Recursive, with Type Parameter
+data Tree a = Leaf a | Node a (Tree a) (Tree a)
+
+-- Two Type Parameters that need to be distinguished in Constructors
+data Mixed a b = AB a b | BA b a
+
+-- Standard Types as Constructor arguments, an undeclared Type as Constructor argument
+data MyType = MInt Int | MString String | MMissing CustomType
+
+-- Function as Type Argument (Does not work yet)
+--data WrappedFunc = WF (Int -> Int)
+
+-- Invalid (Tycon gets passed a type instead of tyvar), this currently is parsed as valid
+-- Example:
+-- Prelude> data Valid a = Valid a
+-- Prelude> :t Valid 
+-- Valid :: a -> Valid a
+-- Prelude> data Invalid Int = Invalid Int
+-- 
+-- <interactive>:3:14: error:
+--    Unexpected type ‘Int’
+--    In the data declaration for ‘Invalid’
+--    A data declaration should have form
+--      data Invalid a = ...
+--
+
+data Invalid Int = Invalid Int

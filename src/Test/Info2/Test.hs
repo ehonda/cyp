@@ -149,7 +149,7 @@ inspectProofFunc pthy pprf f = do
 -- READ DATATYPE TESTS
 
 dtTree = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
-
+dtWrapped = "Wrapped = WT (Int -> Int)"
 
 
 -- (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
@@ -175,13 +175,3 @@ parseCons = iparseTerm (\x -> Right $ Free (x, 0))
 
 constName (Const c) = return c
 constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
-
-
--- Defined in Parser.hs, duplicated here
-splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
-splitStringAt _ [] h
-    | h == [] = []
-    | otherwise = h : []
-splitStringAt a (x:xs) h
-    | x `elem` a = h : splitStringAt a xs []
-    | otherwise = splitStringAt a xs (h++[x])

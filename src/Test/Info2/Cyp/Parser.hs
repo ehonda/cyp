@@ -1,18 +1,19 @@
 {-# LANGUAGE FlexibleContexts #-} -- ONLY FOR TEST PARSE FUNCTIONS
 
-module Test.Info2.Cyp.Parser
-    ( ParseLemma (..)
-    , ParseCase (..)
-    , ParseProof (..)
-    , cthyParser
-    , cprfParser
-    , readAxiom
-    , readDataType
-    , readFunc
-    , readGoal
-    , readSym
-    )
-where
+module Test.Info2.Cyp.Parser where
+-- Export everythin while testing
+--    ( ParseLemma (..)
+--    , ParseCase (..)
+--    , ParseProof (..)
+--    , cthyParser
+--    , cprfParser
+--    , readAxiom
+--    , readDataType
+--    , readFunc
+--    , readGoal
+--    , readSym
+--    )
+--where
 
 import Data.Char
 import Data.Maybe
@@ -417,6 +418,19 @@ readDataType = sequence . mapMaybe parseDataType
     parseDaconArg _ (Application _ _) = errStr $ "Nested constructors (apart from direct recursion) are not allowed."
     parseDaconArg _ (Literal _) = errStr $ "Literals not allowed in datatype declarations"
     parseDaconArg _ _ = return TNRec
+
+-- READ DATATYPE TESTS
+dtTree = DataDecl $ "Tree a = Leaf a | Node a (Tree a) (Tree a)"
+dtWrapped = DataDecl $ "Wrapped = WT (Int -> Int)"
+
+readDataTypeFixed = sequence . mapMaybe parseDataType
+    where
+        parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
+--            (tycon : dacons) <- splitStringAt "=|" s []
+--            return $ tycon : dacons
+            return $ splitStringAt "=|" s []
+        parseDataType _ = Nothing
+
 
 readAxiom :: [String] -> [ParseDeclTree] -> Err [Named Prop]
 readAxiom consts = sequence . mapMaybe parseAxiom
