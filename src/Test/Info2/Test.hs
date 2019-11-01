@@ -141,3 +141,47 @@ inspectProofFunc pthy pprf f = do
     case (processMasterFile "thy" thy) >>= (\env -> f prf env) of
         Left e -> print e
         Right r -> mapM_ print r
+
+
+
+
+
+-- READ DATATYPE TESTS
+
+dtTree = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
+
+
+
+-- (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
+line1 s = traverse parseCons $ splitStringAt "=|" s []
+
+{-- line1 dtTree:
+
+Right 
+    [Application (Const "Tree") (Free ("a",0))
+    ,Application (Const "Leaf") (Free ("a",0))
+    ,Application (Application (Application (Const "Node") (Free ("a",0))) (Application (Const "Tree") (Free ("a",0)))) (Application (Const "Tree") (Free ("a",0)))]
+--}
+
+-- tyname <- constName $ fst $ stripComb tycon
+line2 s = do
+    (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
+    constName $ fst $ stripComb tycon
+
+
+-- UTILITY FUNCTIONS
+parseCons :: String -> Err Term
+parseCons = iparseTerm (\x -> Right $ Free (x, 0))
+
+constName (Const c) = return c
+constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
+
+
+-- Defined in Parser.hs, duplicated here
+splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
+splitStringAt _ [] h
+    | h == [] = []
+    | otherwise = h : []
+splitStringAt a (x:xs) h
+    | x `elem` a = h : splitStringAt a xs []
+    | otherwise = splitStringAt a xs (h++[x])
