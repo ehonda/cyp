@@ -420,17 +420,67 @@ readDataType = sequence . mapMaybe parseDataType
     parseDaconArg _ _ = return TNRec
 
 -- READ DATATYPE TESTS
-dtTree = DataDecl $ "Tree a = Leaf a | Node a (Tree a) (Tree a)"
+treeStr = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
+dtTree = DataDecl treeStr
 dtWrapped = DataDecl $ "Wrapped = WT (Int -> Int)"
+-- THIS IS ILLEGAL -> PROBLEM
+-- Either use the version with Nil and Cons, or make lists builtin
+listStr = "List a = [] | a : (List a)"
+listStr' = "List a = Nil | Cons a (List a)"
+dtList = DataDecl listStr
 
+
+dtInfix = DataDecl "Assump = Id :>: Scheme"
+dtHeadFail = DataDecl "(a : b) = Con a"
+dtDerivingFail = DataDecl "Tree a = Leaf a deriving Show"
+-- This does not fail, since the parser doesn't know that b is not in scope.
+-- Needs to be handlded separately
+dtABFail = DataDecl "Tree a = Leaf b"
+
+-- This will use parseDecl to parse the declaration
+-- We want datatype declarations, i.e. this constructor:
+--      DataDecl l (DataOrNew l) (Maybe (Context l)) (DeclHead l) [QualConDecl l] [Deriving l]
+-- Specifically, we only want to allow this form:
+--      DataDecl l (DataType l) Nothing dh cons []
+-- that is, no newtypes, no context, no deriving and additional constraints on datatype etc
 readDataTypeFixed = sequence . mapMaybe parseDataType
     where
         parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
---            (tycon : dacons) <- splitStringAt "=|" s []
---            return $ tycon : dacons
-            return $ splitStringAt "=|" s []
+            -- The 'data' keyword consumed by the datatype parser needs to be
+            -- added again. This also means that we can't get a newtype
+            -- declaration out of this parse, therefore we need not be concerned
+            -- about that possibility
+            case P.parseDecl $ "data " ++ s of
+                P.ParseOk p@(Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> 
+                    --let tyname = typeName dh
+                    return $ DataType (typeName dh) []
+                -- This could use a better error message
+                otherwise -> errStr "Forbidden datatype declaration"
         parseDataType _ = Nothing
 
+        -- We don't allow paren or infix expressions for the data head
+        --      (i.e. D (a :< b) c)
+        -- only expressions of the form
+        --      D a b c
+        validDataHead (Exts.DHInfix _ _) = False
+        validDataHead (Exts.DHParen _) = False
+        validDataHead (Exts.DHApp head _) = validDataHead head
+        validDataHead (Exts.DHead _) = True
+
+        -- Extracts the typename from a datahead declaration
+        typeName (Exts.DHead (Exts.Ident s)) = s
+        typeName (Exts.DHead (Exts.Symbol s)) = s   -- Can a dh be a symbol?
+        typeName (Exts.DHApp head _ ) = typeName head
+        -- This branch should never be reached since we fail earlier
+        -- by disallowing them in the parse (validDataHead)
+        --typeName _ = errStr "Could not extract typename"
+
+        --typeName (Exts.DHead (Exts.Ident s)) = return s
+        --typeName (Exts.DHead (Exts.Symbol s)) = return s   -- Can a dh be a symbol?
+        --typeName (Exts.DHApp head _ ) = return $ typeName head
+        ---- This branch should never be reached since we fail earlier
+        ---- by disallowing them in the parse (validDataHead)
+        --typeName _ = errStr "Could not extract typename"
 
 readAxiom :: [String] -> [ParseDeclTree] -> Err [Named Prop]
 readAxiom consts = sequence . mapMaybe parseAxiom
