@@ -1,6 +1,7 @@
 module Test.Info2.Cyp.Types where
 
 import qualified Data.Map.Strict as M
+import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
 import Test.Info2.Cyp.Term
 
@@ -18,6 +19,14 @@ data DataType = DataType
     , dtConss :: [(String, [TConsArg])]
     }
     deriving Show
+
+defaultDataTypes :: [DataType]
+defaultDataTypes = 
+    [ DataType 
+        { dtName = "List"
+        , dtConss = [("[]", []), (":", [TNRec, TRec])] 
+        }
+    ]
 
 data Named a = Named String a
     deriving Show

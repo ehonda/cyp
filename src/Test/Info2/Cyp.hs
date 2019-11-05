@@ -49,7 +49,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     (fundefs, consts) <- readFunc syms mResult
     axs <- readAxiom consts mResult
     gls <- readGoal consts mResult
-    return $ Env { datatypes = dts, axioms = fundefs ++ axs,
+    return $ Env { datatypes = dts ++ defaultDataTypes, axioms = fundefs ++ axs,
         constants = nub $ consts, fixes = M.empty, goals = gls }
 
 processProofFile :: Env -> FilePath -> String -> Err [ParseLemma]

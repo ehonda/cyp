@@ -393,32 +393,32 @@ manySpacesOrComment :: Parsec [Char] u ()
 manySpacesOrComment = skipMany $ (space >> return ()) <|> commentParser
 
 
-readDataType :: [ParseDeclTree] -> Err [DataType]
-readDataType = sequence . mapMaybe parseDataType
-  where
-    parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
-        (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
-        tyname <- constName $ fst $ stripComb tycon
-        dacons' <- traverse (parseDacon tycon) dacons
-        return $ DataType tyname dacons'
-    parseDataType _ = Nothing
-
-    parseCons :: String -> Err Term
-    parseCons = iparseTerm (\x -> Right $ Free (x, 0))
-
-    constName (Const c) = return c
-    constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
-
-    parseDacon tycon term = do
-        let (con, args) = stripComb term
-        name <- constName con
-        args' <- traverse (parseDaconArg tycon) args
-        return (name, args')
-
-    parseDaconArg tycon term | term == tycon = return TRec
-    parseDaconArg _ (Application _ _) = errStr $ "Nested constructors (apart from direct recursion) are not allowed."
-    parseDaconArg _ (Literal _) = errStr $ "Literals not allowed in datatype declarations"
-    parseDaconArg _ _ = return TNRec
+--readDataType :: [ParseDeclTree] -> Err [DataType]
+--readDataType = sequence . mapMaybe parseDataType
+--  where
+--    parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
+--        (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
+--        tyname <- constName $ fst $ stripComb tycon
+--        dacons' <- traverse (parseDacon tycon) dacons
+--        return $ DataType tyname dacons'
+--    parseDataType _ = Nothing
+--
+--    parseCons :: String -> Err Term
+--    parseCons = iparseTerm (\x -> Right $ Free (x, 0))
+--
+--    constName (Const c) = return c
+--    constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
+--
+--    parseDacon tycon term = do
+--        let (con, args) = stripComb term
+--        name <- constName con
+--        args' <- traverse (parseDaconArg tycon) args
+--        return (name, args')
+--
+--    parseDaconArg tycon term | term == tycon = return TRec
+--    parseDaconArg _ (Application _ _) = errStr $ "Nested constructors (apart from direct recursion) are not allowed."
+--    parseDaconArg _ (Literal _) = errStr $ "Literals not allowed in datatype declarations"
+--    parseDaconArg _ _ = return TNRec
 
 -- READ DATATYPE TESTS
 treeStr = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
@@ -461,9 +461,9 @@ dataDeclStr (DataDecl s) = "data " ++ s
 -- Specifically, we only want to allow this form:
 --      DataDecl l (DataType l) Nothing dh cons []
 -- that is, no newtypes, no context, no deriving and additional constraints on datatype etc
---readDataType :: [ParseDeclTree] -> Err [DataType]
---readDataType = sequence . mapMaybe parseDataType
-readDataTypeFixed = sequence . mapMaybe parseDataType
+readDataType :: [ParseDeclTree] -> Err [DataType]
+readDataType = sequence . mapMaybe parseDataType
+--readDataTypeFixed = sequence . mapMaybe parseDataType
     where
         parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $
             -- The 'data' keyword consumed by the datatype parser needs to be
@@ -538,7 +538,7 @@ readDataTypeFixed = sequence . mapMaybe parseDataType
         convertToCypArg _ (Exts.TyFun _ _) = return TNRec
         convertToCypArg _ con = errCtxtStr "Illegal Data Constructor Argument" $
             err $ ExtsPretty.prettyPrim con
-        -- TODO: What to do with tuple, sum types etc, see
+        -- TODO: What to do with tuple, sum types etc, LIST!, see
         --  http://hackage.haskell.org/package/haskell-src-exts-1.21.1/docs/Language-Haskell-Exts-Syntax.html#t:Type
 
 

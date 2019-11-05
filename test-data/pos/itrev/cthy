@@ -1,5 +1,3 @@
-data List a = [] | a : List a
-
 itrev [] ys = ys
 itrev (x:xs) ys = itrev xs (x:ys)
 

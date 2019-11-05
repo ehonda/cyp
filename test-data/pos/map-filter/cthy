@@ -1,5 +1,3 @@
-data List a = [] | a : List a
-
 data Bool = True | False
 
 (f . g) x = f (g x)
