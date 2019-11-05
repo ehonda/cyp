@@ -1,0 +1,12 @@
+data Bool = True | False
+data NestedVal = None | Nested Bool
+
+not True = False
+not False = True
+
+foo None = None
+foo (Nested b) = Nested (not (not b))
+
+id x = x
+
+goal foo .=. id

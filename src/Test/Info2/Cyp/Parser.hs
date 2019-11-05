@@ -20,7 +20,7 @@ import Data.Maybe
 import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
-import qualified Language.Haskell.Exts.Extension as HE      -- THIS CAN BE REMOVED AGAIN
+import qualified Language.Haskell.Exts.Pretty as ExtsPretty
 import Text.PrettyPrint (quotes, text, (<+>))
 
 import Test.Info2.Cyp.Env
@@ -424,23 +424,36 @@ readDataType = sequence . mapMaybe parseDataType
 treeStr = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
 dtTree = DataDecl treeStr
 dtWrapped = DataDecl $ "Wrapped = WT (Int -> Int)"
+dtWrapped2 = DataDecl $ "Wrapped = WT (Int -> (Int -> Int))"
 -- THIS IS ILLEGAL -> PROBLEM
 -- Either use the version with Nil and Cons, or make lists builtin
 listStr = "List a = [] | a : (List a)"
 listStr' = "List a = Nil | Cons a (List a)"
 dtList = DataDecl listStr
+dtMixed = DataDecl "Mixed a b = AB a b | BA b a"
+
+dtRec = DataDecl "Rec a = R (Rec a)"
+dtNested = DataDecl "Nested a = N (Other a)"        -- Illegal in readDataType
+dtNestedInt = DataDecl "Nested a = N Int"           -- Legal in readDataType
+dtNestedList = DataDecl "NList a = N [a]"           -- Illegal in readDataType
 
 -- Existential quantification, we do not allow this!
-exQStr = "Worker x b = forall b. Num b => Worker {buf :: b, input :: x}"
-
-modeExQ = P.defaultParseMode { P.extensions = [HE.EnableExtension HE.ExistentialQuantification] }
+-- THIS WAS TEST CODE WHILE WRITING THE FUNCTION, CAN BE REMOVED
+--exQStr = "Worker x b = forall b. Num b => Worker {buf :: b, input :: x}"
+--
+--modeExQ = P.defaultParseMode { P.extensions = [HE.EnableExtension HE.ExistentialQuantification] }
 
 dtInfix = DataDecl "Assump = Id :>: Scheme"
-dtHeadFail = DataDecl "(a : b) = Con a"
+dtHeadFail = DataDecl "a & b = Tuple a b"
 dtDerivingFail = DataDecl "Tree a = Leaf a deriving Show"
 -- This does not fail, since the parser doesn't know that b is not in scope.
 -- Needs to be handlded separately
 dtABFail = DataDecl "Tree a = Leaf b"
+dtQualArgNameFail = DataDecl "D = D OtherModule.Type"
+
+dtListAsArg = DataDecl "D a = D [a]"
+
+dataDeclStr (DataDecl s) = "data " ++ s
 
 -- This will use parseDecl to parse the declaration
 -- We want datatype declarations, i.e. this constructor:
@@ -448,6 +461,8 @@ dtABFail = DataDecl "Tree a = Leaf b"
 -- Specifically, we only want to allow this form:
 --      DataDecl l (DataType l) Nothing dh cons []
 -- that is, no newtypes, no context, no deriving and additional constraints on datatype etc
+--readDataType :: [ParseDeclTree] -> Err [DataType]
+--readDataType = sequence . mapMaybe parseDataType
 readDataTypeFixed = sequence . mapMaybe parseDataType
     where
         parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $
@@ -459,10 +474,17 @@ readDataTypeFixed = sequence . mapMaybe parseDataType
                 P.ParseOk (Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> do
                     tyname <- typeName dh
                     dacons <- traverse (convertDataCon tyname) cons
---                    let dacons = []
                     return $ DataType tyname dacons
-                -- This could use a better error message
-                _ -> errStr "Forbidden datatype declaration"
+                P.ParseOk (Exts.DataDecl _ (Just context) _ _ _) -> 
+                    errMsg "Context for type parameters is not allowed."
+                P.ParseOk (Exts.DataDecl _ _ dh _ _) | (not . validDataHead) dh ->
+                    errMsg "Invalid declaration head." 
+                P.ParseOk (Exts.DataDecl _ _ _ _ derivs) ->
+                    errMsg "Deriving declarations are not allowed."
+                P.ParseFailed _ msg -> errMsg msg
+                _ -> errMsg "Unkown Error"
+
+                where errMsg msg = errCtxtStr "Error parsing datatype declaration" $ errStr msg
         parseDataType _ = Nothing
 
         -- We don't allow paren or infix expressions for the data head
@@ -482,7 +504,7 @@ readDataTypeFixed = sequence . mapMaybe parseDataType
         -- by disallowing them in the parse (validDataHead)
         typeName _ = errStr "Could not extract typename"
 
-        -- Extract name String out of a Exts.Name
+        -- Extract name String out of a Exts.Name (might be done better, ok for now)
         extractName (Exts.Ident s) = s
         extractName (Exts.Symbol s) = s
 
@@ -492,16 +514,32 @@ readDataTypeFixed = sequence . mapMaybe parseDataType
         convertDataCon tyname (Exts.QualConDecl _ _ (Exts.ConDecl name typeArgs)) = do
             cypArgs <- traverse (convertToCypArg tyname) typeArgs
             return (extractName name, cypArgs)
-                
+        -- TODO: HANDLING OF INFIX AND RECORD CONSTRUCTORS
+
+        
         -- Converts Type Argument to Cyp Type Argument
         convertToCypArg tyname (Exts.TyVar name) = return TNRec
         -- TODO: HANDLE QUALIFIED AND SPECIAL NAMES
+        -- Unqualified Type Constructor
         convertToCypArg tyname (Exts.TyCon (Exts.UnQual name))
                 | extractName name == tyname = return TRec
                 | otherwise = return TNRec
+        -- Qualified Type Constructor (Disallowed)
+        convertToCypArg tyname con@(Exts.TyCon (Exts.Qual _ _)) =
+            errCtxtStr "Qualified Names are not allowed:" $ 
+                err $ ExtsPretty.prettyPrim con
+        -- Special [TODO]
+
         convertToCypArg tyname (Exts.TyParen arg) = convertToCypArg tyname arg
-        convertToCypArg tyname (Exts.TyApp _ _) = return TRec -- TODO: THIS IS INCOMPLETE, THINK ABOUT NESTED CONSTRUCTORS
-        convertToCypArg tyname _ = errStr "Illegal Data Constructor Argument" -- TODO: PRINT ARG
+        -- TODO: HANDLE SPECIAL NAMES
+        convertToCypArg tyname (Exts.TyApp (Exts.TyCon (Exts.UnQual name)) _)
+            | extractName name == tyname = return TRec
+            | otherwise = return TNRec
+        convertToCypArg _ (Exts.TyFun _ _) = return TNRec
+        convertToCypArg _ con = errCtxtStr "Illegal Data Constructor Argument" $
+            err $ ExtsPretty.prettyPrim con
+        -- TODO: What to do with tuple, sum types etc, see
+        --  http://hackage.haskell.org/package/haskell-src-exts-1.21.1/docs/Language-Haskell-Exts-Syntax.html#t:Type
 
 
 readAxiom :: [String] -> [ParseDeclTree] -> Err [Named Prop]

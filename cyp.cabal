@@ -30,8 +30,8 @@ library
     , pretty-show ==1.6.*
     , tagged ==0.8.*
     , tasty ==0.11.*
--- This is only to test ViewPatterns in Term.hs, can be removed again:
---    , haskell-src-exts
+-- This is needed for pretty printing of type constructors in Parser.hs:
+    , haskell-src-exts
 
 executable cyp
   main-is:           Main.hs

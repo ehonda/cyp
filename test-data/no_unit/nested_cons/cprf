@@ -1,0 +1,70 @@
+Lemma: foo .=. id
+
+Proof by extensionality with x
+
+	Show: foo x .=. id x
+
+	Proof by case analysis on NestedVal x
+
+		Case None
+			Assume
+				AS: x .=. None
+			Then
+
+			Proof
+												 foo x
+				(by AS)      .=. foo None
+				(by def foo) .=. None
+				(by def id)  .=. id None
+				(by AS)      .=. id x
+
+			QED
+
+		Case Nested b
+			Assume
+				ASx: x .=. Nested b
+			Then
+
+			Proof by case analysis on Bool b
+
+				Case True
+					Assume
+						ASb: b .=. True
+					Then
+
+					Proof
+														 foo x
+						(by ASx)     .=. foo (Nested b)
+						(by ASb)     .=. foo (Nested True)
+						(by def foo) .=. Nested (not (not True))
+						(by def not) .=. Nested (not False)
+						(by def not) .=. Nested True
+						(by def id)  .=. id (Nested True)
+						(by ASb)     .=. id (Nested b)
+						(by ASx)     .=. id x
+
+					QED
+
+				Case False
+					Assume
+						ASb: b .=. False
+					Then
+
+					Proof
+														 foo x
+						(by ASx)     .=. foo (Nested b)
+						(by ASb)     .=. foo (Nested False)
+						(by def foo) .=. Nested (not (not False))
+						(by def not) .=. Nested (not True)
+						(by def not) .=. Nested False
+						(by def id)  .=. id (Nested False)
+						(by ASb)     .=. id (Nested b)
+						(by ASx)     .=. id x
+
+					QED
+
+			QED
+
+	QED
+
+QED

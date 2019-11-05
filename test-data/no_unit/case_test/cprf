@@ -1,0 +1,52 @@
+Lemma: reverse . reverse .=. id
+
+Proof by extensionality with xs
+
+  Show: (reverse . reverse) xs .=. id xs
+
+  Proof by induction on List xs
+
+    Case []
+
+      Show: (reverse . reverse) [] .=. id []
+
+      Proof
+
+                             (reverse . reverse) []
+        (by def .)       .=. reverse (reverse [])
+        (by def reverse) .=. reverse []
+        (by def reverse) .=. []
+        (by def id)      .=. id []
+
+      QED
+
+--    Case x:xs
+--    Case InvCons xs		-- Invalid Constructor
+      Case [Int x]			-- Invalid Constructor Argument
+      Fix x, xs
+      Assume
+        IH: (reverse . reverse) xs .=. id xs
+      Then
+      Show: (reverse . reverse) (x:xs) .=. id (x:xs)
+
+      Proof
+
+                             (reverse . reverse) (x:xs)
+        (by def .)       .=. reverse (reverse (x:xs))
+        (by def reverse) .=. reverse (reverse xs ++ [x])
+        (by rev_app)     .=. reverse [x] ++ reverse (reverse xs)
+        (by def .)       .=. reverse [x] ++ (reverse . reverse) xs
+        (by IH)          .=. reverse [x] ++ id xs
+        (by def id)      .=. reverse [x] ++ xs
+        (by def reverse) .=. (reverse [] ++ [x]) ++ xs
+        (by def reverse) .=. ([] ++ [x]) ++ xs
+        (by def ++)      .=. [x] ++ xs
+        (by def ++)      .=. x : ([] ++ xs)
+        (by def ++)      .=. x : xs
+        (by def id)      .=. id (x:xs)
+
+      QED
+
+  QED
+
+QED

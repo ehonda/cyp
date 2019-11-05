@@ -1,0 +1,8 @@
+data Inner = Inner0 | Inner1 Int
+data Outer = Outer0 | Outer1 Inner
+
+foo Outer0 = 0
+foo Outer1 Inner0 = 0
+foo Outer1 (Inner1 x) = if x < 0 then 0 else x
+
+
