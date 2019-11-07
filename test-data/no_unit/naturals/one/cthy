@@ -1,0 +1,10 @@
+data N = Z | S N
+
+-- A1
+plus Z y = y
+-- A2
+plus (S x) y = S (plus x y)
+-- constant one
+one = S Z
+
+goal S x .=. plus one x

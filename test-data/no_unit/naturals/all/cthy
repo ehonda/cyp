@@ -1,0 +1,23 @@
+data N = Z | S N
+
+-- A1
+plus Z y = y
+-- A2
+plus (S x) y = S (plus x y)
+-- constant one
+-- one = S Z
+
+-- Lemma plus_one:
+--goal S x .=. plus (S Z) x
+
+-- Lemma zero_id:
+--goal y .=. plus y Z
+
+-- Lemma plus_assoc:
+-- goal plus (plus a b) c .=. plus a (plus b c)
+
+-- Lemma one_comm:
+-- goal plus a (S Z) .=. plus (S Z) a
+
+-- Lemma plus_comm:
+goal plus a b .=. plus b a

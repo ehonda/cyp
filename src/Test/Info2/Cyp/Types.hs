@@ -3,6 +3,8 @@ module Test.Info2.Cyp.Types where
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
+import Test.Info2.Cyp.Typing.Inference
+
 import Test.Info2.Cyp.Term
 
 data Env = Env
@@ -17,6 +19,7 @@ data Env = Env
 data DataType = DataType
     { dtName :: String
     , dtConss :: [(String, [TConsArg])]
+--    , dtConss :: [(String, [(TConsArg, Exts.Type)])]
     }
     deriving Show
 
@@ -24,6 +27,10 @@ defaultDataTypes :: [DataType]
 defaultDataTypes = 
     [ DataType 
         { dtName = "List"
+--        , dtConss = [("[]", []), (":", 
+--            [ (TNRec, Exts.TyVar () (Exts.Ident () "a"))
+--            , (TRec, Exts.TyCon () )])
+--            ] 
         , dtConss = [("[]", []), (":", [TNRec, TRec])] 
         }
     ]
@@ -32,6 +39,19 @@ data Named a = Named String a
     deriving Show
 
 data TConsArg = TNRec | TRec deriving (Show,Eq)
+
+{- Types -------------------------------------------------------------}
+
+-- Convert a parsed Exts.Type into a Cyp-Type
+--      BETTER: Convert a whole parsed Declaration into a Cyp-Type & Cyp-DataType
+--
+--toCypType :: Exts.Type -> Type
+--toCypType Exts.TyVar name = TVar TyVar $ (extractName name) Star
+--toCypType Exts.TyCon name = TCon TyCon $ (extractName name) Star
+
+-- Extract name String out of a Exts.Name (might be done better, ok for now)
+extractName (Exts.Ident s) = s
+extractName (Exts.Symbol s) = s
 
 {- Equation sequences ------------------------------------------------}
 

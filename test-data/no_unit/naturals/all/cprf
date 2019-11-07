@@ -1,0 +1,128 @@
+Lemma plus_one: S x .=. plus (S Z) x
+
+Proof
+                    S x
+  (by def plus) .=. S (plus Z x)
+  (by def plus) .=. plus (S Z) x
+QED
+
+
+
+Lemma zero_id: y .=. plus y Z
+
+Proof by induction on N y
+  Case Z
+    Show: Z .=. plus Z Z
+
+    Proof
+                        Z
+      (by def plus) .=. plus Z Z
+    QED
+
+  Case S y
+    Fix y
+    Assume
+      IH: y .=. plus y Z
+    Then
+    Show: S y .=. plus (S y) Z
+
+    Proof
+                        S y
+      (by IH)       .=. S (plus y Z)
+      (by def plus) .=. plus (S y) Z
+    QED
+QED
+
+
+
+Lemma plus_assoc: plus (plus a b) c .=. plus a (plus b c)
+
+Proof by induction on N a
+  Case Z
+    Show: plus (plus Z b) c .=. plus Z (plus b c)
+
+    Proof
+                        plus (plus Z b) c
+      (by def plus) .=. plus b c
+      (by def plus) .=. plus Z (plus b c)
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: plus (plus a b) c .=. plus a (plus b c)
+    Then
+    Show: plus (plus (S a) b) c .=. plus (S a) (plus b c)
+
+    Proof
+                        plus (plus (S a) b) c
+      (by def plus) .=. plus (S (plus a b)) c
+      (by def plus) .=. S (plus (plus a b) c)
+      (by IH)       .=. S (plus a (plus b c))
+      (by def plus) .=. plus (S a) (plus b c)
+    QED
+QED
+
+
+
+Lemma one_comm: plus a (S Z) .=. plus (S Z) a
+
+Proof by induction on N a
+  Case Z
+    Show: plus Z (S Z) .=. plus (S Z) Z
+
+    Proof
+                        plus Z (S Z)
+      (by def plus) .=. S Z
+      (by zero_id)  .=. plus (S Z) Z
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: plus a (S Z) .=. plus (S Z) a
+    Then
+    Show: plus (S a) (S Z) .=. plus (S Z) (S a)
+
+    Proof
+                        plus (S a) (S Z)
+      (by def plus) .=. S (plus a (S Z))
+      (by IH)       .=. S (plus (S Z) a)
+      (by def plus) .=. S (plus Z (plus (S Z) a))
+      (by plus_one) .=. S (plus Z (S a))
+      (by def plus) .=. plus (S Z) (S a)
+    QED
+QED
+
+
+
+Lemma plus_comm: plus a b .=. plus b a
+
+Proof by induction on N a
+  Case Z
+    Show: plus Z b .=. plus b Z
+
+    Proof
+                        plus Z b
+      (by def plus) .=. b
+      (by zero_id)  .=. plus b Z
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: plus a b .=. plus b a
+    Then
+    Show: plus (S a) b .=. plus b (S a)
+
+    Proof
+                          plus (S a) b
+      (by plus_one)   .=. plus (plus (S Z) a) b
+      (by plus_assoc) .=. plus (S Z) (plus a b)
+      (by IH)         .=. plus (S Z) (plus b a)
+      (by plus_assoc) .=. plus (plus (S Z) b) a
+      (by one_comm)   .=. plus (plus b (S Z)) a
+      (by plus_assoc) .=. plus b (plus (S Z) a)
+      (by plus_one)   .=. plus b (S a)
+    QED
+QED

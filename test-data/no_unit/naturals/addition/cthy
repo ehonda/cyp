@@ -1,0 +1,11 @@
+data Natural = Zero | Succ Natural
+
+add Zero Zero = Zero
+add Zero (Succ n) = Succ n
+add (Succ n) Zero = Succ n
+add (Succ n) (Succ m) = 
+
+-- Does this work in cyp?
+-- f x = if x == 0
+--	then x
+--	else 1

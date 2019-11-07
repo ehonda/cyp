@@ -47,7 +47,6 @@ where
 import Control.Monad ((>=>), liftM2, when)
 import Data.List (find, nub)
 import qualified Language.Haskell.Exts.Simple.Parser as P
---import qualified Language.Haskell.Exts.Extension as PE      -- For ViewPatterns
 import Language.Haskell.Exts.Simple.Fixity (Fixity (..), baseFixities)
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import Text.PrettyPrint (parens, quotes, text, (<+>), Doc)

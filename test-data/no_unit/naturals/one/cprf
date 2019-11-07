@@ -1,0 +1,10 @@
+Lemma plus_one: S x .=. plus one x
+
+Proof
+
+                    S x
+  (by def plus) .=. S (plus Z x)
+  (by def plus) .=. plus (S Z) x
+  (by def one)  .=. plus one x
+
+QED

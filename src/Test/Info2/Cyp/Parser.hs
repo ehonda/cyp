@@ -444,7 +444,7 @@ dtNestedList = DataDecl "NList a = N [a]"           -- Illegal in readDataType
 --modeExQ = P.defaultParseMode { P.extensions = [HE.EnableExtension HE.ExistentialQuantification] }
 
 dtInfix = DataDecl "Assump = Id :>: Scheme"
-dtHeadFail = DataDecl "a & b = Tuple a b"
+dtInfixHeadFail = DataDecl "a & b = Tuple a b"
 dtDerivingFail = DataDecl "Tree a = Leaf a deriving Show"
 -- This does not fail, since the parser doesn't know that b is not in scope.
 -- Needs to be handlded separately
@@ -503,10 +503,6 @@ readDataType = sequence . mapMaybe parseDataType
         -- This branch should never be reached since we fail earlier
         -- by disallowing them in the parse (validDataHead)
         typeName _ = errStr "Could not extract typename"
-
-        -- Extract name String out of a Exts.Name (might be done better, ok for now)
-        extractName (Exts.Ident s) = s
-        extractName (Exts.Symbol s) = s
 
         -- Convert data constructors into internal representation
         -- We can ignore the first two arguments to QualConDecl since we
