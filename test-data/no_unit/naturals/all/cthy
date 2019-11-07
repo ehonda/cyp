@@ -1,11 +1,19 @@
 data N = Z | S N
 
+-- Addition
 -- A1
 plus Z y = y
 -- A2
 plus (S x) y = S (plus x y)
 -- constant one
 -- one = S Z
+
+-- Multiplication
+-- M1
+mult Z b = Z
+-- M2
+mult (S a) b = plus b (mult a b)
+
 
 -- Lemma plus_one:
 --goal S x .=. plus (S Z) x
@@ -20,4 +28,10 @@ plus (S x) y = S (plus x y)
 -- goal plus a (S Z) .=. plus (S Z) a
 
 -- Lemma plus_comm:
-goal plus a b .=. plus b a
+--goal plus a b .=. plus b a
+
+-- Lemma one_left_id:
+--goal mult (S Z) b .=. b
+
+-- Lemma one_right_id:
+goal mult a (S Z) .=. a

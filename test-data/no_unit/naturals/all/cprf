@@ -126,3 +126,47 @@ Proof by induction on N a
       (by plus_one)   .=. plus b (S a)
     QED
 QED
+
+
+
+Lemma one_left_id: mult (S Z) b .=. b
+
+Proof
+                    mult (S Z) b
+  (by def mult) .=. plus b (mult Z b)
+  (by def mult) .=. plus b Z
+  (by zero_id)  .=. b
+QED
+
+
+
+Lemma one_right_id: mult a (S Z) .=. a
+
+Proof by induction on N a
+  Case Z
+    Show: mult Z (S Z) .=. Z
+
+  Proof
+                      mult Z (S Z)
+    (by def mult) .=. Z
+  QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult a (S Z) .=. a
+    Then
+    Show: mult (S a) (S Z) .=. S a
+
+  Proof
+                      mult (S a) (S Z)
+    (by def mult) .=. plus (S Z) (mult a (S Z))
+    (by IH)       .=. plus (S Z) a
+    (by def plus) .=. S (plus Z a)
+    (by def plus) .=. S a
+  QED
+QED
+
+
+
+
