@@ -169,4 +169,165 @@ QED
 
 
 
+Lemma mult_zero_right: mult a Z .=. Z
 
+Proof by induction on N a
+  Case Z
+    Show: mult Z Z .=. Z
+
+    Proof
+                        mult Z Z
+      (by def mult) .=. Z
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult a Z .=. Z
+    Then
+    Show: mult (S a) Z .=. Z
+
+    Proof
+                        mult (S a) Z
+      (by def mult) .=. plus Z (mult a Z)
+      (by IH)       .=. plus Z Z
+      (by def plus) .=. Z
+    QED
+QED
+
+
+
+Lemma mult_succ_right: mult a (S b) .=. plus a (mult a b)
+
+Proof by induction on N a
+  Case Z
+    Show: mult Z (S b) .=. plus Z (mult Z b)
+
+    Proof
+                        mult Z (S b)
+      (by def mult) .=. Z
+      (by def plus) .=. plus Z Z
+      (by def mult) .=. plus Z (mult Z b)
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult a (S b) .=. plus a (mult a b)
+    Then
+    Show: mult (S a) (S b) .=. plus (S a) (mult (S a) b)
+
+    Proof
+                          mult (S a) (S b)
+      (by def mult)   .=. plus (S b) (mult a (S b))
+      (by IH)         .=. plus (S b) (plus a (mult a b))
+      (by plus_assoc) .=. plus (plus (S b) a) (mult a b)
+      (by plus_one)   .=. plus (plus (plus (S Z) b) a) (mult a b)
+      (by plus_comm)  .=. plus (plus (plus b (S Z)) a) (mult a b)
+      (by plus_assoc) .=. plus (plus b (plus (S Z) a)) (mult a b)
+      (by plus_one)   .=. plus (plus b (S a)) (mult a b)
+      (by plus_comm)  .=. plus (plus (S a) b) (mult a b)
+      (by plus_assoc) .=. plus (S a) (plus b (mult a b))
+      (by def mult)   .=. plus (S a) (mult (S a) b)
+    QED
+QED
+
+
+
+Lemma mult_comm: mult a b .=. mult b a
+
+Proof by induction on N a
+  Case Z
+    Show: mult Z b .=. mult b Z
+
+    Proof
+                               mult Z b
+      (by def mult)        .=. Z
+      (by mult_zero_right) .=. mult b Z
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult a b .=. mult b a
+    Then
+    Show: mult (S a) b .=. mult b (S a)
+
+    Proof
+                               mult (S a) b
+      (by def mult)        .=. plus b (mult a b)
+      (by IH)              .=. plus b (mult b a)
+      (by mult_succ_right) .=. mult b (S a)
+    QED
+QED
+
+
+
+Lemma dist: mult a (plus b c) .=. plus (mult a b) (mult a c)
+
+Proof by induction on N a
+  Case Z
+    Show: mult Z (plus b c) .=. plus (mult Z b) (mult Z c)
+
+    Proof
+                        mult Z (plus b c)
+      (by def mult) .=. Z
+      (by def plus) .=. plus Z Z
+      (by def mult) .=. plus (mult Z b) Z
+      (by def mult) .=. plus (mult Z b) (mult Z c)
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult a (plus b c) .=. plus (mult a b) (mult a c)
+    Then
+    Show: mult (S a) (plus b c) .=. plus (mult (S a) b) (mult (S a) c)
+
+    Proof
+                          mult (S a) (plus b c)
+      (by def mult)   .=. plus (plus b c) (mult a (plus b c))
+      (by IH)         .=. plus (plus b c) (plus (mult a b) (mult a c))
+      (by plus_assoc) .=. plus b (plus c (plus (mult a b) (mult a c)))
+      (by plus_assoc) .=. plus b (plus (plus c (mult a b)) (mult a c))
+      (by plus_comm)  .=. plus b (plus (plus (mult a b) c) (mult a c))
+      (by plus_assoc) .=. plus b (plus (mult a b) (plus c (mult a c)))
+      (by def mult)   .=. plus b (plus (mult a b) (mult (S a) c))
+      (by plus_assoc) .=. plus (plus b (mult a b)) (mult (S a) c)
+      (by def mult)   .=. plus (mult (S a) b) (mult (S a) c)
+    QED
+QED
+
+
+
+Lemma mult_assoc: mult (mult a b) c .=. mult a (mult b c)
+
+Proof by induction on N a
+  Case Z
+    Show: mult (mult Z b) c .=. mult Z (mult b c)
+
+    Proof
+                        mult (mult Z b) c
+      (by def mult) .=. mult Z c
+      (by def mult) .=. Z
+      (by def mult) .=. mult Z (mult b c)
+    QED
+
+  Case S a
+    Fix a
+    Assume
+      IH: mult (mult a b) c .=. mult a (mult b c)
+    Then
+    Show: mult (mult (S a) b) c .=. mult (S a) (mult b c)
+
+    Proof
+                         mult (mult (S a) b) c
+      (by def mult)  .=. mult (plus b (mult a b)) c
+      (by mult_comm) .=. mult c (plus b (mult a b))
+      (by dist)      .=. plus (mult c b) (mult c (mult a b))
+      (by mult_comm) .=. plus (mult c b) (mult (mult a b) c)
+      (by IH)        .=. plus (mult c b) (mult a (mult b c))
+      (by mult_comm) .=. plus (mult b c) (mult a (mult b c))
+      (by def mult)  .=. mult (S a) (mult b c)
+    QED
+QED

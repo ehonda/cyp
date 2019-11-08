@@ -34,4 +34,19 @@ mult (S a) b = plus b (mult a b)
 --goal mult (S Z) b .=. b
 
 -- Lemma one_right_id:
-goal mult a (S Z) .=. a
+--goal mult a (S Z) .=. a
+
+-- Lemma mult_zero_right:
+--goal mult a Z .=. Z
+
+-- Lemma mult_succ_right:
+--goal mult a (S b) .=. plus a (mult a b)
+
+-- Lemma mult_comm:
+--goal mult a b .=. mult b a
+
+-- Lemma dist:
+--goal mult a (plus b c) .=. plus (mult a b) (mult a c)
+
+-- Lemma mult_assoc:
+goal mult (mult a b) c .=. mult a (mult b c)
