@@ -1,0 +1,33 @@
+Lemma invalid: g . f .=. id 
+  Proof by extensionality with x
+    Show: (g . f) x .=. id x
+      Proof by case analysis on Bool x
+        Case True
+          Assume
+            AS: x .=. True
+          Then
+          Proof
+                            (g . f) x
+            (by AS)     .=. (g . f) True
+            (by def .)  .=. g (f True)
+            (by def f)  .=. g X
+            (by def g)  .=. True
+            (by def id) .=. id True
+            (by AS)     .=. id x
+          QED
+
+        Case False
+          Assume
+            AS: x .=. False
+          Then
+          Proof
+                            (g . f) x
+            (by AS)     .=. (g . f) False
+            (by def .)  .=. g (f False)
+            (by def f)  .=. g Y
+            (by def g)  .=. False
+            (by def id) .=. id False
+            (by AS)     .=. id x
+          QED
+      QED
+  QED

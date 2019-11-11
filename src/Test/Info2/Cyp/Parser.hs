@@ -27,6 +27,7 @@ import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
+import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
 
 data ParseDeclTree
     = DataDecl String
@@ -454,6 +455,15 @@ dtQualArgNameFail = DataDecl "D = D OtherModule.Type"
 dtListAsArg = DataDecl "D a = D [a]"
 
 dataDeclStr (DataDecl s) = "data " ++ s
+
+dataList = "data L a = Nil | Cons a (L a)"
+dataMixed = "data Mixed a b = AB a b | BA b a"
+
+getDataDecl decl = case P.parseDecl decl of
+    P.ParseOk decl' -> decl'
+    _ -> Exts.DefaultDecl []
+
+testConv decl = toCypDataType $ getDataDecl decl
 
 -- This will use parseDecl to parse the declaration
 -- We want datatype declarations, i.e. this constructor:

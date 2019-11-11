@@ -1,0 +1,17 @@
+data Bool = True | False
+
+data TX = X
+data TY = Y
+
+f True = X
+f False = Y
+
+g X = True
+g Y = False
+
+id x = x
+
+(s . t) x = s (t x)
+
+-- Lemma invalid:
+goal g . f .=. id
