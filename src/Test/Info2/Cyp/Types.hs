@@ -1,5 +1,6 @@
 module Test.Info2.Cyp.Types where
 
+import Control.Monad (liftM, liftM2)
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
@@ -58,8 +59,9 @@ data TConsArg = TNRec | TRec deriving (Show,Eq)
 toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
     | validDataHead dh = do
         tvars <- collectTVars dh []
-        -- Traverse constypes here
-        return tvars
+        tyname <- tynameFromDH dh
+        dcons <- traverse (processDCon tvars tyname) cons
+        return (tyname, dcons)
     where
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)
@@ -71,19 +73,67 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         validDataHead (Exts.DHead _) = True
         validDataHead _ = False
 
+        -- Extracts the typename from a datahead declaration
+        tynameFromDH (Exts.DHead name) = return $ extractName name
+        tynameFromDH (Exts.DHApp head _ ) = tynameFromDH head
+        -- This branch should never be reached since we fail earlier
+        -- by disallowing them in the parse (validDataHead)
+        tynameFromDH _ = errStr "Could not extract typename"
+
         collectTVars dh tvars = case dh of
             Exts.DHead _ -> return tvars
             Exts.DHApp dh' (Exts.UnkindedVar name) -> do
                 tvars' <- collectTVars dh' tvars
-                return $ (TVar (Tyvar (extractName name) Star)) : tvars'
+                let tv = TVar (Tyvar (extractName name) Star)
+                return $ tvars' ++ [tv]
             -- TODO: What to do about KindedVar?
             _ -> errStr "Invalid DataHead" -- Should not happen
 
-toCypDataType _ = errStr "Invalid data declaration can't be converted."
+        -- Convert data constructors into internal representation
+        -- We can ignore the first two arguments to QualConDecl since we
+        -- do not allow existential quantification
+        processDCon tvs tyname (Exts.QualConDecl _ _ (Exts.ConDecl name targs)) = do
+            cargs <- mapM toCypType targs
+            checkForUnbounds tvs cargs
+            let tcon = TCon $ Tycon tyname Star 
+                dtype = foldl TAp tcon tvs
+                conType = foldr fn dtype cargs
+            return (extractName name, conType)
+        -- TODO: HANDLING OF INFIX AND RECORD CONSTRUCTORS
+        processDCon _ _ _ = errStr "Invalid data constructor"
+
+        -- Checks for unbound type variables in cargs
+        checkForUnbounds boundTVs cargs = do
+            let filt = \t -> case t of
+                    TVar _ -> True
+                    _ -> False
+                cvars = filter filt cargs
+            if all (`elem` boundTVs) cvars 
+            then do
+                return ()
+            else
+                -- TODO: MORE INFO IN ERR MESSAGE
+                errStr "Unbound type variable in data Declaration"
+
+-- TODO: MORE INFO
+toCypDataType _ = errStr "Invalid data declaration."
+
+-- Converts Exts.Type to CypType, assumes all TV are of kind *
+toCypType :: Exts.Type -> Err Type
+toCypType (Exts.TyVar name) = return $ TVar $ Tyvar (extractName name) Star
+toCypType (Exts.TyCon qname) = return $ TCon $ Tycon (extractQName qname) Star
+toCypType (Exts.TyApp tc arg) = liftM2 TAp (toCypType tc) (toCypType arg)
+toCypType (Exts.TyParen t) = toCypType t -- IS THIS CORRECT?
+-- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
+toCypType _ = errStr "Type can not be converted to Cyp-Type"
 
 -- Extract name String out of a Exts.Name (might be done better, ok for now)
 extractName (Exts.Ident s) = s
 extractName (Exts.Symbol s) = s
+
+extractQName (Exts.UnQual n) = extractName n
+--extractQName _ = _
+-- TODO HANDLE QUAl, SPECIAL
 
 {- Equation sequences ------------------------------------------------}
 

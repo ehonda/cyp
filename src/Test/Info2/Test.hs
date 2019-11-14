@@ -2,6 +2,7 @@ import Control.Monad.State
 import qualified Text.Parsec as Parsec
 import Text.PrettyPrint.HughesPJ
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
+import qualified Language.Haskell.Exts.Simple.Parser as P
 
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser

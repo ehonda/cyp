@@ -28,6 +28,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
+import Test.Info2.Cyp.Typing.Inference (prettyType) -- ONLY FOR TESTING!
 
 data ParseDeclTree
     = DataDecl String
@@ -456,14 +457,31 @@ dtListAsArg = DataDecl "D a = D [a]"
 
 dataDeclStr (DataDecl s) = "data " ++ s
 
+dataBool = "data Bool = True | False"
 dataList = "data L a = Nil | Cons a (L a)"
 dataMixed = "data Mixed a b = AB a b | BA b a"
+dataUnboundTV = "data UB = UB a"
+dataABC = "data ABC a b c = ABC a b c"
+dataParen = "data P a b c = P (a b) c"
+dataTwoParam = "data TP a b = TP"
 
 getDataDecl decl = case P.parseDecl decl of
     P.ParseOk decl' -> decl'
     _ -> Exts.DefaultDecl []
 
 testConv decl = toCypDataType $ getDataDecl decl
+
+prettyConv decl = do
+    (_, dcons) <- testConv decl 
+    return $ map prettyDCon dcons 
+    where
+        prettyDCon = \(dcon, dtype) -> concat 
+            [dcon, " :: ", prettyType dtype]
+
+showConv decl = case prettyConv decl of
+    Left e -> print e
+    Right sigs -> mapM_ print sigs
+    
 
 -- This will use parseDecl to parse the declaration
 -- We want datatype declarations, i.e. this constructor:

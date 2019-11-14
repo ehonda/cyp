@@ -2,7 +2,7 @@ module Test.Info2.Cyp.Typing.Inference where
 
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
-import Data.List (union, nub, intersect)
+import Data.List (union, nub, intersect, intercalate)
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import qualified Test.Info2.Cyp.Term as CT
@@ -53,6 +53,21 @@ list t = TAp tList t
 
 pair :: Type -> Type -> Type
 pair a b = TAp (TAp tTuple2 a) b
+
+prettyType :: Type -> String
+-- Special conversion for arrow, list and tuple
+prettyType (TAp (TAp arr a) b) | arr == tArrow
+    = concat [prettyType a, " -> ", prettyType b]
+prettyType (TAp list a) | list == tList
+    = concat ["[", prettyType a, "]"]
+prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
+    = concat ["(", prettyType a, ", ", prettyType b, ")"]
+-- Regular conversion
+prettyType (TVar (Tyvar id _)) = id
+prettyType (TCon (Tycon id _)) = id
+--prettyType (TAp s t) = concat ["(", prettyType s, " ", prettyType t, ")"]
+prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
+prettyType (TGen i) = concat ["v", show i]
 
 -- HasKind
 ---------------------------------
@@ -200,6 +215,15 @@ quantify vs t = Forall ks (apply s t) where
 
 toScheme :: Type -> Scheme
 toScheme t = Forall [] t
+
+prettyScheme :: Scheme -> String
+prettyScheme (Forall ks t) = 
+    concat ["forall ", gensComma, ". ", prettyType t] 
+        where
+            gens = take (length ks) $ map TGen [0..]
+            prettyGens = map prettyType gens
+            gensComma = intercalate ", " prettyGens
+
 
 -- Examples (CAN BE REMOVED LATER)
 ---------------------------------
