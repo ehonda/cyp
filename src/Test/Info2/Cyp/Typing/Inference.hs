@@ -48,6 +48,12 @@ infixr 4 `fn`
 fn :: Type -> Type -> Type
 a `fn` b = TAp (TAp tArrow a) b
 
+isFuncType :: Type -> Bool
+isFuncType (TAp (TAp arr _) _)
+    | arr == tArrow = True
+    | otherwise = False
+isFuncType _ = False
+
 list :: Type -> Type
 list t = TAp tList t
 

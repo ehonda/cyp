@@ -176,3 +176,26 @@ parseCons = iparseTerm (\x -> Right $ Free (x, 0))
 
 constName (Const c) = return c
 constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
+
+
+
+
+
+
+-- TESTING STUFF IN OTHER MODULES
+-----------------------------------------------
+
+-- validConsCaseTyped, Cyp.hs
+-------------------------------------
+termListCons = Application 
+    (Application (Const "Cons") (Free ("x", 0))) 
+    (Free ("xs", 0))
+
+testValidCCase t decl = do
+    dt <- testConv decl
+    validConsCaseTyped t dt
+
+-- fmap ((map argsFromFunctionType) . (map snd) . dtConssTyped) dt
+--testArgsFromFunc = do
+--    dt <- testConv dataList
+    

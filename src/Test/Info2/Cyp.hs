@@ -299,6 +299,32 @@ validConsCase t (DataType _ conss) = errCtxt invCaseMsg $ do
 
     invCaseMsg = text "Invalid case" <+> quotes (unparseTerm t) <> comma
 
+
+-- New version that works on new dconss :: (String, Type)
+--validConsCaseTyped :: Term -> DataTypeTyped -> Err (String, [(TConsArg, IdxName)]) 
+validConsCaseTyped t (DataTypeTyped _ dcons) = errCtxt invCaseMsg $ do
+    (consName, consType) <- findCons cons
+    consArgs <- argsFromFunctionType consType
+    argNames <- traverse argName args
+    when (not $ nub args == args) $
+        errStr "Constructor arguments must be distinct"
+    when (not $ length args == length consArgs) $
+        errStr "Invalid number of arguments"
+    return (consName, zip consArgs argNames)
+    where
+        (cons, args) = stripComb t
+
+        argName (Free v) = return v
+        argName _ = errStr "Constructor arguments must be variables"
+
+        findCons (Const name) = case find (\c -> fst c == name) dcons of
+            Nothing -> err (text "Invalid constructor, expected one of"
+                <+> (fsep . punctuate comma . map (quotes . text . fst) $ dcons))
+            Just x -> return x
+        findCons _ = errStr "Outermost symbol is not a constant"
+
+        invCaseMsg = text "Invalid case" <+> quotes (unparseTerm t) <> comma
+
 validEqnSeq :: [Named Prop] -> EqnSeq Term -> Err Prop
 validEqnSeq _ (Single t) = return (Prop t t)
 validEqnSeq rules (Step t1 rule es)

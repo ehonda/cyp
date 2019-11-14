@@ -21,7 +21,15 @@ data Env = Env
 data DataType = DataType
     { dtName :: String
     , dtConss :: [(String, [TConsArg])]
+--      NEW VERSION
+--      , dtConss :: [(String, Type)]
 --    , dtConss :: [(String, [(TConsArg, Exts.Type)])]
+    }
+    deriving Show
+
+data DataTypeTyped = DataTypeTyped
+    { dtNameTyped :: String
+    , dtConssTyped :: [(String, Type)]
     }
     deriving Show
 
@@ -61,7 +69,8 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         tvars <- collectTVars dh []
         tyname <- tynameFromDH dh
         dcons <- traverse (processDCon tvars tyname) cons
-        return (tyname, dcons)
+        return $ DataTypeTyped tyname dcons
+        --return (tyname, dcons)
     where
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)
@@ -134,6 +143,17 @@ extractName (Exts.Symbol s) = s
 extractQName (Exts.UnQual n) = extractName n
 --extractQName _ = _
 -- TODO HANDLE QUAl, SPECIAL
+
+-- Extract args from a function type
+argsFromFunctionType :: Type -> Err [Type]
+argsFromFunctionType t@(TAp (TAp _ a) b) 
+    | isFuncType t = do
+        rest <- if isFuncType b
+            then argsFromFunctionType b
+            else return []
+        return $ a : rest
+    | otherwise = errStr "Can't extract arguments from non function type"
+argsFromFunctionType _ = errStr "Can't extract arguments from non function type"
 
 {- Equation sequences ------------------------------------------------}
 
