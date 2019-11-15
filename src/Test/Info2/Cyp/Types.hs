@@ -45,6 +45,26 @@ defaultDataTypes =
         }
     ]
 
+--data DataType = DataType
+--    { dtName :: String
+--    , dtConss :: [(String, Type)]
+--    }
+--    deriving Show
+--
+defaultDataTypesTyped :: [DataTypeTyped]
+defaultDataTypesTyped = 
+    [ DataTypeTyped 
+        { dtNameTyped = "List"
+        , dtConssTyped = 
+            [ ("[]", tListA)
+            , (":", tvarA `fn` tListA `fn` tListA)
+            ] 
+        }
+    ]
+    where
+        tvarA = TVar (Tyvar "a" Star)
+        tListA = TAp (TCon (Tycon "List" Star)) tvarA
+
 data Named a = Named String a
     deriving Show
 
@@ -145,15 +165,15 @@ extractQName (Exts.UnQual n) = extractName n
 -- TODO HANDLE QUAl, SPECIAL
 
 -- Decomposes a function of type a -> b -> c into ([a, b], c)
-decomposeFunctionType :: Type -> Err ([Type], Type)
-decomposeFunctionType t@(TAp (TAp _ a) b) 
-    | isFuncType t = do
-        (rest, target) <- if isFuncType b
-            then decomposeFunctionType b
-            else return ([], b)
-        return (a : rest, target)
-    | otherwise = errStr "Can't extract arguments from non function type"
-decomposeFunctionType _ = errStr "Can't extract arguments from non function type"
+--decomposeFunctionType :: Type -> Err ([Type], Type)
+--decomposeFunctionType t@(TAp (TAp _ a) b) 
+--    | isFuncType t = do
+--        (rest, target) <- if isFuncType b
+--            then decomposeFunctionType b
+--            else return ([], b)
+--        return (a : rest, target)
+--    | otherwise = errStr "Can't extract arguments from non function type"
+--decomposeFunctionType _ = errStr "Can't extract arguments from non function type"
 
 
 {- Equation sequences ------------------------------------------------}

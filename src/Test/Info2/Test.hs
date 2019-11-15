@@ -197,9 +197,9 @@ testValidCCase t decl = do
 
 testFuncDecomp decl = do
     dt <- testConv decl
-    --  decompDCons :: [Err ([Type], Type)]
-    let decompDCons = map (decomposeFunctionType . snd) $ dtConssTyped dt
+    --  decompDCons :: [([Type], Type)]
+    let decompDCons = map (decomposeFuncType . snd) $ dtConssTyped dt
         prettyDecomps = map 
-            (fmap (\(args, ret) -> (map prettyType args, prettyType ret)))
+            (\(args, ret) -> (map prettyType args, prettyType ret))
             decompDCons
     return prettyDecomps

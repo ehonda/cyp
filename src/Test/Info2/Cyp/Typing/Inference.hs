@@ -77,6 +77,21 @@ prettyType (TAp s t@(TAp _ _)) =
 prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
 prettyType (TGen i) = concat ["v", show i]
 
+
+-- Decomposes an n-ary function a -> b -> ... -> r into args and ret type
+-- ([a, b, ...], r) where non-function types t are treated as 0-ary functions
+-- and therefore return ([], t)
+decomposeFuncType :: Type -> ([Type], Type)
+decomposeFuncType t@(TAp (TAp _ a) b)
+    | isFuncType t = 
+        let (rest, target) = if isFuncType b
+            then decomposeFuncType b
+            else ([], b)
+        in (a : rest, target)
+    | otherwise = ([], t)
+decomposeFuncType t = ([], t)
+
+
 -- HasKind
 ---------------------------------
 
