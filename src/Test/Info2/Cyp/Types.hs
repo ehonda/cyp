@@ -18,37 +18,39 @@ data Env = Env
     }
     deriving Show
 
+--data DataType = DataType
+--    { dtName :: String
+--    , dtConss :: [(String, [TConsArg])]
+--    }
+--    deriving Show
+--
+--data DataTypeTyped = DataTypeTyped
+--    { dtNameTyped :: String
+--    , dtConssTyped :: [(String, Type)]
+--    }
+--    deriving Show
+--
+--defaultDataTypes :: [DataType]
+--defaultDataTypes = 
+--    [ DataType 
+--        { dtName = "List"
+--        , dtConss = [("[]", []), (":", [TNRec, TRec])] 
+--        }
+--    ]
+
+
+
 data DataType = DataType
     { dtName :: String
-    , dtConss :: [(String, [TConsArg])]
-    }
-    deriving Show
-
-data DataTypeTyped = DataTypeTyped
-    { dtNameTyped :: String
-    , dtConssTyped :: [(String, Type)]
+    , dtConss :: [(String, Type)]
     }
     deriving Show
 
 defaultDataTypes :: [DataType]
 defaultDataTypes = 
-    [ DataType 
+    [ DataType
         { dtName = "List"
-        , dtConss = [("[]", []), (":", [TNRec, TRec])] 
-        }
-    ]
-
---data DataType = DataType
---    { dtName :: String
---    , dtConss :: [(String, Type)]
---    }
---    deriving Show
---
-defaultDataTypesTyped :: [DataTypeTyped]
-defaultDataTypesTyped = 
-    [ DataTypeTyped 
-        { dtNameTyped = "List"
-        , dtConssTyped = 
+        , dtConss = 
             [ ("[]", tListA)
             , (":", tvarA `fn` tListA `fn` tListA)
             ] 
@@ -82,7 +84,7 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         tvars <- collectTVars dh []
         tyname <- tynameFromDH dh
         dcons <- traverse (processDCon tvars tyname) cons
-        return $ DataTypeTyped tyname dcons
+        return $ DataType tyname dcons
         --return (tyname, dcons)
     where
         -- We don't allow paren or infix expressions for the data head
@@ -156,18 +158,6 @@ extractName (Exts.Symbol s) = s
 extractQName (Exts.UnQual n) = extractName n
 --extractQName _ = _
 -- TODO HANDLE QUAl, SPECIAL
-
--- Decomposes a function of type a -> b -> c into ([a, b], c)
---decomposeFunctionType :: Type -> Err ([Type], Type)
---decomposeFunctionType t@(TAp (TAp _ a) b) 
---    | isFuncType t = do
---        (rest, target) <- if isFuncType b
---            then decomposeFunctionType b
---            else return ([], b)
---        return (a : rest, target)
---    | otherwise = errStr "Can't extract arguments from non function type"
---decomposeFunctionType _ = errStr "Can't extract arguments from non function type"
-
 
 -- Converts Data Constructor from (String, Type) to (String, [TConsArg])
 -- as in the old DataType 

@@ -475,7 +475,7 @@ testConv decl = toCypDataType $ getDataDecl decl
 
 prettyConv decl = do
     dt <- testConv decl
-    return $ map prettyDCon $ dtConssTyped dt 
+    return $ map prettyDCon $ dtConss dt 
     where
         prettyDCon = \(dcon, dtype) -> concat 
             [dcon, " :: ", prettyType dtype]
@@ -501,10 +501,12 @@ readDataType = sequence . mapMaybe parseDataType
             -- declaration out of this parse, therefore we need not be concerned
             -- about that possibility
             case P.parseDecl $ "data " ++ s of
-                P.ParseOk (Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> do
-                    tyname <- typeName dh
-                    dacons <- traverse (convertDataCon tyname) cons
-                    return $ DataType tyname dacons
+                P.ParseOk p@(Exts.DataDecl _ Nothing dh cons []) | validDataHead dh ->
+                    toCypDataType p
+                --P.ParseOk (Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> do
+                --    tyname <- typeName dh
+                --    dacons <- traverse (convertDataCon tyname) cons
+                --    return $ DataType tyname dacons
                 P.ParseOk (Exts.DataDecl _ (Just context) _ _ _) -> 
                     errMsg "Context for type parameters is not allowed."
                 P.ParseOk (Exts.DataDecl _ _ dh _ _) | (not . validDataHead) dh ->
