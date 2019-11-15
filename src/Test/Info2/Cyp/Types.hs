@@ -21,9 +21,6 @@ data Env = Env
 data DataType = DataType
     { dtName :: String
     , dtConss :: [(String, [TConsArg])]
---      NEW VERSION
---      , dtConss :: [(String, Type)]
---    , dtConss :: [(String, [(TConsArg, Exts.Type)])]
     }
     deriving Show
 
@@ -37,10 +34,6 @@ defaultDataTypes :: [DataType]
 defaultDataTypes = 
     [ DataType 
         { dtName = "List"
---        , dtConss = [("[]", []), (":", 
---            [ (TNRec, Exts.TyVar () (Exts.Ident () "a"))
---            , (TRec, Exts.TyCon () )])
---            ] 
         , dtConss = [("[]", []), (":", [TNRec, TRec])] 
         }
     ]
@@ -175,6 +168,17 @@ extractQName (Exts.UnQual n) = extractName n
 --    | otherwise = errStr "Can't extract arguments from non function type"
 --decomposeFunctionType _ = errStr "Can't extract arguments from non function type"
 
+
+-- Converts Data Constructor from (String, Type) to (String, [TConsArg])
+-- as in the old DataType 
+toOldDataConstructor :: (String, Type) -> (String, [TConsArg])
+toOldDataConstructor (dcName, dcType) =
+    (dcName, map (toTConsArg dt) argList)
+    where
+        (argList, dt) = decomposeFuncType dcType
+        toTConsArg dataType argType
+            | dataType == argType = TRec
+            | otherwise = TNRec
 
 {- Equation sequences ------------------------------------------------}
 

@@ -18,7 +18,7 @@ import qualified Text.Parsec as Parsec
 import Text.PrettyPrint (colon, comma, empty, fsep, int, punctuate, hsep, quotes, text, vcat, (<>), (<+>), ($+$))
 
 import Test.Info2.Cyp.Env
-import qualified Test.Info2.Cyp.Typing.Inference as HM -- decomposeFuncType
+--import qualified Test.Info2.Cyp.Typing.Inference as HM -- decomposeFuncType
 import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
@@ -305,7 +305,8 @@ validConsCase t (DataType _ conss) = errCtxt invCaseMsg $ do
 --validConsCaseTyped :: Term -> DataTypeTyped -> Err (String, [(TConsArg, IdxName)]) 
 validConsCaseTyped t (DataTypeTyped _ dcons) = errCtxt invCaseMsg $ do
     (consName, consType) <- findCons cons
-    let (consArgs, _) = HM.decomposeFuncType consType
+    --let (consArgs, _) = HM.decomposeFuncType consType
+    let (_, consArgs) = toOldDataConstructor (consName, consType)
     argNames <- traverse argName args
     when (not $ nub args == args) $
         errStr "Constructor arguments must be distinct"
