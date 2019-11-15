@@ -71,7 +71,9 @@ prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
 -- Regular conversion
 prettyType (TVar (Tyvar id _)) = id
 prettyType (TCon (Tycon id _)) = id
---prettyType (TAp s t) = concat ["(", prettyType s, " ", prettyType t, ")"]
+-- TAp on the right has to be parenthesised
+prettyType (TAp s t@(TAp _ _)) = 
+    concat [prettyType s, " (", prettyType t, ")"]
 prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
 prettyType (TGen i) = concat ["v", show i]
 
@@ -145,6 +147,9 @@ merge s1 s2 = if agree then return (s1 ++ s2) else fail "merge fails"
 tvA = Tyvar "a" Star
 tvB = Tyvar "b" Star
 tvC = Tyvar "c" Star
+tvarA = TVar $ tvA
+tvarB = TVar $ tvB
+tvarC = TVar $ tvC
 tvList = [TVar tvA, TVar tvA, TVar tvB, TVar tvC]
 tFn_tvA_tInt = (TVar tvA) `fn` tInt
 
@@ -390,17 +395,17 @@ t6 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme t
     (CT.Application (CT.Free "f") (CT.Free "x"))
 
 -- Apptest
-appAs = ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
-appApp = (CT.Application (CT.Free "f") (CT.Free "x"))
-
-appTest as (CT.Application e f) = do
-    te <- tiRawTerm as e
-    tf <- tiRawTerm as f
-    t <- newTVar Star
-    unify (tf `fn` t) te
-    getSubst
-
-testApp = runTI $ appTest appAs appApp
+--appAs = ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
+--appApp = (CT.Application (CT.Free "f") (CT.Free "x"))
+--
+--appTest as (CT.Application e f) = do
+--    te <- tiRawTerm as e
+--    tf <- tiRawTerm as f
+--    t <- newTVar Star
+--    unify (tf `fn` t) te
+--    getSubst
+--
+--testApp = runTI $ appTest appAs appApp
 
 
 -- Show Substition

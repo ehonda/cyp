@@ -195,7 +195,11 @@ testValidCCase t decl = do
     dt <- testConv decl
     validConsCaseTyped t dt
 
--- fmap ((map argsFromFunctionType) . (map snd) . dtConssTyped) dt
---testArgsFromFunc = do
---    dt <- testConv dataList
-    
+testFuncDecomp decl = do
+    dt <- testConv decl
+    --  decompDCons :: [Err ([Type], Type)]
+    let decompDCons = map (decomposeFunctionType . snd) $ dtConssTyped dt
+        prettyDecomps = map 
+            (fmap (\(args, ret) -> (map prettyType args, prettyType ret)))
+            decompDCons
+    return prettyDecomps

@@ -464,7 +464,8 @@ dataUnboundTV = "data UB = UB a"
 dataABC = "data ABC a b c = ABC a b c"
 dataParen = "data P a b c = P (a b) c"
 dataTwoParam = "data TP a b = TP"
- 
+-- dataListParam = "data LP a = LP [a]"
+dataOneParam = "data D a = D a"
 
 getDataDecl decl = case P.parseDecl decl of
     P.ParseOk decl' -> decl'

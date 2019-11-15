@@ -144,16 +144,17 @@ extractQName (Exts.UnQual n) = extractName n
 --extractQName _ = _
 -- TODO HANDLE QUAl, SPECIAL
 
--- Extract args from a function type
-argsFromFunctionType :: Type -> Err [Type]
-argsFromFunctionType t@(TAp (TAp _ a) b) 
+-- Decomposes a function of type a -> b -> c into ([a, b], c)
+decomposeFunctionType :: Type -> Err ([Type], Type)
+decomposeFunctionType t@(TAp (TAp _ a) b) 
     | isFuncType t = do
-        rest <- if isFuncType b
-            then argsFromFunctionType b
-            else return []
-        return $ a : rest
+        (rest, target) <- if isFuncType b
+            then decomposeFunctionType b
+            else return ([], b)
+        return (a : rest, target)
     | otherwise = errStr "Can't extract arguments from non function type"
-argsFromFunctionType _ = errStr "Can't extract arguments from non function type"
+decomposeFunctionType _ = errStr "Can't extract arguments from non function type"
+
 
 {- Equation sequences ------------------------------------------------}
 

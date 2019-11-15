@@ -304,7 +304,7 @@ validConsCase t (DataType _ conss) = errCtxt invCaseMsg $ do
 --validConsCaseTyped :: Term -> DataTypeTyped -> Err (String, [(TConsArg, IdxName)]) 
 validConsCaseTyped t (DataTypeTyped _ dcons) = errCtxt invCaseMsg $ do
     (consName, consType) <- findCons cons
-    consArgs <- argsFromFunctionType consType
+    (consArgs, _) <- decomposeFunctionType consType
     argNames <- traverse argName args
     when (not $ nub args == args) $
         errStr "Constructor arguments must be distinct"
