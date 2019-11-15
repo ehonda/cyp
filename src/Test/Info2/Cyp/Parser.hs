@@ -20,14 +20,14 @@ import Data.Maybe
 import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
-import qualified Language.Haskell.Exts.Pretty as ExtsPretty
+--import qualified Language.Haskell.Exts.Pretty as ExtsPretty -- NOT NEEDED?
 import Text.PrettyPrint (quotes, text, (<+>))
 
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
-import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
+--import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
 import Test.Info2.Cyp.Typing.Inference (prettyType) -- ONLY FOR TESTING!
 
 data ParseDeclTree
@@ -394,33 +394,12 @@ caseParser = do
 manySpacesOrComment :: Parsec [Char] u ()
 manySpacesOrComment = skipMany $ (space >> return ()) <|> commentParser
 
-
---readDataType :: [ParseDeclTree] -> Err [DataType]
---readDataType = sequence . mapMaybe parseDataType
---  where
---    parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $ do
---        (tycon : dacons) <- traverse parseCons $ splitStringAt "=|" s []
---        tyname <- constName $ fst $ stripComb tycon
---        dacons' <- traverse (parseDacon tycon) dacons
---        return $ DataType tyname dacons'
---    parseDataType _ = Nothing
---
---    parseCons :: String -> Err Term
---    parseCons = iparseTerm (\x -> Right $ Free (x, 0))
---
---    constName (Const c) = return c
---    constName term = errStr $ "Term '" ++ show term ++ "' is not a constant."
---
---    parseDacon tycon term = do
---        let (con, args) = stripComb term
---        name <- constName con
---        args' <- traverse (parseDaconArg tycon) args
---        return (name, args')
---
---    parseDaconArg tycon term | term == tycon = return TRec
---    parseDaconArg _ (Application _ _) = errStr $ "Nested constructors (apart from direct recursion) are not allowed."
---    parseDaconArg _ (Literal _) = errStr $ "Literals not allowed in datatype declarations"
---    parseDaconArg _ _ = return TNRec
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 -- READ DATATYPE TESTS
 treeStr = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
@@ -455,7 +434,7 @@ dtQualArgNameFail = DataDecl "D = D OtherModule.Type"
 
 dtListAsArg = DataDecl "D a = D [a]"
 
-dataDeclStr (DataDecl s) = "data " ++ s
+--dataDeclStr (DataDecl s) = "data " ++ s
 
 dataBool = "data Bool = True | False"
 dataList = "data L a = Nil | Cons a (L a)"
@@ -493,7 +472,6 @@ showConv decl = case prettyConv decl of
 -- that is, no newtypes, no context, no deriving and additional constraints on datatype etc
 readDataType :: [ParseDeclTree] -> Err [DataType]
 readDataType = sequence . mapMaybe parseDataType
---readDataTypeFixed = sequence . mapMaybe parseDataType
     where
         parseDataType (DataDecl s) = Just $ errCtxt (text "Parsing the datatype declaration" <+> quotes (text s)) $
             -- The 'data' keyword consumed by the datatype parser needs to be
@@ -501,17 +479,13 @@ readDataType = sequence . mapMaybe parseDataType
             -- declaration out of this parse, therefore we need not be concerned
             -- about that possibility
             case P.parseDecl $ "data " ++ s of
-                P.ParseOk p@(Exts.DataDecl _ Nothing dh cons []) | validDataHead dh ->
+                P.ParseOk p@(Exts.DataDecl _ Nothing dh _ []) | validDataHead dh ->
                     toCypDataType p
-                --P.ParseOk (Exts.DataDecl _ Nothing dh cons []) | validDataHead dh -> do
-                --    tyname <- typeName dh
-                --    dacons <- traverse (convertDataCon tyname) cons
-                --    return $ DataType tyname dacons
-                P.ParseOk (Exts.DataDecl _ (Just context) _ _ _) -> 
+                P.ParseOk (Exts.DataDecl _ (Just _) _ _ _) -> 
                     errMsg "Context for type parameters is not allowed."
                 P.ParseOk (Exts.DataDecl _ _ dh _ _) | (not . validDataHead) dh ->
                     errMsg "Invalid declaration head." 
-                P.ParseOk (Exts.DataDecl _ _ _ _ derivs) ->
+                P.ParseOk (Exts.DataDecl _ _ _ _ (_:_)) ->
                     errMsg "Deriving declarations are not allowed."
                 P.ParseFailed _ msg -> errMsg msg
                 _ -> errMsg "Unkown Error"
@@ -528,47 +502,6 @@ readDataType = sequence . mapMaybe parseDataType
         validDataHead (Exts.DHApp head _) = validDataHead head
         validDataHead (Exts.DHead _) = True
         validDataHead _ = False
-
-        -- Extracts the typename from a datahead declaration
-        typeName (Exts.DHead name) = return $ extractName name
-        typeName (Exts.DHApp head _ ) = typeName head
-        -- This branch should never be reached since we fail earlier
-        -- by disallowing them in the parse (validDataHead)
-        typeName _ = errStr "Could not extract typename"
-
-        -- Convert data constructors into internal representation
-        -- We can ignore the first two arguments to QualConDecl since we
-        -- do not allow existential quantification
-        convertDataCon tyname (Exts.QualConDecl _ _ (Exts.ConDecl name typeArgs)) = do
-            cypArgs <- traverse (convertToCypArg tyname) typeArgs
-            return (extractName name, cypArgs)
-        -- TODO: HANDLING OF INFIX AND RECORD CONSTRUCTORS
-
-        
-        -- Converts Type Argument to Cyp Type Argument
-        convertToCypArg tyname (Exts.TyVar name) = return TNRec
-        -- TODO: HANDLE QUALIFIED AND SPECIAL NAMES
-        -- Unqualified Type Constructor
-        convertToCypArg tyname (Exts.TyCon (Exts.UnQual name))
-                | extractName name == tyname = return TRec
-                | otherwise = return TNRec
-        -- Qualified Type Constructor (Disallowed)
-        convertToCypArg tyname con@(Exts.TyCon (Exts.Qual _ _)) =
-            errCtxtStr "Qualified Names are not allowed:" $ 
-                err $ ExtsPretty.prettyPrim con
-        -- Special [TODO]
-
-        convertToCypArg tyname (Exts.TyParen arg) = convertToCypArg tyname arg
-        -- TODO: HANDLE SPECIAL NAMES
-        convertToCypArg tyname (Exts.TyApp (Exts.TyCon (Exts.UnQual name)) _)
-            | extractName name == tyname = return TRec
-            | otherwise = return TNRec
-        convertToCypArg _ (Exts.TyFun _ _) = return TNRec
-        convertToCypArg _ con = errCtxtStr "Illegal Data Constructor Argument" $
-            err $ ExtsPretty.prettyPrim con
-        -- TODO: What to do with tuple, sum types etc, LIST!, see
-        --  http://hackage.haskell.org/package/haskell-src-exts-1.21.1/docs/Language-Haskell-Exts-Syntax.html#t:Type
-
 
 readAxiom :: [String] -> [ParseDeclTree] -> Err [Named Prop]
 readAxiom consts = sequence . mapMaybe parseAxiom

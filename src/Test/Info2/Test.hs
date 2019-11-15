@@ -193,12 +193,12 @@ termListCons = Application
 
 testValidCCase t decl = do
     dt <- testConv decl
-    validConsCaseTyped t dt
+    validConsCase t dt
 
 testFuncDecomp decl = do
     dt <- testConv decl
     --  decompDCons :: [([Type], Type)]
-    let decompDCons = map (decomposeFuncType . snd) $ dtConssTyped dt
+    let decompDCons = map (decomposeFuncType . snd) $ dtConss dt
         prettyDecomps = map 
             (\(args, ret) -> (map prettyType args, prettyType ret))
             decompDCons

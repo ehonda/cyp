@@ -67,13 +67,6 @@ data TConsArg = TNRec | TRec deriving (Show,Eq)
 
 {- Types -------------------------------------------------------------}
 
--- Convert a parsed Exts.Type into a Cyp-Type
---      BETTER: Convert a whole parsed Declaration into a Cyp-Type & Cyp-DataType
---
---toCypType :: Exts.Type -> Type
---toCypType Exts.TyVar name = TVar TyVar $ (extractName name) Star
---toCypType Exts.TyCon name = TCon TyCon $ (extractName name) Star
-
 -- Convert a parsed Exts.DataDecl into a Cyp-DataType
 -- We only want to allow this form:
 --      DataDecl DataType Nothing dh cons []
@@ -85,7 +78,6 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         tyname <- tynameFromDH dh
         dcons <- traverse (processDCon tvars tyname) cons
         return $ DataType tyname dcons
-        --return (tyname, dcons)
     where
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)
@@ -147,7 +139,7 @@ toCypType :: Exts.Type -> Err Type
 toCypType (Exts.TyVar name) = return $ TVar $ Tyvar (extractName name) Star
 toCypType (Exts.TyCon qname) = return $ TCon $ Tycon (extractQName qname) Star
 toCypType (Exts.TyApp tc arg) = liftM2 TAp (toCypType tc) (toCypType arg)
-toCypType (Exts.TyParen t) = toCypType t -- IS THIS CORRECT?
+toCypType (Exts.TyParen t) = toCypType t
 -- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
 toCypType _ = errStr "Type can not be converted to Cyp-Type"
 
