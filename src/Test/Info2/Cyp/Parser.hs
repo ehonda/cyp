@@ -528,6 +528,10 @@ readSym = sequence . mapMaybe parseSym
     parseSym _ = Nothing
 
 
+-- OLD VERSION
+----------------------------------------
+----------------------------------------
+
 readFunc :: [String] -> [ParseDeclTree] -> Err ([Named Prop], [String])
 readFunc syms pds = do
     rawDecls <- sequence . mapMaybe parseFunc $ pds
@@ -567,6 +571,32 @@ readFunc syms pds = do
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
     parseFunc _ = Nothing
+
+
+-- TEST CASES READ FUNC
+-----------------------------------------------------------------------
+
+defId = FunDef "id x = x"
+defPLit = FunDef "f 1 = 2"
+dc = defaultConsts
+
+readFuncTyped syms pds = do
+    rawDecls <- sequence . mapMaybe parseFunc $ pds
+    let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
+
+    return rawDecls
+    where
+
+        parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
+            case P.parseDecl s of
+                P.ParseOk (Exts.FunBind [Exts.Match name pat (Exts.UnGuardedRhs rhs) Nothing])
+                    -> Right (translateName name, pat, rhs)
+                P.ParseOk (Exts.FunBind [Exts.InfixMatch pat0 name pat (Exts.UnGuardedRhs rhs) Nothing])
+                    -> Right (translateName name, pat0 : pat, rhs)
+                P.ParseOk _ -> errStr "Invalid function definition."
+                f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
+        parseFunc _ = Nothing
+
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
 splitStringAt _ [] h

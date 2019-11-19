@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 import Control.Monad.State
 import qualified Text.Parsec as Parsec
 import Text.PrettyPrint.HughesPJ
@@ -203,3 +205,29 @@ testFuncDecomp decl = do
             (\(args, ret) -> (map prettyType args, prettyType ret))
             decompDCons
     return prettyDecomps
+
+tiRunAndShowSub ti = runTI $ (ti >> getSubst)
+
+--tiRunAndSub ti = runTI $ getSubst >>= \s -> apply s ti
+
+tiRunAndSub ti = runTI $ do
+    ti' <- ti
+    s <- getSubst
+    return $ apply s ti'
+
+--tiRunAndPretty ti = prettyType $ tiRunAndSub ti
+
+-- Read type bool and then infer type for read function
+testDtAndFunBool = do
+    dt <- fmap head $ readDataType [DataDecl "Bool = False | True"]
+    let consAssumps = map consToAssump $ dtConss dt
+        pCons = map (\a -> PCon a []) consAssumps
+        alts = map (\p@(PCon (name :>: _) _) -> ([p], Const name)) pCons
+        
+    return $ mapM (tiAlt consAssumps) alts
+--    return dt
+    where
+--        consToScheme (name, t) = name :>: toScheme t
+        consToAssump (name, t) = name :>: quantify (tv t) t
+
+testFunPretty = fmap (map prettyType) $ fmap tiRunAndSub testDtAndFunBool

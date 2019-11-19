@@ -84,6 +84,9 @@ instance Functor AbsTerm where
     fmap f (Schematic x) = Schematic (f x)
     fmap _ (Literal x) = Literal x
 
+instance Functor AbsProp where
+    fmap f (Prop x y) = Prop (fmap f x) (fmap f y)
+
 stripComb :: AbsTerm a -> (AbsTerm a, [AbsTerm a])
 stripComb term = work (term, [])
   where work (Application f a, xs) = work (f, a : xs)

@@ -342,6 +342,43 @@ instance Instantiate a => Instantiate [a] where
 
 type Infer e t = [Assump] -> e -> TI t
 
+-- Type inference for Pattern
+---------------------------------
+
+data Pat = PVar Id
+    | PLit Exts.Literal
+    | PCon Assump [Pat]
+    deriving Show
+    -- PList?
+
+tiPat :: Pat -> TI ([Assump], Type)
+
+-- Variable pattern
+tiPat (PVar i) = do
+    v <- newTVar Star
+    return ([i :>: toScheme v], v)
+
+-- Literal pattern
+tiPat (PLit l) = do
+    t <- tiRawTerm [] (CT.Literal l)
+    return ([], t)
+
+-- Constructor pattern
+tiPat (PCon (i :>: sc) pats) = do
+    (as, ts) <- tiPats pats
+    t' <- newTVar Star
+    t <- freshInst sc
+    unify t (foldr fn t' ts)
+    return (as, t')
+
+-- Multiple patterns
+tiPats :: [Pat] -> TI ([Assump], [Type])
+tiPats pats = do
+    asts <- mapM tiPat pats
+    let as = concat [as' | (as', _) <- asts]
+        ts = [t | (_, t) <- asts]
+    return (as, ts)
+
 -- Type inference for Terms
 ---------------------------------
 
@@ -377,7 +414,7 @@ tiRawTerm as (CT.Application e f) = do
 -- Code duplication: Use Generics!
 tiTerm :: Infer CT.Term Type
 tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
-tiTerm as (CT.Free (s, n)) = tiRawTerm as (CT.Free s)
+tiTerm as (CT.Free (s, _)) = tiRawTerm as (CT.Free s)
 tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
 tiTerm as (CT.Application e f) = do
     te <- tiTerm as e
@@ -385,6 +422,23 @@ tiTerm as (CT.Application e f) = do
     t <- newTVar Star
     unify (tf `fn` t) te
     return t
+
+
+-- Type inference for Alts
+---------------------------------
+
+type Alt = ([Pat], CT.Term)
+
+tiAlt :: Infer Alt Type
+tiAlt as (pats, term) = do
+    (as', ts) <- tiPats pats
+    t <- tiTerm (as' ++ as) term
+    return $ foldr fn t ts
+
+tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
+tiAlts as alts t = do
+    ts <- mapM (tiAlt as) alts
+    mapM_ (unify t) ts
 
 
 --tiTerm as = tiRawTerm as
@@ -434,6 +488,12 @@ runAndSub as t = runTI $ f as t where
         ti <- tiRawTerm as t
         s <- getSubst
         return $ apply s ti
+
+runAndSubPat p = runTI $ f p where
+    f = \p -> do
+        (as, t) <- tiPat p
+        s <- getSubst
+        return (as, apply s t)
 
 
 -- Trivial theory test

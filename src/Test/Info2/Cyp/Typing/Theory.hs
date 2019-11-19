@@ -9,7 +9,7 @@ import Test.Info2.Cyp.Env
 --
 --    }
 
-tiEnv :: [Assump] -> Env -> [Assump]
-tiEnv as env = runTI $ do
+--tiEnv :: [Assump] -> Env -> [Assump]
+--tiEnv as env = runTI $ do
     -- Step 1: Infer type Assumptions for constructors
     
