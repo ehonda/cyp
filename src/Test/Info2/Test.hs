@@ -43,19 +43,19 @@ parseFuncsConsts c = parseTransform c $ \r -> do
     readFunc syms r
 
 parseFuncs c = do
-    (fs, _) <- parseFuncsConsts c
+    (fs, _, _) <- parseFuncsConsts c
     return fs
 
 parseConsts c = do
-    (_, cs) <- parseFuncsConsts c
+    (_, cs, _) <- parseFuncsConsts c
     return cs
 
 parseAxioms c = do
-    (_, cs) <- parseFuncsConsts c
+    (_, cs, _) <- parseFuncsConsts c
     parseTransform c $ readAxiom cs
 
 parseGoals c = do
-    (_, cs) <- parseFuncsConsts c
+    (_, cs, _) <- parseFuncsConsts c
     parseTransform c $ readGoal cs
 
 inspectTheory path f = do

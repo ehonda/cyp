@@ -1,6 +1,7 @@
 module Test.Info2.Cyp.Types where
 
 import Control.Monad (liftM, liftM2)
+import Data.List (lookup)
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
@@ -143,6 +144,39 @@ toCypType (Exts.TyParen t) = toCypType t
 -- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
 toCypType _ = errStr "Type can not be converted to Cyp-Type"
 
+
+-- Convert Exts.Pat to our custom Pat. Needs
+-- an environment that contains constructors
+-- and their types, to find the assumps for PCon.
+type TypedDCon = (String, Type)
+
+convertExtsPat :: [TypedDCon] -> Exts.Pat -> Err Pat
+convertExtsPat _ (Exts.PVar v) = return $ PVar $ extractName v
+convertExtsPat _ (Exts.PLit Exts.Signless l) = return $ PLit l
+
+convertExtsPat dcons (Exts.PInfixApp p1 qName p2) =
+    convertExtsPat dcons (Exts.PApp qName [p1, p2])
+
+convertExtsPat dcons (Exts.PApp qName ps) =
+    case lookup dcon dcons of
+        Just dconType -> do
+            pats <- traverse (convertExtsPat dcons) ps
+            return $ PCon (dcon :>: dconScheme) pats
+                where dconScheme = quantify (tv dconType) dconType
+        Nothing -> errStr $ "Data Constructor of unknown Type: " ++ dcon
+    where dcon = extractQName qName
+
+convertExtsPat dcons (Exts.PParen p) = convertExtsPat dcons p
+-- TODO: WHAT ABOUT PLIST?
+
+-- TODO: Better error messages, like in translatePat?
+convertExtsPat _ p = errStr $ "Unsupported pattern type: " ++ show p
+
+
+--------------------------------------------------------
+-- TODO: USE EITHER EXTRACT[Q]NAME OR (FROM TERM.HS)
+--       TRANSLATE[Q]NAME EVERYWHERE!
+
 -- Extract name String out of a Exts.Name (might be done better, ok for now)
 extractName (Exts.Ident s) = s
 extractName (Exts.Symbol s) = s
@@ -150,6 +184,8 @@ extractName (Exts.Symbol s) = s
 extractQName (Exts.UnQual n) = extractName n
 --extractQName _ = _
 -- TODO HANDLE QUAl, SPECIAL
+--------------------------------------------------------
+
 
 -- Converts Data Constructor from (String, Type) to (String, [TConsArg])
 -- as in the old DataType 

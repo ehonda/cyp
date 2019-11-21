@@ -351,6 +351,7 @@ data Pat = PVar Id
     deriving Show
     -- PList?
 
+    
 tiPat :: Pat -> TI ([Assump], Type)
 
 -- Variable pattern

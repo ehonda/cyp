@@ -28,7 +28,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 --import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
-import Test.Info2.Cyp.Typing.Inference (prettyType) -- ONLY FOR TESTING!
+import Test.Info2.Cyp.Typing.Inference (prettyType) -- prettyType ONLY FOR TESTING!
 
 data ParseDeclTree
     = DataDecl String
@@ -532,13 +532,17 @@ readSym = sequence . mapMaybe parseSym
 ----------------------------------------
 ----------------------------------------
 
-readFunc :: [String] -> [ParseDeclTree] -> Err ([Named Prop], [String])
+readFunc :: [String] -> [ParseDeclTree] -> Err ([Named Prop], [String], [[Exts.Pat]])
 readFunc syms pds = do
     rawDecls <- sequence . mapMaybe parseFunc $ pds
     let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
     props0 <- traverse (declToProp syms') rawDecls
     let props = map (fmap $ generalizeExceptProp []) props0
-    return (props, syms')
+        pats = [ps | (_, ps, _) <- rawDecls]
+--        alts = zip 
+--            [pats | (_, pats, _) <- rawDecls] 
+--            [rhs | Named _ (Prop _ rhs) <- props]
+    return (props, syms', pats)
   where
 
     declToProp :: [String] -> (String, [Exts.Pat], Exts.Exp) -> Err (Named Prop)
@@ -578,24 +582,25 @@ readFunc syms pds = do
 
 defId = FunDef "id x = x"
 defPLit = FunDef "f 1 = 2"
+defApp = FunDef "app x xs = xs ++ [x]"
 dc = defaultConsts
 
-readFuncTyped syms pds = do
-    rawDecls <- sequence . mapMaybe parseFunc $ pds
-    let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
-
-    return rawDecls
-    where
-
-        parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
-            case P.parseDecl s of
-                P.ParseOk (Exts.FunBind [Exts.Match name pat (Exts.UnGuardedRhs rhs) Nothing])
-                    -> Right (translateName name, pat, rhs)
-                P.ParseOk (Exts.FunBind [Exts.InfixMatch pat0 name pat (Exts.UnGuardedRhs rhs) Nothing])
-                    -> Right (translateName name, pat0 : pat, rhs)
-                P.ParseOk _ -> errStr "Invalid function definition."
-                f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
-        parseFunc _ = Nothing
+--readFuncTyped syms pds = do
+--    rawDecls <- sequence . mapMaybe parseFunc $ pds
+--    let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
+--
+--    return rawDecls
+--    where
+--
+--        parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
+--            case P.parseDecl s of
+--                P.ParseOk (Exts.FunBind [Exts.Match name pat (Exts.UnGuardedRhs rhs) Nothing])
+--                    -> Right (translateName name, pat, rhs)
+--                P.ParseOk (Exts.FunBind [Exts.InfixMatch pat0 name pat (Exts.UnGuardedRhs rhs) Nothing])
+--                    -> Right (translateName name, pat0 : pat, rhs)
+--                P.ParseOk _ -> errStr "Invalid function definition."
+--                f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
+--        parseFunc _ = Nothing
 
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]

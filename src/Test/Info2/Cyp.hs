@@ -47,7 +47,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     mResult <- eitherToErr $ Parsec.parse cthyParser path content
     dts <- readDataType mResult
     syms <- fmap (defaultConsts ++) $ readSym mResult
-    (fundefs, consts) <- readFunc syms mResult
+    (fundefs, consts, _) <- readFunc syms mResult
     axs <- readAxiom consts mResult
     gls <- readGoal consts mResult
     return $ Env { datatypes = dts ++ defaultDataTypes, axioms = fundefs ++ axs,
