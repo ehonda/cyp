@@ -22,8 +22,16 @@ type FunAlts = Named [Alt]
 inferFunctionTypes dts fs = runTI $ do
     -- Make fresh type vars for tiAlts
     funTVs <- replicateM (length fs) $ newTVar Star
-    let altsTVs = zip (map namedVal fs) funTVs
-    mapM (\(alts, tvs) -> tiAlts [] alts tvs) altsTVs
-    return altsTVs
+    let funsAndTVs = zip fs funTVs
+    mapM (\(Named _ alts, tvs) -> tiAlts dcAssumps alts tvs) funsAndTVs
+    s <- getSubst
+    let funTypes = map 
+            (\(namedFun, tv) -> Named (namedName namedFun) (apply s tv))
+            funsAndTVs
+    return funTypes
+    --return funsAndTVs
     where
         dcons = concat $ map dtConss dts
+        dcAssumps = map 
+            (\(dcName, dcType) -> dcName :>: quantifyAll dcType)
+            dcons

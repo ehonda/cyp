@@ -242,12 +242,19 @@ defF = FunDef "f x = x"
 defH = FunDef "h x y = x y"
 defNot1 = FunDef "not False = True"
 defNot2 = FunDef "not True = False"
+defNotInv = FunDef "not (x:xs) = x"     -- NON EXHAUSTIVE PATTERNS
+defNotX = FunDef "not X = X"
 
 dtBool = DataType 
     { dtName = "Bool"
     , dtConss = [("False", tBool), ("True", tBool)]
     }
     where tBool = TCon (Tycon "Bool" Star)
+
+dtX = DataType {dtName = "X", dtConss = [("X", tX)]}
+    where tX = TCon (Tycon "X" Star)
+
+testDts = defaultDataTypes ++ [dtBool, dtX]
 
 makeAlts funDefs = do
     (_, _, rawFunAlts) <- readFunc defaultConsts funDefs
@@ -260,12 +267,12 @@ makeAlts funDefs = do
         funAlts = zipWith Named names unnamedFunAlts
     return funAlts
     where
-        dcons = concat $ (map dtConss) (defaultDataTypes ++ [dtBool])
+        dcons = concat $ (map dtConss) testDts
         convertNamedRawAlts rawAlts = 
             fmap (traverse (convertRawAlt dcons)) rawAlts
         
 testInferFunTypes funDefs = do
     funAlts <- makeAlts funDefs
-    return $ inferFunctionTypes dts funAlts
-    where
-        dts = defaultDataTypes ++ [dtBool]
+    return $ inferFunctionTypes testDts funAlts
+
+-- fmap (map (fmap prettyType)) $ testInferFunTypes [defF, defNot1]
