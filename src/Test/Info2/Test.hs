@@ -11,6 +11,7 @@ import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Typing.Inference
+import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Util
 import Test.Info2.Cyp
 
@@ -231,3 +232,40 @@ testDtAndFunBool = do
         consToAssump (name, t) = name :>: quantify (tv t) t
 
 testFunPretty = fmap (map prettyType) $ fmap tiRunAndSub testDtAndFunBool
+
+
+-- TEST INFER FUNCTION TYPES
+----------------------------------------------------------------
+
+defF = FunDef "f x = x"
+--defG = FunDef "g (x:xs) = x"
+defH = FunDef "h x y = x y"
+defNot1 = FunDef "not False = True"
+defNot2 = FunDef "not True = False"
+
+dtBool = DataType 
+    { dtName = "Bool"
+    , dtConss = [("False", tBool), ("True", tBool)]
+    }
+    where tBool = TCon (Tycon "Bool" Star)
+
+makeAlts funDefs = do
+    (_, _, rawFunAlts) <- readFunc defaultConsts funDefs
+    --funAlts <- map (fmap (traverse (convertRawAlt dcons))) rawFunAlts
+    --let funAlts = map (fmap id) rawFunAlts
+
+    -- Clunky, there should be a better way to do this
+    unnamedFunAlts <- traverse (namedVal . convertNamedRawAlts) rawFunAlts
+    let names = map namedName rawFunAlts
+        funAlts = zipWith Named names unnamedFunAlts
+    return funAlts
+    where
+        dcons = concat $ (map dtConss) (defaultDataTypes ++ [dtBool])
+        convertNamedRawAlts rawAlts = 
+            fmap (traverse (convertRawAlt dcons)) rawAlts
+        
+testInferFunTypes funDefs = do
+    funAlts <- makeAlts funDefs
+    return $ inferFunctionTypes dts funAlts
+    where
+        dts = defaultDataTypes ++ [dtBool]

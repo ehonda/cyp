@@ -17,6 +17,7 @@ module Test.Info2.Cyp.Parser where
 
 import Data.Char
 import Data.Maybe
+import Data.List (nub)
 import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
@@ -528,21 +529,36 @@ readSym = sequence . mapMaybe parseSym
     parseSym _ = Nothing
 
 
--- OLD VERSION
-----------------------------------------
-----------------------------------------
+-- TEST CASES READ FUNC
+-----------------------------------------------------------------------
 
-readFunc :: [String] -> [ParseDeclTree] -> Err ([Named Prop], [String], [[Exts.Pat]])
+defId = FunDef "id x = x"
+defPLit = FunDef "f 1 = 2"
+defApp = FunDef "app x xs = xs ++ [x]"
+dc = defaultConsts
+
+
+
+readFunc :: [String] -> [ParseDeclTree] 
+    -> Err ([Named Prop], [String], [FunRawAlts])
 readFunc syms pds = do
     rawDecls <- sequence . mapMaybe parseFunc $ pds
     let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
     props0 <- traverse (declToProp syms') rawDecls
     let props = map (fmap $ generalizeExceptProp []) props0
-        pats = [ps | (_, ps, _) <- rawDecls]
---        alts = zip 
---            [pats | (_, pats, _) <- rawDecls] 
---            [rhs | Named _ (Prop _ rhs) <- props]
-    return (props, syms', pats)
+        extPats = [ps | (_, ps, _) <- rawDecls]
+        rhss = [rhs | Named _ (Prop _ rhs) <- props]
+        -- PROBLEM: Need to know dcons here, so this should happen elsewhere
+        --          -> in Theory inference -> return named alt with raw pats here,
+        --             convert in inference
+--        cypPats = [map (convertExtsPat dcons)]
+        rawAlts = zip extPats rhss
+        uniqueNames = nub $ [name | Named name _ <- props]
+        collectAlts name = map snd $ filter ((name ==) . namedName . fst) $ 
+            zip props rawAlts
+        namedRawAlts = zip uniqueNames $ map collectAlts uniqueNames
+        funRawAlts = map (\(name, alts) -> Named name alts) namedRawAlts
+    return (props, syms', funRawAlts)
   where
 
     declToProp :: [String] -> (String, [Exts.Pat], Exts.Exp) -> Err (Named Prop)
@@ -575,32 +591,6 @@ readFunc syms pds = do
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
     parseFunc _ = Nothing
-
-
--- TEST CASES READ FUNC
------------------------------------------------------------------------
-
-defId = FunDef "id x = x"
-defPLit = FunDef "f 1 = 2"
-defApp = FunDef "app x xs = xs ++ [x]"
-dc = defaultConsts
-
---readFuncTyped syms pds = do
---    rawDecls <- sequence . mapMaybe parseFunc $ pds
---    let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
---
---    return rawDecls
---    where
---
---        parseFunc (FunDef s) = Just $ errCtxt (text "Parsing function definition" <+> quotes (text s)) $
---            case P.parseDecl s of
---                P.ParseOk (Exts.FunBind [Exts.Match name pat (Exts.UnGuardedRhs rhs) Nothing])
---                    -> Right (translateName name, pat, rhs)
---                P.ParseOk (Exts.FunBind [Exts.InfixMatch pat0 name pat (Exts.UnGuardedRhs rhs) Nothing])
---                    -> Right (translateName name, pat0 : pat, rhs)
---                P.ParseOk _ -> errStr "Invalid function definition."
---                f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
---        parseFunc _ = Nothing
 
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]

@@ -239,6 +239,9 @@ quantify vs t = Forall ks (apply s t) where
     ks = map kind vs'
     s = zip vs' (map TGen [0..])
 
+quantifyAll :: Type -> Scheme
+quantifyAll t = quantify (tv t) t
+
 toScheme :: Type -> Scheme
 toScheme t = Forall [] t
 
@@ -398,6 +401,11 @@ tiRawTerm as (CT.Literal l) = tiLit l
 tiRawTerm as (CT.Free x) = do
     sc <- find x as
     freshInst sc
+
+-- Schematic
+tiRawTerm as (CT.Schematic x) = do
+    sc <- find x as
+    freshInst sc    
     
 -- Const
 tiRawTerm as (CT.Const x) = do
@@ -416,6 +424,7 @@ tiRawTerm as (CT.Application e f) = do
 tiTerm :: Infer CT.Term Type
 tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
 tiTerm as (CT.Free (s, _)) = tiRawTerm as (CT.Free s)
+tiTerm as (CT.Schematic (s, _)) = tiRawTerm as (CT.Schematic s)
 tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
 tiTerm as (CT.Application e f) = do
     te <- tiTerm as e

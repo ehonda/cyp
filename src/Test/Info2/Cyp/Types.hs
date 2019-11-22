@@ -19,28 +19,6 @@ data Env = Env
     }
     deriving Show
 
---data DataType = DataType
---    { dtName :: String
---    , dtConss :: [(String, [TConsArg])]
---    }
---    deriving Show
---
---data DataTypeTyped = DataTypeTyped
---    { dtNameTyped :: String
---    , dtConssTyped :: [(String, Type)]
---    }
---    deriving Show
---
---defaultDataTypes :: [DataType]
---defaultDataTypes = 
---    [ DataType 
---        { dtName = "List"
---        , dtConss = [("[]", []), (":", [TNRec, TRec])] 
---        }
---    ]
-
-
-
 data DataType = DataType
     { dtName :: String
     , dtConss :: [(String, Type)]
@@ -172,6 +150,17 @@ convertExtsPat dcons (Exts.PParen p) = convertExtsPat dcons p
 -- TODO: Better error messages, like in translatePat?
 convertExtsPat _ p = errStr $ "Unsupported pattern type: " ++ show p
 
+
+-- Alt types
+---------------------------------------------------
+
+type RawAlt = ([Exts.Pat], Term)
+type FunRawAlts = Named [RawAlt]    -- A function f and it's alts
+
+convertRawAlt :: [TypedDCon] -> RawAlt -> Err Alt
+convertRawAlt dcons (pats, rhs) = do
+    pats' <- traverse (convertExtsPat dcons) pats
+    return (pats', rhs) 
 
 --------------------------------------------------------
 -- TODO: USE EITHER EXTRACT[Q]NAME OR (FROM TERM.HS)
