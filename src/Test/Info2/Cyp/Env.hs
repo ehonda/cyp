@@ -19,7 +19,14 @@ import Test.Info2.Cyp.Types
 -- Environment to interpret declaration terms in ...
 -- Not a real environment
 declEnv :: Env
-declEnv = Env { datatypes = [], axioms = [], constants = [], fixes = M.empty, goals = [] }
+declEnv = Env 
+  { datatypes = []
+  , functionsAlts = []
+  , axioms = []
+  , constants = []
+  , fixes = M.empty
+  , goals = [] 
+  }
 
 interpretTerm :: Env -> RawTerm -> Term
 interpretTerm env rt = fmap f rt

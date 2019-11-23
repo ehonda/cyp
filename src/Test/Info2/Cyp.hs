@@ -45,13 +45,27 @@ proof (mName, mContent) (sName, sContent) = do
 processMasterFile :: FilePath -> String -> Err Env
 processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     mResult <- eitherToErr $ Parsec.parse cthyParser path content
+    -- Datatypes
     dts <- readDataType mResult
+    let consAs = getConsAssumptions dts
+
+    -- Functions
     syms <- fmap (defaultConsts ++) $ readSym mResult
-    (fundefs, consts, _) <- readFunc syms mResult
+    (fundefs, consts, funsRawAlts) <- readFunc syms mResult
+    funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
+    
+    -- Axioms and Goals
     axs <- readAxiom consts mResult
     gls <- readGoal consts mResult
-    return $ Env { datatypes = dts ++ defaultDataTypes, axioms = fundefs ++ axs,
-        constants = nub $ consts, fixes = M.empty, goals = gls }
+
+    return $ Env 
+        { datatypes = dts ++ defaultDataTypes
+        , functionsAlts = funsAlts
+        , axioms = fundefs ++ axs
+        , constants = nub $ consts
+        , fixes = M.empty
+        , goals = gls 
+        }
 
 processProofFile :: Env -> FilePath -> String -> Err [ParseLemma]
 processProofFile env path content = errCtxtStr "Parsing proof" $

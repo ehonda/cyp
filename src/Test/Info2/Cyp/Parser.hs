@@ -538,27 +538,30 @@ defApp = FunDef "app x xs = xs ++ [x]"
 dc = defaultConsts
 
 
+--type RawAlt = ([Exts.Pat], Term)
+--type FunctionRawAlts = (String, [RawAlt])
 
 readFunc :: [String] -> [ParseDeclTree] 
-    -> Err ([Named Prop], [String], [FunRawAlts])
+    -> Err ([Named Prop], [String], [FunctionRawAlts])
 readFunc syms pds = do
     rawDecls <- sequence . mapMaybe parseFunc $ pds
     let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
     props0 <- traverse (declToProp syms') rawDecls
     let props = map (fmap $ generalizeExceptProp []) props0
+
+        -- Assemble raw alts representation of the functions
+        -- Make ungrouped raw alts
         extPats = [ps | (_, ps, _) <- rawDecls]
         rhss = [rhs | Named _ (Prop _ rhs) <- props]
-        -- PROBLEM: Need to know dcons here, so this should happen elsewhere
-        --          -> in Theory inference -> return named alt with raw pats here,
-        --             convert in inference
---        cypPats = [map (convertExtsPat dcons)]
         rawAlts = zip extPats rhss
-        uniqueNames = nub $ [name | Named name _ <- props]
-        collectAlts name = map snd $ filter ((name ==) . namedName . fst) $ 
-            zip props rawAlts
-        namedRawAlts = zip uniqueNames $ map collectAlts uniqueNames
-        funRawAlts = map (\(name, alts) -> Named name alts) namedRawAlts
-    return (props, syms', funRawAlts)
+
+        -- Group by names
+        names = [name | (name, _, _) <- rawDecls]
+        uniqueNames = nub names
+        collectAlts name = map snd $ filter ((name ==) . fst) $ 
+            zip names rawAlts
+        funsRawAlts = zip uniqueNames $ map collectAlts uniqueNames
+    return (props, syms', funsRawAlts)
   where
 
     declToProp :: [String] -> (String, [Exts.Pat], Exts.Exp) -> Err (Named Prop)

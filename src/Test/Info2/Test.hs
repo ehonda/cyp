@@ -26,6 +26,9 @@ lenPrf = "test-data/pos/length-append/cprf"
 
 wcThy = "test-data/no_unit/wildcard/cthy"
 
+tcThy = "test-data/no_unit/typecheck/cthy"
+tcPrf = "test-data/no_unit/typecheck/cprf"
+
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"
 
@@ -76,6 +79,13 @@ envTheory path = do
     case processMasterFile "thy" thy of
         Right env -> print env
         Left err -> print err
+
+getEnv path = do
+    thy <- readFile path
+    case processMasterFile "thy" thy of
+        Right env -> return env
+        Left _ -> return declEnv
+    
 
 -- Proof file inspection as in processProofFile
 ---------------------------------------------------------------
@@ -256,23 +266,40 @@ dtX = DataType {dtName = "X", dtConss = [("X", tX)]}
 
 testDts = defaultDataTypes ++ [dtBool, dtX]
 
-makeAlts funDefs = do
-    (_, _, rawFunAlts) <- readFunc defaultConsts funDefs
-    --funAlts <- map (fmap (traverse (convertRawAlt dcons))) rawFunAlts
-    --let funAlts = map (fmap id) rawFunAlts
-
-    -- Clunky, there should be a better way to do this
-    unnamedFunAlts <- traverse (namedVal . convertNamedRawAlts) rawFunAlts
-    let names = map namedName rawFunAlts
-        funAlts = zipWith Named names unnamedFunAlts
-    return funAlts
-    where
-        dcons = concat $ (map dtConss) testDts
-        convertNamedRawAlts rawAlts = 
-            fmap (traverse (convertRawAlt dcons)) rawAlts
-        
-testInferFunTypes funDefs = do
-    funAlts <- makeAlts funDefs
-    return $ inferFunctionTypes testDts funAlts
+--makeAlts funDefs = do
+--    (_, _, rawFunAlts) <- readFunc defaultConsts funDefs
+--    --funAlts <- map (fmap (traverse (convertRawAlt dcons))) rawFunAlts
+--    --let funAlts = map (fmap id) rawFunAlts
+--
+--    -- Clunky, there should be a better way to do this
+--    unnamedFunAlts <- traverse (namedVal . convertNamedRawAlts) rawFunAlts
+--    let names = map namedName rawFunAlts
+--        funAlts = zipWith Named names unnamedFunAlts
+--    return funAlts
+--    where
+--        dcons = concat $ (map dtConss) testDts
+--        convertNamedRawAlts rawAlts = 
+--            fmap (traverse (convertRawAlt dcons)) rawAlts
+--        
+--testInferFunTypes funDefs = do
+--    funAlts <- makeAlts funDefs
+--    return $ inferFunctionTypes testDts funAlts
 
 -- fmap (map (fmap prettyType)) $ testInferFunTypes [defF, defNot1]
+
+--testTypeCheckTheory path = do
+--    env <- getEnv path
+--    runTI $ typeCheckTheory env
+    --return as
+    --return $ map prettyAssump as
+
+testTheoryAssumps path = do
+    env <- getEnv path
+    return $ map prettyAssump $ getTheoryAssumps env
+
+--testTypeCheckTheory path = do
+--    env <- getEnv path
+--    liftM $ runTI $ typeCheckTheory env
+--
+--    where
+--        infer env = 

@@ -63,7 +63,12 @@ pair a b = TAp (TAp tTuple2 a) b
 prettyType :: Type -> String
 -- Special conversion for arrow, list and tuple
 prettyType (TAp (TAp arr a) b) | arr == tArrow
-    = concat [prettyType a, " -> ", prettyType b]
+    = concat [prettyA, " -> ", prettyType b]
+    where
+        prettyA = if isFuncType a
+            then concat ["(", prettyType a, ")"]
+            else prettyType a
+
 prettyType (TAp list a) | list == tList
     = concat ["[", prettyType a, "]"]
 prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
@@ -247,11 +252,15 @@ toScheme t = Forall [] t
 
 prettyScheme :: Scheme -> String
 prettyScheme (Forall ks t) = 
-    concat ["forall ", gensComma, ". ", prettyType t] 
+    concat [tvString, prettyType t] 
         where
             gens = take (length ks) $ map TGen [0..]
             prettyGens = map prettyType gens
             gensComma = intercalate ", " prettyGens
+
+            tvString = if not $ null ks
+                then concat ["forall ", gensComma, ". "]
+                else ""
 
 
 -- Examples (CAN BE REMOVED LATER)
@@ -283,6 +292,8 @@ find :: Monad m => Id -> [Assump] -> m Scheme
 find i [] = fail $ "unbound identifier: " ++ i
 find i ((i' :>: sc) : as) = if i == i' then return sc else find i as
 
+prettyAssump :: Assump -> String
+prettyAssump (i :>: sc) = concat [i, " :>: ", prettyScheme sc]
 
 -- SECTION 10 (Type Inference Monad)
 --------------------------------------------------------------

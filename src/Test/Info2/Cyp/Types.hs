@@ -1,7 +1,7 @@
 module Test.Info2.Cyp.Types where
 
 import Control.Monad (liftM, liftM2)
-import Data.List (lookup)
+import qualified Data.List as L (find)
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
@@ -10,8 +10,10 @@ import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Util
 
+-- TODO: Make typed, untyped env?
 data Env = Env
     { datatypes :: [DataType]
+    , functionsAlts :: [FunctionAlts]
     , axioms :: [Named Prop]
     , constants :: [String]
     , fixes :: M.Map String Integer
@@ -122,29 +124,31 @@ toCypType (Exts.TyParen t) = toCypType t
 -- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
 toCypType _ = errStr "Type can not be converted to Cyp-Type"
 
+{- ENv -------------------------------------------------------------}
 
 -- Convert Exts.Pat to our custom Pat. Needs
 -- an environment that contains constructors
 -- and their types, to find the assumps for PCon.
-type TypedDCon = (String, Type)
+--type TypedDCon = (String, Type)
 
-convertExtsPat :: [TypedDCon] -> Exts.Pat -> Err Pat
+convertExtsPat :: [Assump] -> Exts.Pat -> Err Pat
 convertExtsPat _ (Exts.PVar v) = return $ PVar $ extractName v
 convertExtsPat _ (Exts.PLit Exts.Signless l) = return $ PLit l
 
-convertExtsPat dcons (Exts.PInfixApp p1 qName p2) =
-    convertExtsPat dcons (Exts.PApp qName [p1, p2])
+convertExtsPat consAs (Exts.PInfixApp p1 qName p2) =
+    convertExtsPat consAs (Exts.PApp qName [p1, p2])
 
-convertExtsPat dcons (Exts.PApp qName ps) =
-    case lookup dcon dcons of
-        Just dconType -> do
-            pats <- traverse (convertExtsPat dcons) ps
-            return $ PCon (dcon :>: dconScheme) pats
-                where dconScheme = quantify (tv dconType) dconType
-        Nothing -> errStr $ "Data Constructor of unknown Type: " ++ dcon
-    where dcon = extractQName qName
+convertExtsPat consAs (Exts.PApp qName ps) =
+    case L.find (hasName dconName) consAs of
+        Just dconAssump -> do
+            pats <- traverse (convertExtsPat consAs) ps
+            return $ PCon dconAssump pats
+        Nothing -> errStr $ "Data Constructor of unknown Type: " ++ dconName
+    where 
+        dconName = extractQName qName
+        hasName name (i :>: _) = name == i
 
-convertExtsPat dcons (Exts.PParen p) = convertExtsPat dcons p
+convertExtsPat consAs (Exts.PParen p) = convertExtsPat consAs p
 -- TODO: WHAT ABOUT PLIST?
 
 -- TODO: Better error messages, like in translatePat?
@@ -155,12 +159,25 @@ convertExtsPat _ p = errStr $ "Unsupported pattern type: " ++ show p
 ---------------------------------------------------
 
 type RawAlt = ([Exts.Pat], Term)
-type FunRawAlts = Named [RawAlt]    -- A function f and it's alts
+type FunctionRawAlts = (String, [RawAlt])
+type FunctionAlts = (String, [Alt])
 
-convertRawAlt :: [TypedDCon] -> RawAlt -> Err Alt
-convertRawAlt dcons (pats, rhs) = do
-    pats' <- traverse (convertExtsPat dcons) pats
+--type FunRawAlts = Named [RawAlt]    -- A function f and it's alts
+
+convertRawAlt :: [Assump] -> RawAlt -> Err Alt
+convertRawAlt consAs (pats, rhs) = do
+    pats' <- traverse (convertExtsPat consAs) pats
     return (pats', rhs) 
+
+
+getConsAssumptions :: [DataType] -> [Assump]
+getConsAssumptions dts = map (\(n, t) -> n :>: quantifyAll t) dcons
+    where dcons = concat $ map dtConss dts
+
+convertFunctionRawAlts :: [Assump] -> FunctionRawAlts -> Err FunctionAlts
+convertFunctionRawAlts consAs (name, rawAlts) = do
+    alts <- traverse (convertRawAlt consAs) rawAlts
+    return (name, alts)
 
 --------------------------------------------------------
 -- TODO: USE EITHER EXTRACT[Q]NAME OR (FROM TERM.HS)
