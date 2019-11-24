@@ -298,44 +298,44 @@ testDts = defaultDataTypes ++ [dtBool, dtX]
     --return as
     --return $ map prettyAssump as
 
-testTheoryAssumps path = do
-    env <- getEnv path
-    return $ map prettyAssump $ getTheoryAssumps env
+--testTheoryAssumps path = do
+--    env <- getEnv path
+--    return $ map prettyAssump $ getTheoryAssumps env
 
-typeCheckProp' as (Prop lhs rhs) = do
-    -- Tvars need to be created for all Schematics on the lhs
-    let (head, tail) = stripComb lhs
-        strippedLhs = head : tail
-
-        isSchematic (Schematic _) = True
-        isSchematic _ = False
-
-        schematicToAssump (Schematic (x, _)) = do
-            v <- newTVar Star
-            return $ x :>: toScheme v
-
-        schematicsLhs = filter isSchematic strippedLhs
-    
-    asLhs <- traverse schematicToAssump schematicsLhs
-    let as' = as ++ asLhs
-    tLhs <- tiTerm as' lhs
-
-    tRhs <- tiTerm as' rhs
-    unify tLhs tRhs
-    
-    s <- getSubst
-    return (apply s tLhs, apply s tRhs)
-
-
-testTypeCheckProp' path = do
-    env <- getEnv path
-    let as = getTheoryAssumps env
-        props = [p | Named _ p <- axioms env]
-        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
-
-    -- Print props and their types
-    let prettyTypes (t, s) = (prettyType t, prettyType s)
-    mapM_ print $ zip props $ map prettyTypes propTypes
+--typeCheckProp' as (Prop lhs rhs) = do
+--    -- Tvars need to be created for all Schematics on the lhs
+--    let (head, tail) = stripComb lhs
+--        strippedLhs = head : tail
+--
+--        isSchematic (Schematic _) = True
+--        isSchematic _ = False
+--
+--        schematicToAssump (Schematic (x, _)) = do
+--            v <- newTVar Star
+--            return $ x :>: toScheme v
+--
+--        schematicsLhs = filter isSchematic strippedLhs
+--    
+--    asLhs <- traverse schematicToAssump schematicsLhs
+--    let as' = as ++ asLhs
+--    tLhs <- tiTerm as' lhs
+--
+--    tRhs <- tiTerm as' rhs
+--    unify tLhs tRhs
+--    
+--    s <- getSubst
+--    return (apply s tLhs, apply s tRhs)
+--
+--
+--testTypeCheckProp' path = do
+--    env <- getEnv path
+--    let as = getTheoryAssumps env
+--        props = [p | Named _ p <- axioms env]
+--        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
+--
+--    -- Print props and their types
+--    let prettyTypes (t, s) = (prettyType t, prettyType s)
+--    mapM_ print $ zip props $ map prettyTypes propTypes
 
 
         
@@ -357,9 +357,9 @@ testTypeCheckTheory' path = do
     env <- getEnv path
     let as = getTheoryAssumps env
         props = [p | Named _ p <- axioms env]
-        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
+        propTypes = map (\p -> runTI $ typeCheckProp as p) props
         gls = goals env
-        goalTypes = map (\p -> runTI $ typeCheckProp' as p) gls
+        goalTypes = map (\p -> runTI $ typeCheckProp as p) gls
 
     -- Print theory assumptions
     printHeader "THEORY ASSUMPTIONS"

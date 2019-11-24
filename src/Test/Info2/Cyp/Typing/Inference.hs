@@ -200,7 +200,12 @@ mgu (TAp l r) (TAp l' r') = do
 mgu (TVar u) t = varBind u t
 mgu t (TVar u) = varBind u t
 mgu (TCon tc1) (TCon tc2) | tc1 == tc2 = return nullSubst
-mgu t1 t2 = fail "types do not unify"
+mgu t1 t2 = fail $ concat 
+    [ "types do not unify: t = "
+    , prettyType t1
+    , ", s = "
+    , prettyType t2
+    ]
 
 varBind u t 
     | t == TVar u       = return nullSubst

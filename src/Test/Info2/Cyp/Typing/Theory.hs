@@ -6,27 +6,6 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Types
 
---type FunAlts = Named [Alt]
-    
---inferFunctionTypes :: [DataType] -> [FunAlts] -> [Named Type]
---inferFunctionTypes dts fs = runTI $ do
---    -- Make fresh type vars for tiAlts
---    funTVs <- replicateM (length fs) $ newTVar Star
---    let funsAndTVs = zip fs funTVs
---    mapM (\(Named _ alts, tvs) -> tiAlts dcAssumps alts tvs) funsAndTVs
---    s <- getSubst
---    let funTypes = map 
---            (\(namedFun, tv) -> Named (namedName namedFun) (apply s tv))
---            funsAndTVs
---    return funTypes
---    --return funsAndTVs
---    where
---        dcons = concat $ map dtConss dts
---        dcAssumps = map 
---            (\(dcName, dcType) -> dcName :>: quantifyAll dcType)
---            dcons
-
-
 -- Typecheck Theory
 --------------------------------------------------
 
@@ -75,8 +54,29 @@ typeCheckTheory env = do
             axs
         typeCheckGoals = mapM (typeCheckProp as) gls
 
-typeCheckProp :: [Assump] -> Prop -> TI ()
+typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
 typeCheckProp as (Prop lhs rhs) = do
-    tLhs <- tiTerm as lhs
-    tRhs <- tiTerm as rhs
+    -- Tvars need to be created for all Schematics on the lhs
+    let (head, tail) = stripComb lhs
+        strippedLhs = head : tail
+
+        isSchematic (Schematic _) = True
+        isSchematic _ = False
+
+        schematicToAssump (Schematic (x, _)) = do
+            v <- newTVar Star
+            return $ x :>: toScheme v
+
+        schematicsLhs = filter isSchematic strippedLhs
+    
+    -- Unify left and right hand sides types
+    asLhs <- traverse schematicToAssump schematicsLhs
+    let as' = as ++ asLhs
+    tLhs <- tiTerm as' lhs
+
+    tRhs <- tiTerm as' rhs
     unify tLhs tRhs
+    
+    -- Apply subsitution
+    s <- getSubst
+    return (apply s tLhs, apply s tRhs)

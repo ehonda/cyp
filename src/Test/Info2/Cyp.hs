@@ -46,7 +46,7 @@ processMasterFile :: FilePath -> String -> Err Env
 processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     mResult <- eitherToErr $ Parsec.parse cthyParser path content
     -- Datatypes
-    dts <- readDataType mResult
+    dts <- fmap (++ defaultDataTypes) $ readDataType mResult
     let consAs = getConsAssumptions dts
 
     -- Functions
@@ -59,7 +59,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     gls <- readGoal consts mResult
 
     return $ Env 
-        { datatypes = dts ++ defaultDataTypes
+        { datatypes = dts-- ++ defaultDataTypes
         , functionsAlts = funsAlts
         , axioms = fundefs ++ axs
         , constants = nub $ consts

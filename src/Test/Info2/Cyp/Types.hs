@@ -149,7 +149,19 @@ convertExtsPat consAs (Exts.PApp qName ps) =
         hasName name (i :>: _) = name == i
 
 convertExtsPat consAs (Exts.PParen p) = convertExtsPat consAs p
--- TODO: WHAT ABOUT PLIST?
+
+-- PList gets translated into according PCon
+convertExtsPat consAs (Exts.PList []) =
+    convertExtsPat consAs (Exts.PApp nil [])
+    where
+        nil = (Exts.UnQual (Exts.Ident "[]"))
+
+convertExtsPat consAs (Exts.PList (p:ps)) =
+    convertExtsPat consAs (Exts.PInfixApp p cons (Exts.PList ps))
+    where
+        cons = (Exts.UnQual (Exts.Ident ":"))
+
+--    convertExtsPat consAs (Exts.PApp (Exts.UnQual (Exts.Ident ":")) ps)
 
 -- TODO: Better error messages, like in translatePat?
 convertExtsPat _ p = errStr $ "Unsupported pattern type: " ++ show p
@@ -188,6 +200,11 @@ extractName (Exts.Ident s) = s
 extractName (Exts.Symbol s) = s
 
 extractQName (Exts.UnQual n) = extractName n
+-- Special
+extractQName (Exts.Special (Exts.ListCon)) = "[]"
+extractQName (Exts.Special (Exts.Cons)) = ":"
+-- TODO: Handle unitcon etc
+
 --extractQName _ = _
 -- TODO HANDLE QUAl, SPECIAL
 --------------------------------------------------------
