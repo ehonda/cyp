@@ -414,10 +414,11 @@ tiRawTerm as (CT.Free x) = do
     freshInst sc
 
 -- Schematic
+--tiRawTerm as (CT.Schematic x) = newTVar Star
 tiRawTerm as (CT.Schematic x) = do
     sc <- find x as
-    freshInst sc    
-    
+    freshInst sc 
+
 -- Const
 tiRawTerm as (CT.Const x) = do
     sc <- find x as

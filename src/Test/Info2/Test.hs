@@ -26,8 +26,13 @@ lenPrf = "test-data/pos/length-append/cprf"
 
 wcThy = "test-data/no_unit/wildcard/cthy"
 
-tcThy = "test-data/no_unit/typecheck/cthy"
-tcPrf = "test-data/no_unit/typecheck/cprf"
+tcEasyThy = "test-data/no_unit/typecheck/easy/cthy"
+tcEasyPrf = "test-data/no_unit/typecheck/easy/cprf"
+
+tcWrongFunArgThy = "test-data/no_unit/typecheck/wrong_fun_arg/cthy"
+
+tcLengthAppendThy = "test-data/no_unit/typecheck/length-append/cthy"
+tcLengthAppendPrf = "test-data/no_unit/typecheck/length-append/cprf"
 
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"
@@ -297,9 +302,77 @@ testTheoryAssumps path = do
     env <- getEnv path
     return $ map prettyAssump $ getTheoryAssumps env
 
---testTypeCheckTheory path = do
---    env <- getEnv path
---    liftM $ runTI $ typeCheckTheory env
---
---    where
---        infer env = 
+typeCheckProp' as (Prop lhs rhs) = do
+    -- Tvars need to be created for all Schematics on the lhs
+    let (head, tail) = stripComb lhs
+        strippedLhs = head : tail
+
+        isSchematic (Schematic _) = True
+        isSchematic _ = False
+
+        schematicToAssump (Schematic (x, _)) = do
+            v <- newTVar Star
+            return $ x :>: toScheme v
+
+        schematicsLhs = filter isSchematic strippedLhs
+    
+    asLhs <- traverse schematicToAssump schematicsLhs
+    let as' = as ++ asLhs
+    tLhs <- tiTerm as' lhs
+
+    tRhs <- tiTerm as' rhs
+    unify tLhs tRhs
+    
+    s <- getSubst
+    return (apply s tLhs, apply s tRhs)
+
+
+testTypeCheckProp' path = do
+    env <- getEnv path
+    let as = getTheoryAssumps env
+        props = [p | Named _ p <- axioms env]
+        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
+
+    -- Print props and their types
+    let prettyTypes (t, s) = (prettyType t, prettyType s)
+    mapM_ print $ zip props $ map prettyTypes propTypes
+
+
+        
+
+typeCheckTheoryStr env = do
+    typeCheckTheory env
+    return "Typecheck successful"
+
+testTypeCheckTheory path = do
+    env <- getEnv path
+    print $ runTI $ typeCheckTheoryStr env 
+
+
+
+
+
+
+testTypeCheckTheory' path = do
+    env <- getEnv path
+    let as = getTheoryAssumps env
+        props = [p | Named _ p <- axioms env]
+        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
+        gls = goals env
+        goalTypes = map (\p -> runTI $ typeCheckProp' as p) gls
+
+    -- Print theory assumptions
+    printHeader "THEORY ASSUMPTIONS"
+    mapM_ print $ map prettyAssump as
+
+    -- Print axioms and their types
+    printHeader "PROPS AND TYPES"
+    let prettyTypes (t, s) = (prettyType t, prettyType s)
+    mapM_ print $ zip props $ map prettyTypes propTypes
+    
+    -- Print goals and their types
+    printHeader "GOALS AND TYPES"
+    mapM_ print $ zip gls $ map prettyTypes goalTypes
+
+    where
+        printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
