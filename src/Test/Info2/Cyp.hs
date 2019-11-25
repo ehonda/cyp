@@ -48,7 +48,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     -- Datatypes
     dts <- fmap (++ defaultDataTypes) $ readDataType mResult
     --let consAs = getConsAssumptions dts
-    let consAs = (getConsAssumptions dts) ++ defaultConstAssumps
+    let consAs = getConsAssumptions dts
 
     -- Functions
     syms <- fmap (defaultConsts ++) $ readSym mResult
@@ -60,7 +60,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     gls <- readGoal consts mResult
 
     return $ Env 
-        { datatypes = dts-- ++ defaultDataTypes
+        { datatypes = dts
         , functionsAlts = funsAlts
         , axioms = fundefs ++ axs
         , constants = nub $ consts

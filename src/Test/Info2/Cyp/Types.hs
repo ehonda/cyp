@@ -229,8 +229,10 @@ convertRawAlt consAs (pats, rhs) = do
 
 
 getConsAssumptions :: [DataType] -> [Assump]
-getConsAssumptions dts = map (\(n, t) -> n :>: quantifyAll t) dcons
-    where dcons = concat $ map dtConss dts
+getConsAssumptions dts = dconsAs ++ defaultConstAssumps
+    where 
+        dcons = concat $ map dtConss dts
+        dconsAs = map (\(n, t) -> n :>: quantifyAll t) dcons
 
 convertFunctionRawAlts :: [Assump] -> FunctionRawAlts -> Err FunctionAlts
 convertFunctionRawAlts consAs (name, rawAlts) = do

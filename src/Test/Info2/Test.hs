@@ -355,26 +355,31 @@ testDts = defaultDataTypes ++ [dtBool, dtX]
 
 
 
+--testTypeCheckTheory path = do
+--    env <- getEnv path
+--    let as = getTheoryAssumps env
+--        props = [p | Named _ p <- axioms env]
+--        propTypes = map (\p -> runTI $ typeCheckProp as p) props
+--        gls = goals env
+--        goalTypes = map (\p -> runTI $ typeCheckProp as p) gls
+--
+--    -- Print theory assumptions
+--    printHeader "THEORY ASSUMPTIONS"
+--    mapM_ print $ map prettyAssump as
+--
+--    -- Print axioms and their types
+--    printHeader "PROPS AND TYPES"
+--    let prettyTypes (t, s) = (prettyType t, prettyType s)
+--    mapM_ print $ zip props $ map prettyTypes propTypes
+--    
+--    -- Print goals and their types
+--    printHeader "GOALS AND TYPES"
+--    mapM_ print $ zip gls $ map prettyTypes goalTypes
+--
+--    where
+--        printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
+--
+
 testTypeCheckTheory path = do
     env <- getEnv path
-    let as = getTheoryAssumps env
-        props = [p | Named _ p <- axioms env]
-        propTypes = map (\p -> runTI $ typeCheckProp as p) props
-        gls = goals env
-        goalTypes = map (\p -> runTI $ typeCheckProp as p) gls
-
-    -- Print theory assumptions
-    printHeader "THEORY ASSUMPTIONS"
-    mapM_ print $ map prettyAssump as
-
-    -- Print axioms and their types
-    printHeader "PROPS AND TYPES"
-    let prettyTypes (t, s) = (prettyType t, prettyType s)
-    mapM_ print $ zip props $ map prettyTypes propTypes
-    
-    -- Print goals and their types
-    printHeader "GOALS AND TYPES"
-    mapM_ print $ zip gls $ map prettyTypes goalTypes
-
-    where
-        printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
+    printTheoryTypeInfo $ typeCheckTheory env 
