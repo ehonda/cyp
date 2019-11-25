@@ -34,6 +34,8 @@ tcWrongFunArgThy = "test-data/no_unit/typecheck/wrong_fun_arg/cthy"
 tcLengthAppendThy = "test-data/no_unit/typecheck/length-append/cthy"
 tcLengthAppendPrf = "test-data/no_unit/typecheck/length-append/cprf"
 
+tcLengthSimpleThy = "test-data/no_unit/typecheck/length-simple/cthy"
+
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"
 
@@ -340,20 +342,20 @@ testDts = defaultDataTypes ++ [dtBool, dtX]
 
         
 
-typeCheckTheoryStr env = do
-    typeCheckTheory env
-    return "Typecheck successful"
+--typeCheckTheoryStr env = do
+--    typeCheckTheory env
+--    return "Typecheck successful"
+--
+--testTypeCheckTheory path = do
+--    env <- getEnv path
+--    print $ runTI $ typeCheckTheoryStr env 
+
+
+
+
+
 
 testTypeCheckTheory path = do
-    env <- getEnv path
-    print $ runTI $ typeCheckTheoryStr env 
-
-
-
-
-
-
-testTypeCheckTheory' path = do
     env <- getEnv path
     let as = getTheoryAssumps env
         props = [p | Named _ p <- axioms env]

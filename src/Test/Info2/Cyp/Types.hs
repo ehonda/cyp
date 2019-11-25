@@ -39,7 +39,7 @@ defaultDataTypes =
     ]
     where
         tvarA = TVar (Tyvar "a" Star)
-        tListA = TAp (TCon (Tycon "List" Star)) tvarA
+        tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) tvarA
 
 data Named a = Named String a
     deriving Show
@@ -92,7 +92,11 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         processDCon tvs tyname (Exts.QualConDecl _ _ (Exts.ConDecl name targs)) = do
             cargs <- mapM toCypType targs
             checkForUnbounds tvs cargs
-            let tcon = TCon $ Tycon tyname Star 
+            let -- The kind of the type constructor is 
+                --  * -> ... -> *   with |tv| arrows
+                -- e.g. :k (T a b) = * -> * > *
+                tcKind = foldr Kfun Star $ replicate (length tvs) Star
+                tcon = TCon $ Tycon tyname tcKind 
                 dtype = foldl TAp tcon tvs
                 conType = foldr fn dtype cargs
             return (extractName name, conType)
@@ -119,7 +123,18 @@ toCypDataType _ = errStr "Invalid data declaration."
 toCypType :: Exts.Type -> Err Type
 toCypType (Exts.TyVar name) = return $ TVar $ Tyvar (extractName name) Star
 toCypType (Exts.TyCon qname) = return $ TCon $ Tycon (extractQName qname) Star
-toCypType (Exts.TyApp tc arg) = liftM2 TAp (toCypType tc) (toCypType arg)
+
+--toCypType (Exts.TyApp tc arg) = liftM2 TAp (toCypType tc) (toCypType arg)
+toCypType (Exts.TyApp a b) = liftM2 TAp (convertTCAps 1 a) (toCypType b)
+    where
+        convertTCAps depth (Exts.TyCon qname) = 
+            return $ TCon $ Tycon (extractQName qname) $ makeKind depth
+        convertTCAps depth (Exts.TyApp a' b') =
+            liftM2 TAp (convertTCAps (depth + 1) a') (toCypType b')
+
+        makeKind depth = foldr Kfun Star $ replicate depth Star
+
+
 toCypType (Exts.TyParen t) = toCypType t
 -- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
 toCypType _ = errStr "Type can not be converted to Cyp-Type"
@@ -156,10 +171,13 @@ convertExtsPat consAs (Exts.PList []) =
     where
         nil = (Exts.UnQual (Exts.Ident "[]"))
 
-convertExtsPat consAs (Exts.PList (p:ps)) =
-    convertExtsPat consAs (Exts.PInfixApp p cons (Exts.PList ps))
-    where
-        cons = (Exts.UnQual (Exts.Ident ":"))
+-- TODO: HANDLE NON-EMPTY CASE
+-- These are pattern of the form [1, 2, 3] - NOT: (x:xs)
+
+--convertExtsPat consAs (Exts.PList (p:ps)) =
+--    convertExtsPat consAs (Exts.PInfixApp p cons (Exts.PList ps))
+--    where
+--        cons = (Exts.UnQual (Exts.Ident ":"))
 
 --    convertExtsPat consAs (Exts.PApp (Exts.UnQual (Exts.Ident ":")) ps)
 
