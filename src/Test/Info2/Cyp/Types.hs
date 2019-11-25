@@ -41,6 +41,34 @@ defaultDataTypes =
         tvarA = TVar (Tyvar "a" Star)
         tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) tvarA
 
+
+--defaultConsts = symPropEq : [".", "*", "/", "+", "-", "++", "==", "/="]
+defaultConstAssumps :: [Assump]
+defaultConstAssumps =
+      -- (.) :: (b -> c) -> (a -> b) -> a -> c 
+    [ "." :>: quantifyAll ((b `fn` c) `fn` (a `fn` b) `fn` a `fn` c)
+      -- BinOps without typeclasses are all :: a -> a -> a
+      --    -> Missing constraints like Num a, Fractional a
+    , "*" :>: scBinOp
+    , "/" :>: scBinOp
+    , "+" :>: scBinOp
+    , "-" :>: scBinOp
+      -- (++) :: [a] -> [a] -> [a]
+    , "++" :>: quantifyAll (tListA `fn` tListA `fn` tListA)
+      -- The comparison operators miss the Eq a constraint
+      -- TODO: Should bool be default datatype?
+    , "==" :>: quantifyAll (a `fn` a `fn` tBool)
+    , "/=" :>: quantifyAll (a `fn` a `fn` tBool)
+    ]
+    where
+        a = TVar $ Tyvar "a" Star
+        b = TVar $ Tyvar "b" Star
+        c = TVar $ Tyvar "c" Star
+        scBinOp = quantifyAll (a `fn` a `fn` a)
+        -- TODO: Duplication from default datatype
+        tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) a
+        tBool = TCon (Tycon "Bool" Star)
+
 data Named a = Named String a
     deriving Show
 

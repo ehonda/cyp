@@ -207,7 +207,9 @@ generalizeOnlyProp vs = propMap (generalizeOnly vs)
 {- Parsing ----------------------------------------------------------}
 
 defaultConsts :: [String]
-defaultConsts = symPropEq : map (\(Fixity _ _ qName) -> translateQName qName) baseFixities
+--defaultConsts = symPropEq : map (\(Fixity _ _ qName) -> translateQName qName) baseFixities
+defaultConsts = symPropEq : [".", "*", "/", "+", "-", "++", "==", "/="]
+-- TODO: Do we want to allow <, <=, etc. as well?
 
 iparseTermRaw :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
 iparseTermRaw f s = errCtxt (text "Parsing term" <+> quotes (text s)) $
