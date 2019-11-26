@@ -39,6 +39,9 @@ tcLengthSimpleThy = "test-data/no_unit/typecheck/length-simple/cthy"
 ffThy = "test-data/pos/filter-filter/cthy"
 
 tsWrongThy = "test-data/no_unit/typesig/wrong_sig/cthy"
+tsRevRevThy = "test-data/no_unit/typesig/revrev/cthy"
+
+tsDeclsymThy = "test-data/no_unit/typesig/declsym/cthy"
 
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"

@@ -2,6 +2,7 @@ data X = X
 data Y = Y
 
 f :: X -> X
+--f :: Y -> Y
 f Y = Y
 
 goal f Y .=. Y

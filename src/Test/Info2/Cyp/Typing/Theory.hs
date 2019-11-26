@@ -1,6 +1,8 @@
 module Test.Info2.Cyp.Typing.Theory where
 
 import Control.Monad
+import qualified Data.List as L
+import Data.Maybe
 
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
@@ -15,30 +17,46 @@ getTheoryAssumps env =
     in consAs ++ funAs
     where
         getFunAs consAs env = runTI $ do
-            -- 
+            -- Prepare function types for inference. If no type is
+            -- specified, the type will be inferred with a new tvar
+            --
+            -- We can only infer types for functions that have been
+            -- defined as well as declared (FunctionAlts exist),
+            -- assumptions about the types of functions that are not
+            -- declared (no FunctionAlts) are therefore ignored here  
+            funTypes <- mapM expectedType funNames
+            
             -- Make tvars for the types of the functions
-            funsTVs <- replicateM (length funsAlts) $ newTVar Star
+            --funsTVs <- replicateM (length funsAlts) $ newTVar Star
 
             -- Make assumptions (f :>: tv_f), for recursive functions
             -- TODO: REWRITE REST OF FUNCTION TO USE THIS
-            let funAs = zipWith (:>:) 
-                    [name | (name, _) <- funsAlts] $
-                    map toScheme funsTVs
+            let funAs = (typeSignatures env) ++ 
+                    (zipWith (:>:) funNames $ map toScheme funTypes)
 
             -- Typecheck and infer functions
-            mapM (\((_, alts), tv) -> tiAlts (consAs ++ funAs) alts tv) $ 
-                zip funsAlts funsTVs
+            mapM (\((_, alts), t) -> tiAlts (consAs ++ funAs) alts t) $ 
+                zip funsAlts funTypes
 
             -- Substitute and generate assumptions for functions
             s <- getSubst
-            let funTypes = map (apply s) funsTVs
-                funSchemes = map quantifyAll funTypes
+            let funTypes' = map (apply s) funTypes
+                funSchemes = map quantifyAll funTypes'
                 funAs' = zipWith (:>:) 
-                    [name | (name, _) <- funsAlts] 
+                    funNames 
                     funSchemes
-            return funAs'
+            return $ funAs' ++ typeSigs
             where
                 funsAlts = functionsAlts env
+                funNames = map fst funsAlts
+                typeSigs = typeSignatures env
+                
+                expectedType f = case L.find (\(n :>: _) -> n == f) typeSigs of
+                    Just (_ :>: sc) -> freshInst sc
+                    Nothing -> newTVar Star
+                --expectedType f = fromMaybe (newTVar Star) $
+                --    fmap (\(_ :>: sc) -> freshInst sc) $
+                --        find (\(n :>: _) -> n == f) $ typeSignatures env
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
 typeCheckProp as (Prop lhs rhs) = do

@@ -1,4 +1,5 @@
-reverse :: [a] -> [a]
+-- Can't parse this right now because conversion from Exts.Plist is not fully implemented
+--reverse :: [a] -> [a]
 reverse [] = []
 reverse (x:xs) = reverse xs ++ [x]
 

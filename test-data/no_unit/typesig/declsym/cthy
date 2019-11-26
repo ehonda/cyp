@@ -1,0 +1,5 @@
+--declare_sym app
+-- Can't parse this right now
+app :: [a] -> [a] -> [a]
+
+axiom app_snoc: app xs [x] .=. (x:xs)
