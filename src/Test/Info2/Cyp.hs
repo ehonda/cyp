@@ -47,7 +47,6 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     mResult <- eitherToErr $ Parsec.parse cthyParser path content
     -- Datatypes
     dts <- fmap (++ defaultDataTypes) $ readDataType mResult
-    --let consAs = getConsAssumptions dts
     let consAs = getConsAssumptions dts
 
     -- Functions

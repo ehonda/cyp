@@ -166,6 +166,7 @@ toCypType (Exts.TyApp a b) = liftM2 TAp (convertTCAps 1 a) (toCypType b)
 
 
 toCypType (Exts.TyParen t) = toCypType t
+toCypType (Exts.TyFun a b) = fn <$> toCypType a <*> toCypType b
 -- TODO: DO WE NEED TO MATCH MORE CONSTRUCTORS?
 toCypType _ = errStr "Type can not be converted to Cyp-Type"
 

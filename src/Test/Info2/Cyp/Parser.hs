@@ -29,7 +29,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 --import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
-import Test.Info2.Cyp.Typing.Inference (prettyType) -- prettyType ONLY FOR TESTING!
+import Test.Info2.Cyp.Typing.Inference (Assump(..), quantifyAll, prettyType) -- prettyType ONLY FOR TESTING!
 
 data ParseDeclTree
     = DataDecl String
@@ -37,7 +37,7 @@ data ParseDeclTree
     | Axiom String String
     | FunDef String
     | Goal String
-    | TypeSig String String     -- Symbol, Type
+    | TypeSig String
     deriving Show
 
 data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
@@ -170,9 +170,10 @@ funParser = do
 
 typeSigParser :: Parsec [Char] () ParseDeclTree
 typeSigParser = do
+    -- This could be done cleaner
     sym <- trim <$> toDoubleColon
     sig <- trim <$> toEol
-    return $ TypeSig sym sig
+    return $ TypeSig $ concat [sym, " :: ", sig]
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -594,6 +595,29 @@ readFunc syms pds = do
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
     parseFunc _ = Nothing
+
+
+--readTypeSig :: [ParseDeclTree] -> Err [Assump]
+readTypeSig = sequence . mapMaybe parseTypeSig
+    where
+        parseTypeSig (TypeSig s) = Just $ 
+            errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
+                case P.parseDecl s of
+                    -- Type signatures can be specified for several
+                    -- identifiers at a time, e.g:
+                    --      f, g :: X -> X
+                    -- that is the reason syms is a list -> in that
+                    -- case we need to return assumptions for multiple
+                    -- ids from one TypeSig
+                    P.ParseOk (Exts.TypeSig syms t) -> do
+                        t' <- toCypType t
+                        return $ zipWith (:>:) ids $ schemes t'
+                        where
+                            ids = map extractName syms
+                            schemes t = repeat $ quantifyAll t
+                    _ -> errStr "Parse error"
+
+        parseTypeSig _ = Nothing
 
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
