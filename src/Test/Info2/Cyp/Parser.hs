@@ -598,7 +598,7 @@ readFunc syms pds = do
 
 
 --readTypeSig :: [ParseDeclTree] -> Err [Assump]
-readTypeSig = sequence . mapMaybe parseTypeSig
+readTypeSig pdt = fmap concat $ sequence $ mapMaybe parseTypeSig pdt
     where
         parseTypeSig (TypeSig s) = Just $ 
             errCtxt (text "Parsing the type signature" <+> quotes (text s)) $

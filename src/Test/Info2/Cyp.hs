@@ -49,8 +49,13 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     dts <- fmap (++ defaultDataTypes) $ readDataType mResult
     let consAs = getConsAssumptions dts
 
-    -- Functions
+    -- Read user type signatures
+    typeSigs <- readTypeSig mResult
+
+    -- Symbols
     syms <- fmap (defaultConsts ++) $ readSym mResult
+
+    -- Functions
     (fundefs, consts, funsRawAlts) <- readFunc syms mResult
     funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
     
@@ -61,6 +66,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     return $ Env 
         { datatypes = dts
         , functionsAlts = funsAlts
+        , typeSignatures = typeSigs
         , axioms = fundefs ++ axs
         , constants = nub $ consts
         , fixes = M.empty

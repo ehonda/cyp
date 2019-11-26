@@ -22,6 +22,7 @@ declEnv :: Env
 declEnv = Env 
   { datatypes = []
   , functionsAlts = []
+  , typeSignatures = []
   , axioms = []
   , constants = []
   , fixes = M.empty

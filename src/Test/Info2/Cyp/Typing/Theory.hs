@@ -15,6 +15,7 @@ getTheoryAssumps env =
     in consAs ++ funAs
     where
         getFunAs consAs env = runTI $ do
+            -- 
             -- Make tvars for the types of the functions
             funsTVs <- replicateM (length funsAlts) $ newTVar Star
 
@@ -71,20 +72,6 @@ typeCheckProp as (Prop lhs rhs) = do
     -- Apply subsitution
     s <- getSubst
     return (apply s tLhs, apply s tRhs)
-
-
---typeCheckTheory env = do
---    typeCheckAxioms
---    typeCheckGoals
---    where
---        as = getTheoryAssumps env
---        axs = axioms env
---        gls = goals env
---
---        typeCheckAxioms = mapM 
---            (\(Named _ p) -> typeCheckProp as p)
---            axs
---        typeCheckGoals = mapM (typeCheckProp as) gls
 
 data TheoryTypeInfo = TheoryTypeInfo 
     { ttiAssumps :: [Assump]

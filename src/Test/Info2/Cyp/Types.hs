@@ -14,6 +14,7 @@ import Test.Info2.Cyp.Util
 data Env = Env
     { datatypes :: [DataType]
     , functionsAlts :: [FunctionAlts]
+    , typeSignatures :: [Assump]
     , axioms :: [Named Prop]
     , constants :: [String]
     , fixes :: M.Map String Integer
