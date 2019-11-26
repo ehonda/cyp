@@ -29,6 +29,7 @@ module Test.Info2.Cyp.Term
     , substFreeProp
     , substProp
     , symPropEq
+    , symIf
     , symUMinus
     , translateExp
     , translateName
@@ -208,7 +209,7 @@ generalizeOnlyProp vs = propMap (generalizeOnly vs)
 
 defaultConsts :: [String]
 --defaultConsts = symPropEq : map (\(Fixity _ _ qName) -> translateQName qName) baseFixities
-defaultConsts = symPropEq : [".", "*", "/", "+", "-", "++", "==", "/="]
+defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
 -- TODO: Do we want to allow <, <=, etc. as well?
 
 iparseTermRaw :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)

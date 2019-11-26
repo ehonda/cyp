@@ -42,11 +42,13 @@ defaultDataTypes =
         tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) tvarA
 
 
---defaultConsts = symPropEq : [".", "*", "/", "+", "-", "++", "==", "/="]
+--defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
 defaultConstAssumps :: [Assump]
 defaultConstAssumps =
+    [ -- if :: Bool -> a -> a -> a
+      symIf :>: quantifyAll (tBool `fn` a `fn` a `fn` a)
       -- (.) :: (b -> c) -> (a -> b) -> a -> c 
-    [ "." :>: quantifyAll ((b `fn` c) `fn` (a `fn` b) `fn` a `fn` c)
+    , "." :>: quantifyAll ((b `fn` c) `fn` (a `fn` b) `fn` a `fn` c)
       -- BinOps without typeclasses are all :: a -> a -> a
       --    -> Missing constraints like Num a, Fractional a
     , "*" :>: scBinOp

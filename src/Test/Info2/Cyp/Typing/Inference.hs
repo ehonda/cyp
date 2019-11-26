@@ -490,20 +490,6 @@ t5 = runTI $ tiRawTerm ["x" :>: (toScheme tInt), "y" :>: (toScheme tInt)]
 t6 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
     (CT.Application (CT.Free "f") (CT.Free "x"))
 
--- Apptest
---appAs = ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
---appApp = (CT.Application (CT.Free "f") (CT.Free "x"))
---
---appTest as (CT.Application e f) = do
---    te <- tiRawTerm as e
---    tf <- tiRawTerm as f
---    t <- newTVar Star
---    unify (tf `fn` t) te
---    getSubst
---
---testApp = runTI $ appTest appAs appApp
-
-
 -- Show Substition
 
 showSub as t = do

@@ -36,6 +36,8 @@ tcLengthAppendPrf = "test-data/no_unit/typecheck/length-append/cprf"
 
 tcLengthSimpleThy = "test-data/no_unit/typecheck/length-simple/cthy"
 
+ffThy = "test-data/pos/filter-filter/cthy"
+
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"
 
