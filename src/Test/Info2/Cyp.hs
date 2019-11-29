@@ -35,6 +35,7 @@ proof :: (String, String) -> (String, String) -> Err ()
 proof (mName, mContent) (sName, sContent) = do
     env <- processMasterFile mName mContent
     typeCheckTheory env
+    
     lemmaStmts <- processProofFile env sName sContent
     results <- checkProofs env lemmaStmts
     case filter (not . contained results) $ goals env of

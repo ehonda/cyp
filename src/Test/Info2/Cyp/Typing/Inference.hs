@@ -1,13 +1,14 @@
 module Test.Info2.Cyp.Typing.Inference where
 
+import Prelude hiding ((<>))
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
-import Data.Functor.Identity -- REMOVE AFTER REFACTOR
+import Data.Maybe (fromMaybe)
 import Data.List (union, nub, intersect, intercalate)
-import Text.PrettyPrint (Doc, text)
+import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
 
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
@@ -101,13 +102,10 @@ prettyType (TGen i) = concat ["v", show i]
 -- and therefore return ([], t)
 decomposeFuncType :: Type -> ([Type], Type)
 decomposeFuncType t@(TAp (TAp _ a) b)
-    | isFuncType t = 
-        let (rest, target) = if isFuncType b
-            then decomposeFuncType b
-            else ([], b)
-        in (a : rest, target)
-    | otherwise = ([], t)
-decomposeFuncType t = ([], t)
+    | isFuncType t = (a : rest, target)
+    where
+        (rest, target) = decomposeFuncType b
+decomposeFuncType t = ([], t)    
 
 
 -- HasKind
@@ -152,9 +150,7 @@ class Types t where
     tv :: t -> [Tyvar]
     
 instance Types Type where
-    apply s (TVar u) = case lookup u s of
-        Just t -> t
-        Nothing -> TVar u
+    apply s (TVar u) = fromMaybe (TVar u) $ lookup u s
     apply s (TAp l r) = TAp (apply s l) (apply s r)
     apply s t = t
     
@@ -171,23 +167,20 @@ infixr 4 @@
 s1 @@ s2 = [(u, apply s1 t) | (u, t) <- s2] ++ s1
 
 -- Error transformer type
-type ErrT = Except Doc   -- TODO: Change String to Doc
+-- TODO: MOVE TO A BETTER PLACE
+type ErrT = Except Doc
 
 merge :: Subst -> Subst -> ErrT Subst
 merge s s' =
     if agree
     then return (s ++ s')
-    else throwE $ text "Merge fails"
+    else throwE $ text "Merge fails" -- TODO: Could show where substs disagree
     where
         agree = all subsEqual tvInter
         subsEqual = \u -> apply s (TVar u) == apply s' (TVar u)
         tvInter = map fst s `intersect` map fst s'
 
--- merge :: Subst -> Subst -> Err Subst
---merge :: Monad m => Subst -> Subst -> m Subst
---merge s1 s2 = if agree then return (s1 ++ s2) else fail "merge fails"
---    where agree = all (\v -> apply s1 (TVar v) == apply s2 (TVar v)) (map fst s1 `intersect` map fst s2)
-    
+
 -- Example subs (CAN BE REMOVED LATER)
 ---------------------------------
 
@@ -209,17 +202,6 @@ sub3 = [(tvA, tChar)]
 --------------------------------------------------------------
 --------------------------------------------------------------
 
--- mgu, varBind
---
--- Unifier: sub s, st. for types t1 and t2: 
---              apply s t1 = apply s t2
---
--- mgu: unif u, st. any unif s = s'@@u for some sub s'
----------------------------------
-
---mgu :: Monad m => Type -> Type -> m Subst
---varBind :: Monad m => Tyvar -> Type -> m Subst
-
 mgu :: Type -> Type -> ErrT Subst
 mgu (TAp l r) (TAp l' r') = do 
     s1 <- mgu l l'
@@ -228,39 +210,28 @@ mgu (TAp l r) (TAp l' r') = do
 mgu (TVar u) t = varBind u t
 mgu t (TVar u) = varBind u t
 mgu (TCon tc1) (TCon tc2) | tc1 == tc2 = return nullSubst
---mgu t t' = fail $ concat
-mgu t t' = throwE $ text $ concat 
-    [ "types do not unify: t = "
-    , prettyType t
-    , ", t' = "
-    , prettyType t
-    ]
+mgu t s = throwE $ indent
+    (text "Types do not unify:")
+    ((typeDoc "t" t) $$ (typeDoc "s" s))
 
 varBind :: Tyvar -> Type -> ErrT Subst
 varBind u t 
     | t == TVar u       = return nullSubst
---    | u `elem` tv t     = fail "occurs check fails"
---    | kind u /= kind t  = fail "kinds do not match"
-    | u `elem` tv t     = throwE $ text $ concat 
-        [ "Occurs check fails. u = "
-        , prettyType $ TVar u
-        , " is a type variable in t = "
-        , prettyType t
-        ]
-    | kind u /= kind t  = throwE $ text $ concat
-        [ "Kinds do not match. u = "
-        , prettyType $ TVar u
-        , "is of kind: "
-        , prettyKind $ kind u
-        , ", t = "
-        , prettyType t
-        , "is of kind: "
-        , prettyKind $ kind t
-        ]
+    | u `elem` tv t     = throwE $ indent
+        (text "Occurs check fails. u is a type variable in t:")
+        ((typeDoc "u" (TVar u)) $$ (typeDoc "t" t)) 
+
+    | kind u /= kind t  = 
+        let tU = TVar u
+            uDoc = (nest 5 $ typeDoc "u" tU) $$ (kindDoc "u" tU)
+            tDoc = (nest 5 $ typeDoc "t" t) $$ (kindDoc "t" t)
+        in throwE $ indent
+            (text "Kinds do not match:")
+            (uDoc $$ tDoc)
+
+
     | otherwise         = return (u +-> t)
     
--- match
---
 -- Match: Find sub s, st. apply s t1 = t2
 ---------------------------------
 
@@ -273,26 +244,19 @@ match (TAp l r) (TAp l' r') = do
 
 match (TVar u) t | kind u == kind t = return (u +-> t)
 match (TCon t) (TCon t') | t == t' = return nullSubst
-match t t' = throwE $ text $ concat
-    [ "Types do not match: t = "
-    , prettyType t
-    , ", t' = "
-    , prettyType t'
-    ]
+match t s = throwE $ indent
+    (text "Types do not match:")
+    ((typeDoc "t" t) $$ (typeDoc "s" s)) 
 
+-- TODO: MOVE TO A BETTER PLACE
+typeDoc :: String -> Type -> Doc
+typeDoc name t = eqDoc name $ prettyType t
 
--- match :: Type -> Type -> Err Subst
---match :: Monad m => Type -> Type -> m Subst
---
---match (TAp l r) (TAp l' r') = do
---    sl <- match l l'
---    sr <- match r r'
---    merge sl sr
---    
---match (TVar u) t | kind u == kind t = return (u +-> t)
---match (TCon tc1) (TCon tc2) | tc1 == tc2 = return nullSubst
---match t1 t2 = fail "types do not match"
+kindDoc :: String -> Type -> Doc
+kindDoc name t = (text "kind ") <> (eqDoc name $ prettyType t)
 
+eqDoc :: String -> String -> Doc
+eqDoc lhs rhs = hcat $ map text $ [lhs, " = ", rhs]
 
 -- SECTION 8 (Type Schemes)
 --
@@ -335,17 +299,13 @@ prettyScheme (Forall ks t) =
 -- Examples (CAN BE REMOVED LATER)
 ---------------------------------
 
-tsPair1 = quantify [tvA, tvB] (pair (TVar tvA) (TVar tvB))
-tsPair2 = quantify [tvA, tvB, tvC] (pair (TVar tvA) (TVar tvB))
-
+-- TODO: MOVE THESE SOMEWHERE ELSE (Maybe where the defaults are created)
 -- forall a . [a]
 tsListA = quantify [tvA] $ list $ TVar tvA
 
 -- (:) :: a -> [a] -> [a]
 tsCons = quantify [tvA] $ tA `fn` ((list tA) `fn` (list tA))
     where tA = TVar tvA
-
--- 
 
 -- SECTION 9 (Assumptions)
 --------------------------------------------------------------
@@ -357,9 +317,6 @@ instance Types Assump where
     apply s (i :>: sc) = i :>: (apply s sc)
     tv (i :>: sc) = tv sc
     
---schemeFromAssumps :: Monad m => Id -> [Assump] -> m Scheme
---schemeFromAssumps i [] = fail $ "unbound identifier: " ++ i
---schemeFromAssumps i ((i' :>: sc) : as) = if i == i' then return sc else schemeFromAssumps i as
 schemeFromAssumps :: Id -> [Assump] -> ErrT Scheme
 schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
 schemeFromAssumps i ((i' :>: sc) : as) = 
@@ -376,10 +333,8 @@ type TIState = (Subst, Int)
 nullTIState :: TIState
 nullTIState = (nullSubst, 0)
 
---type TI = StateT TIState Identity
 type TI = StateT TIState ErrT
     
---runTI :: TI a -> ErrT a
 runTI :: TI a -> Err a
 runTI f = runExcept $ evalStateT f nullTIState
 
@@ -475,6 +430,8 @@ tiRawTerm as (CT.Literal l) = tiLit l
         tiLit (Exts.String _) = return tString
         tiLit (Exts.Int _) = return tInt
         tiLit (Exts.Frac _) = return tFrac
+        tiLit l = lift $ throwE $ text $ concat
+            ["Unsupported literal: ", show l]
 
 -- Free
 tiRawTerm as (CT.Free x) = do
@@ -482,7 +439,6 @@ tiRawTerm as (CT.Free x) = do
     freshInst sc
 
 -- Schematic
---tiRawTerm as (CT.Schematic x) = newTVar Star
 tiRawTerm as (CT.Schematic x) = do
     sc <- lift $ schemeFromAssumps x as
     freshInst sc 
@@ -529,64 +485,3 @@ tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
 tiAlts as alts t = do
     ts <- mapM (tiAlt as) alts
     mapM_ (unify t) ts
-
-
---tiTerm as = tiRawTerm as
-
--- TESTS (CAN BE REMOVED LATER)
----------------------------------
-
--- Literal
-t1 = runTI $ tiRawTerm [] (CT.Literal (Exts.Char 'c'))
-
--- Free
-t2 = runTI $ tiRawTerm ["x" :>: (toScheme tInt)] (CT.Free "x")
-t3 = runTI $ tiRawTerm [] (CT.Free "x")   -- Fails
-
--- Const
-t4 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt))]
-    (CT.Const "f")
-
--- Application
-t5 = runTI $ tiRawTerm ["x" :>: (toScheme tInt), "y" :>: (toScheme tInt)] 
-    (CT.Application (CT.Free "x") (CT.Free "y"))     -- Fails
-t6 = runTI $ tiRawTerm ["f" :>: (toScheme (tInt `fn` tInt)), "x" :>: (toScheme tInt)]
-    (CT.Application (CT.Free "f") (CT.Free "x"))
-
--- Show Substition
-
-showSub as t = do
-    tiRawTerm as t
-    getSubst
-
-runAndSub as t = runTI $ f as t where
-    f = \as t -> do
-        ti <- tiRawTerm as t
-        s <- getSubst
-        return $ apply s ti
-
-runAndSubPat p = runTI $ f p where
-    f = \p -> do
-        (as, t) <- tiPat p
-        s <- getSubst
-        return (as, apply s t)
-
-
--- Trivial theory test
-
-trivAs1 = 
-    [":" :>: tsCons
-    , "z" :>: (toScheme tInt)
-    , "zs" :>: (toScheme (list tInt))]
-
-trivTerm1 = CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Free "zs")
-
--- z : zs with expicit types (ie Int and [Int])
-ttriv1 = runTI $ tiRawTerm 
-    [":" :>: tsCons
-    , "z" :>: (toScheme tInt)
-    , "zs" :>: (toScheme (list tInt))] $ 
-        CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Free "zs")
-
-ttriv2 = runTI $ tiRawTerm [] $
-    CT.Application (CT.Application (CT.Const "++") (CT.Free "zs")) (CT.Application (CT.Application (CT.Const ":") (CT.Free "z")) (CT.Const "[]"))
