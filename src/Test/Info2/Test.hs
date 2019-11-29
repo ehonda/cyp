@@ -255,7 +255,7 @@ testDtAndFunBool = do
 --        consToScheme (name, t) = name :>: toScheme t
         consToAssump (name, t) = name :>: quantify (tv t) t
 
-testFunPretty = fmap (map prettyType) $ fmap tiRunAndSub testDtAndFunBool
+--testFunPretty = fmap (map prettyType) $ fmap tiRunAndSub testDtAndFunBool
 
 
 -- TEST INFER FUNCTION TYPES
@@ -280,113 +280,12 @@ dtX = DataType {dtName = "X", dtConss = [("X", tX)]}
 
 testDts = defaultDataTypes ++ [dtBool, dtX]
 
---makeAlts funDefs = do
---    (_, _, rawFunAlts) <- readFunc defaultConsts funDefs
---    --funAlts <- map (fmap (traverse (convertRawAlt dcons))) rawFunAlts
---    --let funAlts = map (fmap id) rawFunAlts
---
---    -- Clunky, there should be a better way to do this
---    unnamedFunAlts <- traverse (namedVal . convertNamedRawAlts) rawFunAlts
---    let names = map namedName rawFunAlts
---        funAlts = zipWith Named names unnamedFunAlts
---    return funAlts
---    where
---        dcons = concat $ (map dtConss) testDts
---        convertNamedRawAlts rawAlts = 
---            fmap (traverse (convertRawAlt dcons)) rawAlts
---        
---testInferFunTypes funDefs = do
---    funAlts <- makeAlts funDefs
---    return $ inferFunctionTypes testDts funAlts
 
--- fmap (map (fmap prettyType)) $ testInferFunTypes [defF, defNot1]
-
---testTypeCheckTheory path = do
---    env <- getEnv path
---    runTI $ typeCheckTheory env
-    --return as
-    --return $ map prettyAssump as
-
---testTheoryAssumps path = do
---    env <- getEnv path
---    return $ map prettyAssump $ getTheoryAssumps env
-
---typeCheckProp' as (Prop lhs rhs) = do
---    -- Tvars need to be created for all Schematics on the lhs
---    let (head, tail) = stripComb lhs
---        strippedLhs = head : tail
---
---        isSchematic (Schematic _) = True
---        isSchematic _ = False
---
---        schematicToAssump (Schematic (x, _)) = do
---            v <- newTVar Star
---            return $ x :>: toScheme v
---
---        schematicsLhs = filter isSchematic strippedLhs
---    
---    asLhs <- traverse schematicToAssump schematicsLhs
---    let as' = as ++ asLhs
---    tLhs <- tiTerm as' lhs
---
---    tRhs <- tiTerm as' rhs
---    unify tLhs tRhs
---    
---    s <- getSubst
---    return (apply s tLhs, apply s tRhs)
---
---
---testTypeCheckProp' path = do
---    env <- getEnv path
---    let as = getTheoryAssumps env
---        props = [p | Named _ p <- axioms env]
---        propTypes = map (\p -> runTI $ typeCheckProp' as p) props
---
---    -- Print props and their types
---    let prettyTypes (t, s) = (prettyType t, prettyType s)
---    mapM_ print $ zip props $ map prettyTypes propTypes
-
-
-        
-
---typeCheckTheoryStr env = do
---    typeCheckTheory env
---    return "Typecheck successful"
---
---testTypeCheckTheory path = do
---    env <- getEnv path
---    print $ runTI $ typeCheckTheoryStr env 
-
-
-
-
-
-
---testTypeCheckTheory path = do
---    env <- getEnv path
---    let as = getTheoryAssumps env
---        props = [p | Named _ p <- axioms env]
---        propTypes = map (\p -> runTI $ typeCheckProp as p) props
---        gls = goals env
---        goalTypes = map (\p -> runTI $ typeCheckProp as p) gls
---
---    -- Print theory assumptions
---    printHeader "THEORY ASSUMPTIONS"
---    mapM_ print $ map prettyAssump as
---
---    -- Print axioms and their types
---    printHeader "PROPS AND TYPES"
---    let prettyTypes (t, s) = (prettyType t, prettyType s)
---    mapM_ print $ zip props $ map prettyTypes propTypes
---    
---    -- Print goals and their types
---    printHeader "GOALS AND TYPES"
---    mapM_ print $ zip gls $ map prettyTypes goalTypes
---
---    where
---        printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
---
+-- TEST THEORY TYPE CHECK
+--------------------------------------------
 
 testTypeCheckTheory path = do
     env <- getEnv path
-    printTheoryTypeInfo $ typeCheckTheory env 
+    case typeCheckTheory env of
+        Right tti -> printTheoryTypeInfo tti
+        Left e -> print e

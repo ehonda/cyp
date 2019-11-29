@@ -7,14 +7,16 @@ import Data.Maybe
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Types
+import Test.Info2.Cyp.Util
 
 -- Typecheck Theory
 --------------------------------------------------
 
-getTheoryAssumps env =
+getTheoryAssumps :: Env -> Err [Assump]
+getTheoryAssumps env = do
     let consAs = getConsAssumptions $ datatypes env
-        funAs = getFunAs consAs env
-    in consAs ++ funAs
+    funAs <- getFunAs consAs env
+    return (consAs ++ funAs)
     where
         getFunAs consAs env = runTI $ do
             -- Prepare function types for inference. If no type is
@@ -118,14 +120,16 @@ printTheoryTypeInfo tinfo = do
     where
         printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
 
-typeCheckTheory env = TheoryTypeInfo
-        { ttiAssumps = as
-        , ttiAxiomsTypes = zip axs $ axiomsTypes
-        , ttiGoalsTypes = zip gls $ goalTypes
-        }
+typeCheckTheory :: Env -> Err TheoryTypeInfo
+typeCheckTheory env = do
+        as <- getTheoryAssumps env
+        axiomsTypes <- mapM (\p -> runTI $ typeCheckProp as p) axs
+        goalTypes <- mapM (\p -> runTI $ typeCheckProp as p) gls
+        return $ TheoryTypeInfo
+            { ttiAssumps = as
+            , ttiAxiomsTypes = zip axs $ axiomsTypes
+            , ttiGoalsTypes = zip gls $ goalTypes
+            }
     where
-        as = getTheoryAssumps env
         axs = [a | Named _ a <- axioms env]
-        axiomsTypes = map (\p -> runTI $ typeCheckProp as p) axs
         gls = goals env
-        goalTypes = map (\p -> runTI $ typeCheckProp as p) gls

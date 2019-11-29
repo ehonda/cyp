@@ -22,6 +22,7 @@ import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
+import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Util
 
 proofFile :: FilePath -> FilePath -> IO (Err ())
@@ -33,6 +34,7 @@ proofFile masterFile studentFile = do
 proof :: (String, String) -> (String, String) -> Err ()
 proof (mName, mContent) (sName, sContent) = do
     env <- processMasterFile mName mContent
+    typeCheckTheory env
     lemmaStmts <- processProofFile env sName sContent
     results <- checkProofs env lemmaStmts
     case filter (not . contained results) $ goals env of

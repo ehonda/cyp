@@ -31,6 +31,7 @@ library
     , pretty-show ==1.6.*
     , tagged ==0.8.*
     , tasty ==0.11.*
+    , transformers
 -- This is needed for pretty printing of type constructors in Parser.hs:
     , haskell-src-exts
 
