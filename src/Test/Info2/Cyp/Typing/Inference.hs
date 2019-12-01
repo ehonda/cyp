@@ -12,6 +12,7 @@ import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
 
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
+import qualified Language.Haskell.Exts.Pretty as ExtsPretty
 import qualified Test.Info2.Cyp.Term as CT
 import Test.Info2.Cyp.Util -- Err functionality
 
@@ -341,14 +342,24 @@ runTI f = runExcept $ evalStateT f nullTIState
 getSubst :: TI Subst
 getSubst = gets fst
 
-unify :: Type -> Type -> TI ()
-unify t1 t2 = do
+unifyWithExceptTransform :: Type -> Type -> (Doc -> Doc) -> TI ()
+unifyWithExceptTransform t t' errTransform = do
     s <- getSubst
-    u <- lift $ mgu (apply s t1) (apply s t2)
+    u <- lift $ withExcept errTransform $
+        mgu (apply s t) (apply s t')
     extSubst u
     where
         extSubst :: Subst -> TI ()
         extSubst s' = modify $ \(s, n) -> (s' @@ s, n)
+
+unifyWithErrMsg :: Type -> Type -> Doc -> TI ()
+unifyWithErrMsg t t' errMsg = 
+    unifyWithExceptTransform t t' prependErrMsg
+    where
+        prependErrMsg = indent errMsg
+
+unify :: Type -> Type -> TI ()
+unify t t' = unifyWithExceptTransform t t' id
     
 newTVar :: Kind -> TI Type
 newTVar k = do
@@ -388,7 +399,21 @@ data Pat = PVar Id
     deriving Show
     -- PList?
 
-    
+prettyPat :: Pat -> String
+prettyPat (PVar x) = x
+prettyPat (PLit l) = ExtsPretty.prettyPrint l
+prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
+
+-- TODO: MOVE TO BETTER PLACE
+patDoc :: String -> Pat -> Doc
+patDoc name p = eqDoc name $ prettyPat p
+
+assumpDoc :: Assump -> Doc
+assumpDoc (name :>: sc) = eqDoc name $ prettyScheme sc
+
+captionAndIndentedDocs :: String -> [Doc] -> Doc
+captionAndIndentedDocs cap docs = indent (text cap) $ vcat docs
+
 tiPat :: Pat -> TI ([Assump], Type)
 
 -- Variable pattern
@@ -402,12 +427,20 @@ tiPat (PLit l) = do
     return ([], t)
 
 -- Constructor pattern
-tiPat (PCon (i :>: sc) pats) = do
+tiPat p@(PCon conA@(i :>: sc) pats) = do
     (as, ts) <- tiPats pats
     t' <- newTVar Star
     t <- freshInst sc
-    unify t (foldr fn t' ts)
+    unifyWithErrMsg t (foldr fn t' ts) errMsg
     return (as, t')
+    where
+--        errMsg = text $ concat 
+--            [ "While inferring the type of the constructor pattern "
+--            , prettyPat p
+--            ]
+        errMsg = captionAndIndentedDocs
+            "While inferring the type of a constructor pattern:"
+            [patDoc "p" p, assumpDoc conA]
 
 -- Multiple patterns
 tiPats :: [Pat] -> TI ([Assump], [Type])
