@@ -46,7 +46,7 @@ tsDeclsymThy = "test-data/no_unit/typesig/declsym/cthy"
 cthy base = base ++ "cthy"
 cprf base = base ++ "cprf"
 
-tiFunUnboundCounsThy ="test-data/no_unit/ti-fun/unbound-cons-pat/cthy"
+tiFunUnboundConsThy ="test-data/no_unit/ti-fun/unbound-cons-pat/cthy"
 
 -- Contents of a typical Env, as extracted in processMasterFile
 ---------------------------------------------------------------

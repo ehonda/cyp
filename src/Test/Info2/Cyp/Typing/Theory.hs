@@ -87,6 +87,7 @@ typeCheckProp as (Prop lhs rhs) = do
     tLhs <- tiTerm as' lhs
 
     tRhs <- tiTerm as' rhs
+    -- UNIFY WITH ERR MSG ABOUT TERMS HERE
     unify tLhs tRhs
     
     -- Apply subsitution

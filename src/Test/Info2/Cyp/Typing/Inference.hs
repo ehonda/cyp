@@ -326,6 +326,9 @@ schemeFromAssumps i ((i' :>: sc) : as) =
 prettyAssump :: Assump -> String
 prettyAssump (i :>: sc) = concat [i, " :>: ", prettyScheme sc]
 
+prettyAssump' :: Assump -> String
+prettyAssump' (i :>: sc) = concat [i, " :: ", prettyScheme sc]
+
 -- SECTION 10 (Type Inference Monad)
 --------------------------------------------------------------
 --------------------------------------------------------------
@@ -345,10 +348,17 @@ getSubst = gets fst
 unifyWithExceptTransform :: Type -> Type -> (Doc -> Doc) -> TI ()
 unifyWithExceptTransform t t' errTransform = do
     s <- getSubst
-    u <- lift $ withExcept errTransform $
+    u <- lift $ withExcept (errTransform' s) $
         mgu (apply s t) (apply s t')
     extSubst u
     where
+        expectedActual s = indent
+            (text "While unifying:")
+            (      (typeDoc "expected" (apply s t)) 
+                $$ (typeDoc "actual" (apply s t')))
+
+        errTransform' s = errTransform . (indent (expectedActual s))
+
         extSubst :: Subst -> TI ()
         extSubst s' = modify $ \(s, n) -> (s' @@ s, n)
 
@@ -409,7 +419,8 @@ patDoc :: String -> Pat -> Doc
 patDoc name p = eqDoc name $ prettyPat p
 
 assumpDoc :: Assump -> Doc
-assumpDoc (name :>: sc) = eqDoc name $ prettyScheme sc
+--assumpDoc (name :>: sc) = hcat $ map text $ [name, " :: ", prettyScheme sc]
+assumpDoc a = text $ prettyAssump' a
 
 captionAndIndentedDocs :: String -> [Doc] -> Doc
 captionAndIndentedDocs cap docs = indent (text cap) $ vcat docs
@@ -434,10 +445,6 @@ tiPat p@(PCon conA@(i :>: sc) pats) = do
     unifyWithErrMsg t (foldr fn t' ts) errMsg
     return (as, t')
     where
---        errMsg = text $ concat 
---            [ "While inferring the type of the constructor pattern "
---            , prettyPat p
---            ]
         errMsg = captionAndIndentedDocs
             "While inferring the type of a constructor pattern:"
             [patDoc "p" p, assumpDoc conA]
