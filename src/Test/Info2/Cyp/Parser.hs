@@ -172,8 +172,16 @@ typeSigParser :: Parsec [Char] () ParseDeclTree
 typeSigParser = do
     -- This could be done cleaner
     sym <- trim <$> toDoubleColon
-    sig <- trim <$> toEol
+    sig <- trim <$> toEol1 <?> "Type Signature"
     return $ TypeSig $ concat [sym, " :: ", sig]
+    where
+        end = eof <|> eol <|> commentParser
+        -- Check no new line or comment is beginning
+        invalid = notFollowedBy' end "end of line or comment"
+        valid = (try invalid) >> anyChar
+        
+        toDoubleColon :: Parsec [Char] u String
+        toDoubleColon = manyTill valid doubleColon
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -312,9 +320,6 @@ keywordCase = keyword "Case"
 
 keywordQED :: Parsec [Char] u ()
 keywordQED = keyword "QED"
-
-toDoubleColon :: Parsec [Char] u String
-toDoubleColon = manyTill anyChar doubleColon
 
 toEol :: Parsec [Char] u String
 toEol = manyTill anyChar (eof <|> eol <|> commentParser)

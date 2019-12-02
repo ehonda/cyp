@@ -1,11 +1,14 @@
 data DX = X Int 
+--data DX = X Int Int
 data DY = Y
 
 -- This is correctly rejected
---f (X n m) = Y
+f (X n m) = Y
 
 -- This works but shouldn't. Inferred type is f :: (Int -> DX) -> DY
-f X = Y
+--f X = Y
+
+--f (X n) = Y
 
 g Y = Y
 

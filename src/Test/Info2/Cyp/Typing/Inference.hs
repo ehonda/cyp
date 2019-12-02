@@ -439,15 +439,23 @@ tiPat (PLit l) = do
 
 -- Constructor pattern
 tiPat p@(PCon conA@(i :>: sc) pats) = do
-    (as, ts) <- tiPats pats
-    t' <- newTVar Star
+    -- Check if the right amount of
+    -- argument patterns were provided
     t <- freshInst sc
-    unifyWithErrMsg t (foldr fn t' ts) errMsg
-    return (as, t')
+    if (length (fst (decomposeFuncType t))) /= (length pats)
+    then lift $ throwE errWrongArgNumber
+    else do
+        -- Check if types agree
+        (as, ts) <- tiPats pats
+        t' <- newTVar Star
+        unifyWithErrMsg t (foldr fn t' ts) errMsg
+        return (as, t')
     where
         errMsg = captionAndIndentedDocs
             "While inferring the type of a constructor pattern:"
             [patDoc "p" p, assumpDoc conA]
+
+        errWrongArgNumber = indent errMsg $ text "Wrong number of arguments in p."
 
 -- Multiple patterns
 tiPats :: [Pat] -> TI ([Assump], [Type])
