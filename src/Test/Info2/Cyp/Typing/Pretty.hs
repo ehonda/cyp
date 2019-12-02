@@ -1,0 +1,97 @@
+-- TODO: NEED TO RESTRUCTURE INFERENCE.HS FIRST
+
+--module Test.Info2.Cyp.Typing.Pretty where
+--
+--import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
+--
+--import Test.Info2.Cyp.Typing.Inference
+--
+---- PRETTY PRINT FOR DIFFERENT TYPES
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+--
+---- Kind
+--------------------------------------------------
+--prettyKind :: Kind -> String
+--prettyKind Star = "*"
+--prettyKind (Kfun Star k) = "* -> " ++ prettyKind k
+--prettyKind (Kfun k@(Kfun _ _) k') = concat 
+--    ["(", prettyKind k, ")", prettyKind k']
+--
+---- Type
+--------------------------------------------------
+--prettyType :: Type -> String
+---- Special conversion for arrow, list and tuple
+--prettyType (TAp (TAp arr a) b) | arr == tArrow
+--    = concat [prettyA, " -> ", prettyType b]
+--    where
+--        prettyA = if isFuncType a
+--            then concat ["(", prettyType a, ")"]
+--            else prettyType a
+--
+--prettyType (TAp list a) | list == tList
+--    = concat ["[", prettyType a, "]"]
+--prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
+--    = concat ["(", prettyType a, ", ", prettyType b, ")"]
+---- Regular conversion
+--prettyType (TVar (Tyvar id _)) = id
+--prettyType (TCon (Tycon id _)) = id
+---- TAp on the right has to be parenthesised
+--prettyType (TAp s t@(TAp _ _)) = 
+--    concat [prettyType s, " (", prettyType t, ")"]
+--prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
+--prettyType (TGen i) = concat ["v", show i]
+--
+---- Scheme
+--------------------------------------------------
+--prettyScheme :: Scheme -> String
+--prettyScheme (Forall ks t) = 
+--    concat [tvString, prettyType t] 
+--        where
+--            gens = take (length ks) $ map TGen [0..]
+--            prettyGens = map prettyType gens
+--            gensComma = intercalate ", " prettyGens
+--
+--            tvString = if not $ null ks
+--                then concat ["forall ", gensComma, ". "]
+--                else ""
+--
+---- Assump
+--------------------------------------------------
+--prettyAssump :: Assump -> String
+--prettyAssump (i :>: sc) = concat [i, " :>: ", prettyScheme sc]
+--
+--prettyAssump' :: Assump -> String
+--prettyAssump' (i :>: sc) = concat [i, " :: ", prettyScheme sc]
+--
+---- Pat
+--------------------------------------------------
+--prettyPat :: Pat -> String
+--prettyPat (PVar x) = x
+--prettyPat (PLit l) = ExtsPretty.prettyPrint l
+--prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
+--
+--
+--
+---- DOC FUNCTIONS FOR ERROR SIGNALING
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+--
+--typeDoc :: String -> Type -> Doc
+--typeDoc name t = eqDoc name $ prettyType t
+--
+--kindDoc :: String -> Type -> Doc
+--kindDoc name t = (text "kind ") <> (eqDoc name $ prettyType t)
+--
+--eqDoc :: String -> String -> Doc
+--eqDoc lhs rhs = hcat $ map text $ [lhs, " = ", rhs]
+--
+--patDoc :: String -> Pat -> Doc
+--patDoc name p = eqDoc name $ prettyPat p
+--
+--assumpDoc :: Assump -> Doc
+--assumpDoc a = text $ prettyAssump' a
+--
+--capIndent :: String -> [Doc] -> Doc
+--capIndent cap docs = indent (text cap) $ vcat docs
+--

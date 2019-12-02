@@ -291,3 +291,24 @@ testTypeCheckTheory path = do
     case typeCheckTheory env of
         Right tti -> printTheoryTypeInfo tti
         Left e -> print e
+
+
+
+-- TEST UNIT TEST STUFF
+--------------------------------------------
+
+negConsArgs = "test-data/neg/wrong-conspat-arg-num/"
+negOtherGoal = "test-data/neg/other-goal/"
+
+testNegUnit path = do
+    expFail <- readFile $ path ++ "cout"
+    cthy <- readFile $ path ++ "cthy"
+    cprf <- readFile $ path ++ "cprf"
+
+    return $ testNegUnit' expFail cthy cprf
+
+
+testNegUnit' expFail cthy cprf = do
+    case proof ("thy", cthy) ("prf", cprf) of
+        Left e -> expFail : [render e]
+        _ -> []

@@ -1,0 +1,7 @@
+data DX = X Int 
+data DY = Y
+
+f X = Y
+
+g Y = Y
+goal g Y .=. Y

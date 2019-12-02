@@ -1,0 +1,4 @@
+While inferring the type of a constructor pattern:
+    p = X
+    X :: Int -> DX
+    Wrong number of arguments in p. Expected = 1, Actual = 0.

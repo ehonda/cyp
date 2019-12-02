@@ -1,5 +1,7 @@
 module Test.Info2.Cyp.Typing.Inference where
 
+-- TODO: BREAK UP THIS LARGE MODULE INTO SUB MODULES
+
 import Prelude hiding ((<>))
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
@@ -15,6 +17,7 @@ import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import qualified Language.Haskell.Exts.Pretty as ExtsPretty
 import qualified Test.Info2.Cyp.Term as CT
 import Test.Info2.Cyp.Util -- Err functionality
+--import Test.Info2.Cyp.Typing.Pretty
 
 -- SECTION 4 (TYPES)
 --------------------------------------------------------------
@@ -36,12 +39,6 @@ data Tyvar = Tyvar Id Kind
     deriving (Eq, Show)
 data Tycon = Tycon Id Kind
     deriving (Eq, Show)
-
-prettyKind :: Kind -> String
-prettyKind Star = "*"
-prettyKind (Kfun Star k) = "* -> " ++ prettyKind k
-prettyKind (Kfun k@(Kfun _ _) k') = concat 
-    ["(", prettyKind k, ")", prettyKind k']
 
 -- Example type representations
 ---------------------------------
@@ -74,29 +71,6 @@ list t = TAp tList t
 
 pair :: Type -> Type -> Type
 pair a b = TAp (TAp tTuple2 a) b
-
-prettyType :: Type -> String
--- Special conversion for arrow, list and tuple
-prettyType (TAp (TAp arr a) b) | arr == tArrow
-    = concat [prettyA, " -> ", prettyType b]
-    where
-        prettyA = if isFuncType a
-            then concat ["(", prettyType a, ")"]
-            else prettyType a
-
-prettyType (TAp list a) | list == tList
-    = concat ["[", prettyType a, "]"]
-prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
-    = concat ["(", prettyType a, ", ", prettyType b, ")"]
--- Regular conversion
-prettyType (TVar (Tyvar id _)) = id
-prettyType (TCon (Tycon id _)) = id
--- TAp on the right has to be parenthesised
-prettyType (TAp s t@(TAp _ _)) = 
-    concat [prettyType s, " (", prettyType t, ")"]
-prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
-prettyType (TGen i) = concat ["v", show i]
-
 
 -- Decomposes an n-ary function a -> b -> ... -> r into args and ret type
 -- ([a, b, ...], r) where non-function types t are treated as 0-ary functions
@@ -249,16 +223,6 @@ match t s = throwE $ indent
     (text "Types do not match:")
     ((typeDoc "t" t) $$ (typeDoc "s" s)) 
 
--- TODO: MOVE TO A BETTER PLACE
-typeDoc :: String -> Type -> Doc
-typeDoc name t = eqDoc name $ prettyType t
-
-kindDoc :: String -> Type -> Doc
-kindDoc name t = (text "kind ") <> (eqDoc name $ prettyType t)
-
-eqDoc :: String -> String -> Doc
-eqDoc lhs rhs = hcat $ map text $ [lhs, " = ", rhs]
-
 -- SECTION 8 (Type Schemes)
 --
 --  This is modified and doesn't use qualified types, since
@@ -283,19 +247,6 @@ quantifyAll t = quantify (tv t) t
 
 toScheme :: Type -> Scheme
 toScheme t = Forall [] t
-
-prettyScheme :: Scheme -> String
-prettyScheme (Forall ks t) = 
-    concat [tvString, prettyType t] 
-        where
-            gens = take (length ks) $ map TGen [0..]
-            prettyGens = map prettyType gens
-            gensComma = intercalate ", " prettyGens
-
-            tvString = if not $ null ks
-                then concat ["forall ", gensComma, ". "]
-                else ""
-
 
 -- Examples (CAN BE REMOVED LATER)
 ---------------------------------
@@ -322,12 +273,6 @@ schemeFromAssumps :: Id -> [Assump] -> ErrT Scheme
 schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
 schemeFromAssumps i ((i' :>: sc) : as) = 
     if i == i' then return sc else schemeFromAssumps i as
-
-prettyAssump :: Assump -> String
-prettyAssump (i :>: sc) = concat [i, " :>: ", prettyScheme sc]
-
-prettyAssump' :: Assump -> String
-prettyAssump' (i :>: sc) = concat [i, " :: ", prettyScheme sc]
 
 -- SECTION 10 (Type Inference Monad)
 --------------------------------------------------------------
@@ -409,21 +354,6 @@ data Pat = PVar Id
     deriving Show
     -- PList?
 
-prettyPat :: Pat -> String
-prettyPat (PVar x) = x
-prettyPat (PLit l) = ExtsPretty.prettyPrint l
-prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
-
--- TODO: MOVE TO BETTER PLACE
-patDoc :: String -> Pat -> Doc
-patDoc name p = eqDoc name $ prettyPat p
-
-assumpDoc :: Assump -> Doc
---assumpDoc (name :>: sc) = hcat $ map text $ [name, " :: ", prettyScheme sc]
-assumpDoc a = text $ prettyAssump' a
-
-captionAndIndentedDocs :: String -> [Doc] -> Doc
-captionAndIndentedDocs cap docs = indent (text cap) $ vcat docs
 
 tiPat :: Pat -> TI ([Assump], Type)
 
@@ -442,8 +372,10 @@ tiPat p@(PCon conA@(i :>: sc) pats) = do
     -- Check if the right amount of
     -- argument patterns were provided
     t <- freshInst sc
-    if (length (fst (decomposeFuncType t))) /= (length pats)
-    then lift $ throwE errWrongArgNumber
+    let expArgs = length (fst (decomposeFuncType t))
+        actArgs = length pats
+    if expArgs /= actArgs
+    then lift $ throwE $ errWrongArgNumber expArgs actArgs
     else do
         -- Check if types agree
         (as, ts) <- tiPats pats
@@ -451,11 +383,18 @@ tiPat p@(PCon conA@(i :>: sc) pats) = do
         unifyWithErrMsg t (foldr fn t' ts) errMsg
         return (as, t')
     where
-        errMsg = captionAndIndentedDocs
+        errMsg = capIndent
             "While inferring the type of a constructor pattern:"
             [patDoc "p" p, assumpDoc conA]
 
-        errWrongArgNumber = indent errMsg $ text "Wrong number of arguments in p."
+        errWrongArgNumber exp act = indent errMsg $ 
+            text $ concat 
+                [ "Wrong number of arguments in p. Expected = "
+                , show exp
+                , ", Actual = "
+                , show act
+                , "."
+                ]
 
 -- Multiple patterns
 tiPats :: [Pat] -> TI ([Assump], [Type])
@@ -533,3 +472,97 @@ tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
 tiAlts as alts t = do
     ts <- mapM (tiAlt as) alts
     mapM_ (unify t) ts
+
+
+
+
+
+-- TODO: MOVE THIS INTO OTHER MODULE
+-- PRETTY PRINT FOR DIFFERENT TYPES
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+-- Kind
+------------------------------------------------
+prettyKind :: Kind -> String
+prettyKind Star = "*"
+prettyKind (Kfun Star k) = "* -> " ++ prettyKind k
+prettyKind (Kfun k@(Kfun _ _) k') = concat 
+    ["(", prettyKind k, ")", prettyKind k']
+
+-- Type
+------------------------------------------------
+prettyType :: Type -> String
+-- Special conversion for arrow, list and tuple
+prettyType (TAp (TAp arr a) b) | arr == tArrow
+    = concat [prettyA, " -> ", prettyType b]
+    where
+        prettyA = if isFuncType a
+            then concat ["(", prettyType a, ")"]
+            else prettyType a
+
+prettyType (TAp list a) | list == tList
+    = concat ["[", prettyType a, "]"]
+prettyType (TAp (TAp tuple a) b ) | tuple == tTuple2
+    = concat ["(", prettyType a, ", ", prettyType b, ")"]
+-- Regular conversion
+prettyType (TVar (Tyvar id _)) = id
+prettyType (TCon (Tycon id _)) = id
+-- TAp on the right has to be parenthesised
+prettyType (TAp s t@(TAp _ _)) = 
+    concat [prettyType s, " (", prettyType t, ")"]
+prettyType (TAp s t) = concat [prettyType s, " ", prettyType t]
+prettyType (TGen i) = concat ["v", show i]
+
+-- Scheme
+------------------------------------------------
+prettyScheme :: Scheme -> String
+prettyScheme (Forall ks t) = 
+    concat [tvString, prettyType t] 
+        where
+            gens = take (length ks) $ map TGen [0..]
+            prettyGens = map prettyType gens
+            gensComma = intercalate ", " prettyGens
+
+            tvString = if not $ null ks
+                then concat ["forall ", gensComma, ". "]
+                else ""
+
+-- Assump
+------------------------------------------------
+prettyAssump :: Assump -> String
+prettyAssump (i :>: sc) = concat [i, " :>: ", prettyScheme sc]
+
+prettyAssump' :: Assump -> String
+prettyAssump' (i :>: sc) = concat [i, " :: ", prettyScheme sc]
+
+-- Pat
+------------------------------------------------
+prettyPat :: Pat -> String
+prettyPat (PVar x) = x
+prettyPat (PLit l) = ExtsPretty.prettyPrint l
+prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
+
+
+
+-- DOC FUNCTIONS FOR ERROR SIGNALING
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+typeDoc :: String -> Type -> Doc
+typeDoc name t = eqDoc name $ prettyType t
+
+kindDoc :: String -> Type -> Doc
+kindDoc name t = (text "kind ") <> (eqDoc name $ prettyType t)
+
+eqDoc :: String -> String -> Doc
+eqDoc lhs rhs = hcat $ map text $ [lhs, " = ", rhs]
+
+patDoc :: String -> Pat -> Doc
+patDoc name p = eqDoc name $ prettyPat p
+
+assumpDoc :: Assump -> Doc
+assumpDoc a = text $ prettyAssump' a
+
+capIndent :: String -> [Doc] -> Doc
+capIndent cap docs = indent (text cap) $ vcat docs
