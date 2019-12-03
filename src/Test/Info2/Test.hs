@@ -297,18 +297,34 @@ testTypeCheckTheory path = do
 -- TEST UNIT TEST STUFF
 --------------------------------------------
 
-negConsArgs = "test-data/neg/wrong-conspat-arg-num/"
-negOtherGoal = "test-data/neg/other-goal/"
+--negConsArgs = "test-data/neg/wrong-conspat-arg-num/"
+--negOtherGoal = "test-data/neg/other-goal/"
+--
+--testNegUnit path = do
+--    expFail <- readFile $ path ++ "cout"
+--    cthy <- readFile $ path ++ "cthy"
+--    cprf <- readFile $ path ++ "cprf"
+--
+--    return $ testNegUnit' expFail cthy cprf
+--
+--
+--testNegUnit' expFail cthy cprf = do
+--    case proof ("thy", cthy) ("prf", cprf) of
+--        Left e -> expFail : [render e]
+--        _ -> []
 
-testNegUnit path = do
-    expFail <- readFile $ path ++ "cout"
-    cthy <- readFile $ path ++ "cthy"
-    cprf <- readFile $ path ++ "cprf"
-
-    return $ testNegUnit' expFail cthy cprf
 
 
-testNegUnit' expFail cthy cprf = do
-    case proof ("thy", cthy) ("prf", cprf) of
-        Left e -> expFail : [render e]
-        _ -> []
+
+-- TEST TYPECHECK FUNCTION ALTS
+--------------------------------------------
+
+tcFunEasy = "test-data/no_unit/tc-fun/easy/cthy"
+tcFunConPatPoly = "test-data/no_unit/tc-fun/conpat-on-poly-fun/cthy"
+
+testTCFunctionAlts path = do
+    env <- getEnv path
+    return $ runTI $ typeCheckFunctionsAlts env
+
+prettyIOAssumps :: IO (Err [Assump]) -> IO (Err [String])
+prettyIOAssumps = fmap (fmap (map prettyAssump))

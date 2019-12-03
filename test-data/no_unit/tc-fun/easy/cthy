@@ -1,0 +1,13 @@
+data DX = X
+
+f :: DX -> DX
+f X = X
+
+g a = a
+
+h :: a -> a
+h X = X
+
+p X a = X
+
+goal g X .=. f X

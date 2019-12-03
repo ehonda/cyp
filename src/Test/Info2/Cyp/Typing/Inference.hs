@@ -274,6 +274,17 @@ schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
 schemeFromAssumps i ((i' :>: sc) : as) = 
     if i == i' then return sc else schemeFromAssumps i as
 
+hasName :: Id -> Assump -> Bool
+hasName i (j :>: _) = i == j
+
+nameEq :: Assump -> Assump -> Bool
+nameEq (i :>: _) (j :>: _) = i == j
+
+-- Generalizes an assumption by all-quantifying over its
+-- type variables
+--generalizeAssump :: Assump -> Assump
+--generalizeAssump (i :>: sc) = (i :>: )
+
 -- SECTION 10 (Type Inference Monad)
 --------------------------------------------------------------
 --------------------------------------------------------------

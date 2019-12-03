@@ -1,0 +1,8 @@
+data DX = X
+data DY = Y
+
+h :: a -> a
+h X = X
+h Y = Y
+
+goal h X .=. X
