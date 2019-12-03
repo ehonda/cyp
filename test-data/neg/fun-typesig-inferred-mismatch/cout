@@ -1,0 +1,3 @@
+Inferred type of h is incompatible with its type signature:
+    expected = h :: forall v0. v0 -> v0
+    inferred = h :: DX -> DX

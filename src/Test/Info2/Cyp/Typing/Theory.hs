@@ -1,8 +1,11 @@
 module Test.Info2.Cyp.Typing.Theory where
 
-import Control.Monad (mapM, mapM_)
+import Prelude hiding ((<>))
+import Control.Monad (mapM, mapM_, replicateM)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
 
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
@@ -18,63 +21,67 @@ getTheoryAssumps env = do
     funAs <- runTI $ typeCheckFunctionsAlts env
     return (consAs ++ funAs)
 
+inferFunctionTypes :: Env -> TI [Assump]
+inferFunctionTypes env = do
+    -- Make fresh type variables for the types
+    -- of the functions
+    funTypes <- replicateM (length funNames) $ newTVar Star
 
-typeCheckFunctionsAlts :: Env -> TI [Assump]
-typeCheckFunctionsAlts env = do
-    -- Make type variables for the function types or use
-    -- proved type signature if there is any
-    funTypes <- mapM expectedType funNames
-
-    -- We need assumptions about these function types to be passed
+    -- Make assumptions about these function types to be passed
     -- in to tiAlts, because term type inference on the rhs may
     -- need these e.g. in the recursive function:
     --      length (x:xs) = 1 + length xs
     -- term type inference for the rhs needs to know about length's
-    -- type. The assumptions should be unqualified, if there
-    -- is no type signature for the function i.e.
-    --      g :>: Forall [] v0
-    -- instead of 
-    --      g :>: Forall [Star] (TGen 0)
-    -- If there is a type signature, we use that instead (can
-    -- be qualified)
-    let expSchemes = map toScheme funTypes
-        expAs = zipWith (:>:) funNames expSchemes
-
-        defaultToTypeSig :: Assump -> Assump
-        defaultToTypeSig a = fromMaybe a $ find 
-            (nameEq a) funSigs
-
-        funAs = map defaultToTypeSig expAs
+    -- type. The schemes here are unqualified
+    let funAs = zipWith (:>:) funNames $ map toScheme funTypes
         as = consAs ++ funAs
 
-    -- Typecheck and infer functions
-    mapM (\((_, alts), t) -> tiAlts as alts t) $ 
+    -- Infer function types
+    mapM (\((_, alts), t) -> tiAlts as alts t) $
         zip funAlts funTypes
 
-    -- Apply substitution to funTypes and return
-    -- either the provided type sig or the all-
-    -- quantified inferred type. At this point we can
-    -- quantify over any type variables left, e.g.
+    -- Apply substitution to funTypes and quantify
+    -- over any type variables left, e.g.
     --      g :: v4 -> v4
     -- becomes
     --      g :: forall v0. v0 -> v0
     s <- getSubst
     let subFunTypes = apply s funTypes
         subAs = zipWith (:>:) funNames $ map quantifyAll subFunTypes
-        finalAs = map defaultToTypeSig subAs
-    return finalAs
+    return subAs
     where
         consAs = getConsAssumptions $ datatypes env
-
         funAlts = functionsAlts env
-        funNames = map fst $ functionsAlts env
-        funSigs = typeSignatures env
+        funNames = map fst $ funAlts
 
-        expectedType :: Id -> TI Type
-        expectedType f = 
-            case find (\(n :>: _) -> n == f) funSigs of
-                Just (_ :>: sc) -> freshInst sc
-                Nothing -> newTVar Star
+
+typeCheckFunctionsAlts :: Env -> TI [Assump]
+typeCheckFunctionsAlts env = do
+    -- Infer function types first 
+    inferredFunAs <- inferFunctionTypes env
+
+    -- Check if inferred types agree with provided
+    -- type signatures
+    lift $ mapM_ checkAgainstSig inferredFunAs
+    return inferredFunAs
+    where
+        typeSigs = typeSignatures env
+        
+        checkAgainstSig :: Assump -> ErrT ()
+        checkAgainstSig a = case find (nameEq a) typeSigs of
+            Just sig -> if a /= sig
+                then throwE $ errMsg a sig
+                else return ()
+            Nothing -> return ()
+
+        errMsg :: Assump -> Assump -> Doc
+        errMsg a@(f :>: _) sig = capIndent 
+            (concat 
+                [ "Inferred type of "
+                , f
+                , " is incompatible with its type signature:"])
+            [ (text "expected = ") <> assumpDoc sig
+            , (text "inferred = ") <> assumpDoc a]
 
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)

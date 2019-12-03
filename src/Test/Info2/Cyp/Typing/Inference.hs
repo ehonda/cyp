@@ -263,7 +263,7 @@ tsCons = quantify [tvA] $ tA `fn` ((list tA) `fn` (list tA))
 --------------------------------------------------------------
 --------------------------------------------------------------
 
-data Assump = Id :>: Scheme deriving Show
+data Assump = Id :>: Scheme deriving (Eq, Show)
 
 instance Types Assump where
     apply s (i :>: sc) = i :>: (apply s sc)
@@ -279,11 +279,6 @@ hasName i (j :>: _) = i == j
 
 nameEq :: Assump -> Assump -> Bool
 nameEq (i :>: _) (j :>: _) = i == j
-
--- Generalizes an assumption by all-quantifying over its
--- type variables
---generalizeAssump :: Assump -> Assump
---generalizeAssump (i :>: sc) = (i :>: )
 
 -- SECTION 10 (Type Inference Monad)
 --------------------------------------------------------------
