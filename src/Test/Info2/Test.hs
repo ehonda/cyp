@@ -321,6 +321,7 @@ testTypeCheckTheory path = do
 
 tcFunEasy = "test-data/no_unit/tc-fun/easy/cthy"
 tcFunConPatPoly = "test-data/no_unit/tc-fun/conpat-on-poly-fun/cthy"
+tcFunDouble = "test-data/no_unit/tc-fun/double/cthy"
 
 testTCFunctionAlts path = do
     env <- getEnv path

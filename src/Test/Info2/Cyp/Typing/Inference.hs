@@ -455,12 +455,15 @@ tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
 tiTerm as (CT.Free (s, _)) = tiRawTerm as (CT.Free s)
 tiTerm as (CT.Schematic (s, _)) = tiRawTerm as (CT.Schematic s)
 tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
-tiTerm as (CT.Application e f) = do
+tiTerm as term@(CT.Application e f) = do
     te <- tiTerm as e
     tf <- tiTerm as f
     t <- newTVar Star
-    unify (tf `fn` t) te
+    unifyWithErrMsg (tf `fn` t) te errMsg
     return t
+    where
+        errMsg = (text "While inferring the type of the term ")
+            <> CT.unparseTerm term
 
 
 -- Type inference for Alts
