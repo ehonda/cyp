@@ -329,3 +329,31 @@ testTCFunctionAlts path = do
 
 prettyIOAssumps :: IO (Err [Assump]) -> IO (Err [String])
 prettyIOAssumps = fmap (fmap (map prettyAssump))
+
+-- TI EXPL BINDING
+----------------------------------------
+testExplBinding path = do
+    env <- getEnv path
+    return $ testExplBinding' env
+
+testExplBinding' env = runTI $ 
+    mapM (tiExplBind as) expls
+    where
+        funAlts = functionsAlts env
+        typeSigs = typeSignatures env
+        as = getConsAssumptions $ datatypes env
+
+        expls = zip typeSigs $ map snd funAlts
+
+-- TI IMPL BINDING
+----------------------------------------
+testImplBinding path = do
+    env <- getEnv path
+    return $ testImplBinding' env
+
+testImplBinding' env = runTI $ 
+    tiImplBinds as impls
+    where
+        as = getConsAssumptions $ datatypes env
+
+        impls = functionsAlts env

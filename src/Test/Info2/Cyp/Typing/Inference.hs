@@ -4,12 +4,12 @@ module Test.Info2.Cyp.Typing.Inference where
 
 import Prelude hiding ((<>))
 import Control.Applicative (Applicative(..))
-import Control.Monad (liftM, ap)
+import Control.Monad (liftM, ap, replicateM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
 import Data.Maybe (fromMaybe)
-import Data.List (union, nub, intersect, intercalate)
+import Data.List (union, nub, intersect, intercalate, (\\))
 import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
 
 
@@ -480,11 +480,74 @@ tiAlt as (pats, term) = do
 tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
 tiAlts as alts t = do
     ts <- mapM (tiAlt as) alts
+    -- TODO: UNIFY WITH ERROR MESSAGE
     mapM_ (unify t) ts
 
 
+-- TYPE INFERENCE FOR BINDINGS
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+-- Explicit Bindings (with type signature)
+---------------------------------------------------------
+type ExplicitBinding = (Assump, [Alt])
+
+tiExplBind :: [Assump] -> ExplicitBinding -> TI ()
+tiExplBind as (sig@(i :>: sc), alts) = do
+    -- Instantiate the scheme and check if
+    -- alts agree with that type
+    t <- freshInst sc
+    tiAlts as' alts t
+    s <- getSubst
+
+    -- Check if inferred scheme agrees with
+    -- the provided type signature
+    let t' = apply s t
+        fs = tv $ apply s as'   -- fixed vars
+        gs = (tv t') \\ fs      -- generic vars
+        sc' = quantify gs t'
+    if sc /= sc' 
+    then lift $ throwE $ errMsg (i :>: sc') sig
+    else return ()
+    where
+        as' = sig : as
+
+        errMsg :: Assump -> Assump -> Doc
+        errMsg a@(f :>: _) sig = capIndent 
+            (concat 
+                [ "Inferred type of "
+                , f
+                , " is incompatible with its type signature:"])
+            [ (text "expected = ") <> assumpDoc sig
+            , (text "inferred = ") <> assumpDoc a]
 
 
+-- Implict Bindings (no type signature provided)
+---------------------------------------------------------
+
+type ImplicitBinding = (Id, [Alt])
+
+tiImplBinds :: Infer [ImplicitBinding] [Assump]
+tiImplBinds as binds = do
+    -- Make new tvars and assumptions about
+    -- those tvars (to support polymorphic
+    -- recursions) for all binds
+    funTypes <- replicateM (length binds) $ newTVar Star
+    let ids = map fst binds
+        scs = map toScheme funTypes
+        as' = (zipWith (:>:) ids scs) ++ as
+        funAlts = map snd binds
+
+    -- Infer types and return type schemes
+    mapM (\(alts, t) -> tiAlts as' alts t) $
+        zip funAlts funTypes
+    s <- getSubst
+    let funTypes' = apply s funTypes
+        fs = tv $ apply s as
+        vss = map tv funTypes'
+        gs = foldr1 union vss \\ fs
+        scs' = map (quantify gs) funTypes'
+    return $ zipWith (:>:) ids scs'
 
 -- TODO: MOVE THIS INTO OTHER MODULE
 -- PRETTY PRINT FOR DIFFERENT TYPES
