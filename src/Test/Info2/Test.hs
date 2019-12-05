@@ -356,7 +356,28 @@ testImplBinding' env = runTI $
     where
         --tv = TVar $ Tyvar "a" Star
         --sigD = "d" :>: quantifyAll (tv `fn` tv)
-        as = sigD : (getConsAssumptions $ datatypes env)
-
+        --as = sigD : (getConsAssumptions $ datatypes env)
+        as = getConsAssumptions $ datatypes env
 
         impls = functionsAlts env
+
+-- TI BIND GROUP
+----------------------------------------
+
+-- prettyIOAssumps $ testTIBindGroup tcFunDouble
+
+testTIBindGroup path = do
+    env <- getEnv path
+    return $ testTIBindGroup' env
+
+testTIBindGroup' env = runTI $
+    tiBindGroup as bg
+    where
+        as = getConsAssumptions $ datatypes env
+        funAlts = functionsAlts env
+        --typeSigs = typeSignatures env
+--
+        --expls = zip typeSigs $ map snd funAlts
+        impls = functionsAlts env
+
+        bg = ([], map (\a -> [a]) impls)

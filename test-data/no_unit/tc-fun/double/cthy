@@ -1,6 +1,6 @@
 data N = Z | S N
 
-d :: (a -> a) -> a -> a
+--d :: (a -> a) -> a -> a
 d f x = f (f x)
 
 t x = d d S x
