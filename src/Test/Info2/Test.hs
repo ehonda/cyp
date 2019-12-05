@@ -354,6 +354,9 @@ testImplBinding path = do
 testImplBinding' env = runTI $ 
     tiImplBinds as impls
     where
-        as = getConsAssumptions $ datatypes env
+        --tv = TVar $ Tyvar "a" Star
+        --sigD = "d" :>: quantifyAll (tv `fn` tv)
+        as = sigD : (getConsAssumptions $ datatypes env)
+
 
         impls = functionsAlts env

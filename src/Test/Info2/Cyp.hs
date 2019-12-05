@@ -31,6 +31,16 @@ proofFile masterFile studentFile = do
     sContent <- readFile studentFile
     return $ proof (masterFile, mContent) (studentFile, sContent)
 
+typeCheckTheoryFile :: FilePath -> IO (Err TheoryTypeInfo)
+typeCheckTheoryFile path = do
+    thy <- readFile path
+    return $ tcTheory path thy
+
+tcTheory :: FilePath -> String -> Err TheoryTypeInfo
+tcTheory path content = do
+    env <- processMasterFile path content
+    typeCheckTheory env
+
 proof :: (String, String) -> (String, String) -> Err ()
 proof (mName, mContent) (sName, sContent) = do
     env <- processMasterFile mName mContent

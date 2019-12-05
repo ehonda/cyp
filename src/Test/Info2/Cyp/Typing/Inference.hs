@@ -536,6 +536,7 @@ tiImplBinds as binds = do
     let ids = map fst binds
         scs = map toScheme funTypes
         as' = (zipWith (:>:) ids scs) ++ as
+        --as' = as ++ (zipWith (:>:) ids scs)
         funAlts = map snd binds
 
     -- Infer types and return type schemes
