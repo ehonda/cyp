@@ -10,7 +10,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
 import Data.Maybe (fromMaybe)
 import Data.List (union, nub, intersect, intercalate, (\\))
-import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
+import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest, render)
 
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
@@ -274,6 +274,9 @@ schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
 schemeFromAssumps i ((i' :>: sc) : as) = 
     if i == i' then return sc else schemeFromAssumps i as
 
+assumpName :: Assump -> Id
+assumpName (i :>: _) = i
+
 hasName :: Id -> Assump -> Bool
 hasName i (j :>: _) = i == j
 
@@ -357,7 +360,7 @@ type Infer e t = [Assump] -> e -> TI t
 data Pat = PVar Id
     | PLit Exts.Literal
     | PCon Assump [Pat]
-    deriving Show
+    deriving (Eq, Show)
     -- PList?
 
 
@@ -536,7 +539,6 @@ tiImplBinds as binds = do
     let ids = map fst binds
         scs = map toScheme funTypes
         as' = (zipWith (:>:) ids scs) ++ as
-        --as' = as ++ (zipWith (:>:) ids scs)
         funAlts = map snd binds
 
     -- Infer types and return type schemes
@@ -639,7 +641,39 @@ prettyPat (PVar x) = x
 prettyPat (PLit l) = ExtsPretty.prettyPrint l
 prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
 
+-- Alt
+------------------------------------------------
+prettyAlt :: Alt -> String
+prettyAlt (lhs, rhs) = concat
+    [ intercalate " " $ map prettyPat lhs
+    , " = "
+    , render $ CT.unparseTerm rhs
+    ]
 
+prettyAlts :: [Alt] -> String
+prettyAlts alts = concat
+    [ "[ "
+    , intercalate " " $ map prettyAlt alts
+    , " ]"
+    ]
+
+-- Bindings
+------------------------------------------------
+prettyExplicitBinding :: ExplicitBinding -> String
+prettyExplicitBinding (sig, alts) = concat
+    [ "sig = "
+    , prettyAssump' sig
+    , ", alts = "
+    , prettyAlts alts
+    ]
+
+prettyImplicitBinding :: ImplicitBinding -> String
+prettyImplicitBinding (id, alts) = concat
+    [ "name = "
+    , id
+    , ", alts = "
+    , prettyAlts alts
+    ]
 
 -- DOC FUNCTIONS FOR ERROR SIGNALING
 --------------------------------------------------------------------

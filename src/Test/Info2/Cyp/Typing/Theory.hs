@@ -4,8 +4,15 @@ import Prelude hiding ((<>))
 import Control.Monad (mapM, mapM_, replicateM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
-import Data.List (find)
+import Data.Either (lefts, rights)
+import Data.List (find, nub)
+import qualified Data.List.NonEmpty as NL
+import Data.Maybe (fromMaybe)
 import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
+
+import Algebra.Graph.AdjacencyMap
+import Algebra.Graph.AdjacencyMap.Algorithm
+import qualified Algebra.Graph.NonEmpty.AdjacencyMap as NG
 
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
@@ -20,6 +27,100 @@ getTheoryAssumps env = do
     let consAs = getConsAssumptions $ datatypes env
     funAs <- runTI $ typeCheckFunctionsAlts env
     return (consAs ++ funAs)
+
+
+-- TODO: MOVE TO ANOTHER PLACE?
+--data Binding = Expl ExplicitBinding | Impl ImplicitBinding 
+--    deriving (Eq, Show)
+--
+--prettyBinding :: Binding -> String
+--prettyBinding (Expl b) = prettyExplicitBinding b
+--prettyBinding (Impl b) = prettyImplicitBinding b
+
+toBindings :: [FunctionAlts] -> [Assump] 
+    -> ([ExplicitBinding], [ImplicitBinding])
+toBindings funAlts sigs = (expls, impls)
+    where
+        defaultToImplicit :: FunctionAlts -> 
+            Either ExplicitBinding ImplicitBinding
+        defaultToImplicit f@(id, alts) = fromMaybe (Right f) $
+            fmap (\sig -> Left (sig, alts)) $
+                find (hasName id) sigs
+
+        expls = lefts $ map defaultToImplicit funAlts
+        impls = rights $ map defaultToImplicit funAlts
+
+                
+data DGVertex = Expl Id | Impl Id deriving (Eq, Ord, Show)
+--data DGVertex 
+--    = Expl ExplicitBinding 
+--    | Impl ImplicitBinding 
+--    deriving (Eq, Ord, Show)
+
+type DependencyGraph = AdjacencyMap DGVertex
+
+dependencies :: [Id] -> [Alt] -> [Id]
+dependencies dconNames alts = nub $ concat $ map depList alts
+    where
+        isNotDataCons :: Id -> Bool
+        isNotDataCons x = not $ x `elem` dconNames
+
+        depList :: Alt -> [Id]
+        depList (_, rhs) = filter isNotDataCons $ constSymbols rhs
+
+makeDependencyGraph :: ([ExplicitBinding], [ImplicitBinding]) -> 
+    [Id] -> DependencyGraph
+makeDependencyGraph (expls, impls) dconNames = edges $ explEdges ++ implEdges
+    where
+        toVertex :: Id -> DGVertex
+        toVertex x = fromMaybe (Impl x) $ 
+            fmap (Expl . assumpName) $
+                find (hasName x) $ map fst expls
+
+        makeEdges :: (DGVertex, [Alt]) -> [(DGVertex, DGVertex)]
+        makeEdges (vertex, alts) = zip (repeat vertex) $ 
+            map toVertex $ dependencies dconNames alts                
+
+        explEdges = concat $ map makeEdges $ map toExplAndAlts expls
+            where
+                toExplAndAlts ((i :>: _), alts) = (toVertex i, alts)
+
+        implEdges = concat $ map makeEdges $ map toImplAndAlts impls
+            where
+                toImplAndAlts (i, alts) = (toVertex i, alts)
+
+
+--makeBindGroups :: DependencyGraph -> [BindGroup]
+makeBindGroups graph = groups
+    where
+        -- Since SCC gives an acylcic graph,
+        -- topSort will always succeed
+        sortedSCCs = fromMaybe [] $
+            fmap reverse $ topSort $ scc graph
+
+        isExpl, isImpl :: DGVertex -> Bool
+        isExpl (Expl _) = True
+        isExpl _ = False
+        isImpl = not . isExpl
+
+        -- Convert SCCs to bind groups. We do
+        -- this by simply putting all expls in one list
+        -- and all impls in another, even if a more refined
+        -- decomposition is available, since this implements
+        -- the semantics demanded in the haskell report
+        -- (see also typing haskell in haskell)
+        --toBindGroup :: NG.AdjacencyMap DGVertex -> BindGroup
+        toBindGroup s =
+            -- If either is empty (Nothing), it is natural
+            -- to return []
+            ( fromMaybe [] $ (fmap (NL.toList . NG.vertexList1)) $
+                NG.induce1 isExpl s
+            , fromMaybe [] $ (fmap (NL.toList . NG.vertexList1)) $
+                NG.induce1 isImpl s
+            )
+
+        groups = map toBindGroup sortedSCCs
+
 
 inferFunctionTypes :: Env -> TI [Assump]
 inferFunctionTypes env = do

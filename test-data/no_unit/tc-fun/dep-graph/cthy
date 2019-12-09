@@ -1,0 +1,10 @@
+-- Graph 3
+a x = b x
+b x = c x
+c :: a -> a
+c x = a x
+
+d x = e (a x)
+e x = d (d x)
+
+goal c x .=. x

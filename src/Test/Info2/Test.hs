@@ -380,4 +380,33 @@ testTIBindGroup' env = runTI $
         --expls = zip typeSigs $ map snd funAlts
         impls = functionsAlts env
 
-        bg = ([], map (\a -> [a]) impls)
+        -- succeeds, d in bindgroup before t
+        --bg = ([], map (\a -> [a]) impls)
+
+        -- Fails, all in same bindgroup
+        bg = ([], [impls])
+
+
+
+-- MAKE DEP GRAPH
+----------------------------------------
+
+tcDepGraph3 = "test-data/no_unit/tc-fun/dep-graph/cthy"
+
+testMakeDepGraph path = do
+    env <- getEnv path
+    return $ testMakeDepGraph' env
+
+--testMakeDepGraph' env = depGraph
+testMakeDepGraph' env = bindGroups
+    where
+        funAlts = functionsAlts env
+        sigs = typeSignatures env
+        dconNames = map assumpName $ 
+            getConsAssumptions $ datatypes env
+
+        binds@(expls, impls) = toBindings funAlts sigs
+
+        depGraph = makeDependencyGraph binds dconNames
+
+        bindGroups = makeBindGroups depGraph

@@ -8,6 +8,7 @@ module Test.Info2.Cyp.Term
     , RawProp
     , collectFrees
     , collectFreesProp
+    , constSymbols
     , defaultConsts
     , defaultToFree
     , generalizeExcept
@@ -95,6 +96,19 @@ stripComb term = work (term, [])
 
 listComb :: AbsTerm a -> [AbsTerm a] -> AbsTerm a
 listComb = foldl Application
+
+-- Returns all constant symbols used in a term, as
+-- opposed to stripComb which does not extract them
+-- for nested Apps, e.g. in the term
+--      e (a x) -> App (Const e) (App (Const a) (Free x))
+-- we get from stripComb:
+--      (Const e, [App (Const a) (Free x)])
+-- but we want instead:
+--      [Const e, Const a]
+constSymbols :: AbsTerm a -> [String]
+constSymbols (Const x) = [x]
+constSymbols (Application x y) = constSymbols x ++ constSymbols y
+constSymbols _ = []
 
 mApp :: Monad m => m (AbsTerm a) -> m (AbsTerm a) -> m (AbsTerm a)
 mApp = liftM2 Application
