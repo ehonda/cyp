@@ -51,11 +51,20 @@ toBindings funAlts sigs = (expls, impls)
         impls = rights $ map defaultToImplicit funAlts
 
                 
-data DGVertex = Expl Id | Impl Id deriving (Eq, Ord, Show)
---data DGVertex 
---    = Expl ExplicitBinding 
---    | Impl ImplicitBinding 
---    deriving (Eq, Ord, Show)
+--data DGVertex = Expl Id | Impl Id deriving (Eq, Ord, Show)
+-- TODO: USE EITHER HERE
+data DGVertex 
+    = Expl ExplicitBinding 
+    | Impl ImplicitBinding 
+    deriving (Eq, Ord, Show)
+
+--vertexName :: DGVertex -> Id
+--vertexName (Expl (x :>: _, _)) = x
+--vertexName (Impl (x, _)) = x
+
+vertexAlts :: DGVertex -> [Alt]
+vertexAlts (Expl (_, alts)) = alts
+vertexAlts (Impl (_, alts)) = alts
 
 type DependencyGraph = AdjacencyMap DGVertex
 
@@ -73,21 +82,37 @@ makeDependencyGraph :: ([ExplicitBinding], [ImplicitBinding]) ->
 makeDependencyGraph (expls, impls) dconNames = edges $ explEdges ++ implEdges
     where
         toVertex :: Id -> DGVertex
-        toVertex x = fromMaybe (Impl x) $ 
-            fmap (Expl . assumpName) $
-                find (hasName x) $ map fst expls
-
-        makeEdges :: (DGVertex, [Alt]) -> [(DGVertex, DGVertex)]
-        makeEdges (vertex, alts) = zip (repeat vertex) $ 
-            map toVertex $ dependencies dconNames alts                
-
-        explEdges = concat $ map makeEdges $ map toExplAndAlts expls
+        --toVertex x = fromMaybe (Impl x) $ 
+        --    fmap (Expl . assumpName) $
+        --        find (hasName x) $ map fst expls
+        toVertex x = v
             where
-                toExplAndAlts ((i :>: _), alts) = (toVertex i, alts)
+                mbExpl = find (hasName x . fst) expls
+                mbImpl = find ((x ==) . fst) impls
 
-        implEdges = concat $ map makeEdges $ map toImplAndAlts impls
-            where
-                toImplAndAlts (i, alts) = (toVertex i, alts)
+                -- If x is found neither in expls nor impls,
+                -- its is an unbound identifier, which will be
+                -- noticed later (TODO: UGLY, IS THERE A BETTER WAY?)
+                v = case mbExpl of
+                    Just bind -> Expl bind
+                    Nothing -> fromMaybe (Impl (x, [])) $ fmap Impl mbImpl
+
+        --makeEdges :: (DGVertex, [Alt]) -> [(DGVertex, DGVertex)]
+        --makeEdges (vertex, alts) = zip (repeat vertex) $ 
+        --    map toVertex $ dependencies dconNames alts
+        makeEdges :: DGVertex -> [(DGVertex, DGVertex)]
+        makeEdges v = zip (repeat v) $ map toVertex $ 
+            dependencies dconNames $ vertexAlts v
+
+        explEdges = concat $ map makeEdges $ map Expl expls
+        implEdges = concat $ map makeEdges $ map Impl impls
+        --explEdges = concat $ map makeEdges $ map toExplAndAlts expls
+        --    where
+        --        toExplAndAlts ((i :>: _), alts) = (toVertex i, alts)
+--
+        --implEdges = concat $ map makeEdges $ map toImplAndAlts impls
+        --    where
+        --        toImplAndAlts (i, alts) = (toVertex i, alts)
 
 
 --makeBindGroups :: DependencyGraph -> [BindGroup]
@@ -110,79 +135,96 @@ makeBindGroups graph = groups
         -- the semantics demanded in the haskell report
         -- (see also typing haskell in haskell)
         --toBindGroup :: NG.AdjacencyMap DGVertex -> BindGroup
-        toBindGroup s =
-            -- If either is empty (Nothing), it is natural
-            -- to return []
-            ( fromMaybe [] $ (fmap (NL.toList . NG.vertexList1)) $
-                NG.induce1 isExpl s
-            , fromMaybe [] $ (fmap (NL.toList . NG.vertexList1)) $
-                NG.induce1 isImpl s
-            )
+        toBindGroup s = (expls, [impls])
+            where
+                -- If either is empty (Nothing), it is natural
+                -- to return []
+                explVertices = fromMaybe [] $ 
+                    (fmap (NL.toList . NG.vertexList1)) $
+                    NG.induce1 isExpl s
+
+                implVertices = fromMaybe [] $ 
+                    (fmap (NL.toList . NG.vertexList1)) $
+                    NG.induce1 isImpl s
+
+                toExpl (Expl x) = x
+                toImpl (Impl x) = x
+
+                expls = map toExpl explVertices
+                impls = map toImpl implVertices
 
         groups = map toBindGroup sortedSCCs
 
 
-inferFunctionTypes :: Env -> TI [Assump]
-inferFunctionTypes env = do
-    -- Make fresh type variables for the types
-    -- of the functions
-    funTypes <- replicateM (length funNames) $ newTVar Star
-
-    -- Make assumptions about these function types to be passed
-    -- in to tiAlts, because term type inference on the rhs may
-    -- need these e.g. in the recursive function:
-    --      length (x:xs) = 1 + length xs
-    -- term type inference for the rhs needs to know about length's
-    -- type. The schemes here are unqualified
-    let funAs = zipWith (:>:) funNames $ map toScheme funTypes
-        as = consAs ++ funAs
-
-    -- Infer function types
-    mapM (\((_, alts), t) -> tiAlts as alts t) $
-        zip funAlts funTypes
-
-    -- Apply substitution to funTypes and quantify
-    -- over any type variables left, e.g.
-    --      g :: v4 -> v4
-    -- becomes
-    --      g :: forall v0. v0 -> v0
-    s <- getSubst
-    let subFunTypes = apply s funTypes
-        subAs = zipWith (:>:) funNames $ map quantifyAll subFunTypes
-    return subAs
-    where
-        consAs = getConsAssumptions $ datatypes env
-        funAlts = functionsAlts env
-        funNames = map fst $ funAlts
+--inferFunctionTypes :: Env -> TI [Assump]
+--inferFunctionTypes env = do
+--    -- Make fresh type variables for the types
+--    -- of the functions
+--    funTypes <- replicateM (length funNames) $ newTVar Star
+--
+--    -- Make assumptions about these function types to be passed
+--    -- in to tiAlts, because term type inference on the rhs may
+--    -- need these e.g. in the recursive function:
+--    --      length (x:xs) = 1 + length xs
+--    -- term type inference for the rhs needs to know about length's
+--    -- type. The schemes here are unqualified
+--    let funAs = zipWith (:>:) funNames $ map toScheme funTypes
+--        as = consAs ++ funAs
+--
+--    -- Infer function types
+--    mapM (\((_, alts), t) -> tiAlts as alts t) $
+--        zip funAlts funTypes
+--
+--    -- Apply substitution to funTypes and quantify
+--    -- over any type variables left, e.g.
+--    --      g :: v4 -> v4
+--    -- becomes
+--    --      g :: forall v0. v0 -> v0
+--    s <- getSubst
+--    let subFunTypes = apply s funTypes
+--        subAs = zipWith (:>:) funNames $ map quantifyAll subFunTypes
+--    return subAs
+--    where
+--        consAs = getConsAssumptions $ datatypes env
+--        funAlts = functionsAlts env
+--        funNames = map fst $ funAlts
 
 
 typeCheckFunctionsAlts :: Env -> TI [Assump]
-typeCheckFunctionsAlts env = do
-    -- Infer function types first 
-    inferredFunAs <- inferFunctionTypes env
-
-    -- Check if inferred types agree with provided
-    -- type signatures
-    lift $ mapM_ checkAgainstSig inferredFunAs
-    return inferredFunAs
+typeCheckFunctionsAlts env = tiSeq tiBindGroup dconAs bindGroups
     where
-        typeSigs = typeSignatures env
-        
-        checkAgainstSig :: Assump -> ErrT ()
-        checkAgainstSig a = case find (nameEq a) typeSigs of
-            Just sig -> if a /= sig
-                then throwE $ errMsg a sig
-                else return ()
-            Nothing -> return ()
-
-        errMsg :: Assump -> Assump -> Doc
-        errMsg a@(f :>: _) sig = capIndent 
-            (concat 
-                [ "Inferred type of "
-                , f
-                , " is incompatible with its type signature:"])
-            [ (text "expected = ") <> assumpDoc sig
-            , (text "inferred = ") <> assumpDoc a]
+        expls = explicitBindings env
+        impls = implicitBindings env
+        dconAs = getConsAssumptions $ datatypes env
+        dconNames = map assumpName dconAs
+            
+        depGraph = makeDependencyGraph (expls, impls) dconNames
+        bindGroups = makeBindGroups depGraph
+    ---- Infer function types first 
+    --inferredFunAs <- inferFunctionTypes env
+--
+    ---- Check if inferred types agree with provided
+    ---- type signatures
+    --lift $ mapM_ checkAgainstSig inferredFunAs
+    --return inferredFunAs
+    --where
+    --    typeSigs = typeSignatures env
+    --    
+    --    checkAgainstSig :: Assump -> ErrT ()
+    --    checkAgainstSig a = case find (nameEq a) typeSigs of
+    --        Just sig -> if a /= sig
+    --            then throwE $ errMsg a sig
+    --            else return ()
+    --        Nothing -> return ()
+--
+    --    errMsg :: Assump -> Assump -> Doc
+    --    errMsg a@(f :>: _) sig = capIndent 
+    --        (concat 
+    --            [ "Inferred type of "
+    --            , f
+    --            , " is incompatible with its type signature:"])
+    --        [ (text "expected = ") <> assumpDoc sig
+    --        , (text "inferred = ") <> assumpDoc a]
 
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)

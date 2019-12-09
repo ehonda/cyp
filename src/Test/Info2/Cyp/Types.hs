@@ -15,6 +15,8 @@ data Env = Env
     { datatypes :: [DataType]
     , functionsAlts :: [FunctionAlts]
     , typeSignatures :: [Assump]
+    , explicitBindings :: [ExplicitBinding]
+    , implicitBindings :: [ImplicitBinding]
     , axioms :: [Named Prop]
     , constants :: [String]
     , fixes :: M.Map String Integer

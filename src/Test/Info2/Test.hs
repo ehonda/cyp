@@ -398,7 +398,7 @@ testMakeDepGraph path = do
     return $ testMakeDepGraph' env
 
 --testMakeDepGraph' env = depGraph
-testMakeDepGraph' env = bindGroups
+testMakeDepGraph' env = map prettyBindGroup bindGroups
     where
         funAlts = functionsAlts env
         sigs = typeSignatures env
@@ -410,3 +410,11 @@ testMakeDepGraph' env = bindGroups
         depGraph = makeDependencyGraph binds dconNames
 
         bindGroups = makeBindGroups depGraph
+
+        prettyBindGroup (expls, implss) = (pExpls, pImplss)
+            where
+                prettyExpl (x :>: _, _) = x ++ "*"
+                prettyImpl (x, _) = x
+
+                pExpls = map prettyExpl expls
+                pImplss = map (map prettyImpl) implss

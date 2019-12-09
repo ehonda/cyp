@@ -32,13 +32,13 @@ enumId :: Int -> Id
 enumId n = "v" ++ show n
 
 data Kind = Star | Kfun Kind Kind 
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 data Type = TVar Tyvar | TCon Tycon | TAp Type Type | TGen Int
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 data Tyvar = Tyvar Id Kind
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 data Tycon = Tycon Id Kind
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 -- Example type representations
 ---------------------------------
@@ -230,7 +230,7 @@ match t s = throwE $ indent
 --------------------------------------------------------------
 --------------------------------------------------------------
 
-data Scheme = Forall [Kind] Type deriving (Eq, Show)
+data Scheme = Forall [Kind] Type deriving (Eq, Ord, Show)
 
 instance Types Scheme where
     apply s (Forall ks t) = Forall ks (apply s t)
@@ -263,7 +263,7 @@ tsCons = quantify [tvA] $ tA `fn` ((list tA) `fn` (list tA))
 --------------------------------------------------------------
 --------------------------------------------------------------
 
-data Assump = Id :>: Scheme deriving (Eq, Show)
+data Assump = Id :>: Scheme deriving (Eq, Ord, Show)
 
 instance Types Assump where
     apply s (i :>: sc) = i :>: (apply s sc)
@@ -360,7 +360,7 @@ type Infer e t = [Assump] -> e -> TI t
 data Pat = PVar Id
     | PLit Exts.Literal
     | PCon Assump [Pat]
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
     -- PList?
 
 
