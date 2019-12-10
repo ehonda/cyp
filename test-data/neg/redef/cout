@@ -1,6 +1,8 @@
-While unifying:
-    expected = List v2
-    actual = Int
-    Types do not unify:
-        t = List v2
-        s = Int
+While typechecking the proposition:
+    xs ++ ys .=. 0
+    While unifying:
+        expected = List v2
+        actual = Int
+        Types do not unify:
+            t = List v2
+            s = Int

@@ -21,8 +21,6 @@ import Test.Info2.Cyp.Types
 declEnv :: Env
 declEnv = Env 
   { datatypes = []
-  , functionsAlts = []
-  , typeSignatures = []
   , explicitBindings = []
   , implicitBindings = []
   , axioms = []

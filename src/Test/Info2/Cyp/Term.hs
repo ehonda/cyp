@@ -41,6 +41,7 @@ module Test.Info2.Cyp.Term
     , unparseAbsProp
     , unparseProp
     , unparseRawProp
+    , unparsePropPretty
     , upModeIdx
     , upModeRaw
     )
@@ -349,6 +350,10 @@ upModeIdx = UnparseMode
     { unparseFree = \(x,n) -> x ++ "~" ++ show n
     , unparseSchematic = \(x,n) -> "?" ++ x ++ "~" ++ show n }
 
+upModePretty :: UnparseMode IdxName
+upModePretty = UnparseMode
+    { unparseFree = fst, unparseSchematic = fst }
+
 data Unparse = Unparse Doc (Exts.Assoc, Prio, CypApplied)
 
 upDoc :: Unparse -> Doc
@@ -386,6 +391,7 @@ unparseAbsProp mode (Prop l r) = unparseAbsTerm mode l <+> text symPropEq <+> un
 
 unparseProp = unparseAbsProp upModeIdx
 unparseRawProp = unparseAbsProp upModeRaw
+unparsePropPretty = unparseAbsProp upModePretty
 
 unparseAbsTermRaw :: UnparseMode a -> AbsTerm a -> Unparse
 unparseAbsTermRaw mode (Application (Application (Application (Const cnst) tb) tcThen) tcElse)

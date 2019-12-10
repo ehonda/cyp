@@ -71,7 +71,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     -- Functions
     (fundefs, consts, funsRawAlts) <- readFunc syms mResult
     funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
-
+    -- Bindings
     let (expls, impls) = toBindings funsAlts typeSigs
     
     -- Axioms and Goals
@@ -80,8 +80,6 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
 
     return $ Env 
         { datatypes = dts
-        , functionsAlts = funsAlts
-        , typeSignatures = typeSigs
         , explicitBindings = expls
         , implicitBindings = impls
         , axioms = fundefs ++ axs

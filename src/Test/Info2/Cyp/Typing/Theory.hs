@@ -1,14 +1,10 @@
 module Test.Info2.Cyp.Typing.Theory where
 
-import Prelude hiding ((<>))
-import Control.Monad (mapM, mapM_, replicateM)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except
 import Data.Either (lefts, rights)
 import Data.List (find, nub)
 import qualified Data.List.NonEmpty as NL
 import Data.Maybe (fromMaybe)
-import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest)
+import Text.PrettyPrint (text)
 
 import Algebra.Graph.AdjacencyMap
 import Algebra.Graph.AdjacencyMap.Algorithm
@@ -25,18 +21,10 @@ import Test.Info2.Cyp.Util
 getTheoryAssumps :: Env -> Err [Assump]
 getTheoryAssumps env = do
     let consAs = getConsAssumptions $ datatypes env
-    funAs <- runTI $ typeCheckFunctionsAlts env
+    funAs <- runTI $ typeCheckBindings env
     return (consAs ++ funAs)
 
-
 -- TODO: MOVE TO ANOTHER PLACE?
---data Binding = Expl ExplicitBinding | Impl ImplicitBinding 
---    deriving (Eq, Show)
---
---prettyBinding :: Binding -> String
---prettyBinding (Expl b) = prettyExplicitBinding b
---prettyBinding (Impl b) = prettyImplicitBinding b
-
 toBindings :: [FunctionAlts] -> [Assump] 
     -> ([ExplicitBinding], [ImplicitBinding])
 toBindings funAlts sigs = (expls, impls)
@@ -50,17 +38,12 @@ toBindings funAlts sigs = (expls, impls)
         expls = lefts $ map defaultToImplicit funAlts
         impls = rights $ map defaultToImplicit funAlts
 
-                
---data DGVertex = Expl Id | Impl Id deriving (Eq, Ord, Show)
+
 -- TODO: USE EITHER HERE
 data DGVertex 
     = Expl ExplicitBinding 
     | Impl ImplicitBinding 
     deriving (Eq, Ord, Show)
-
---vertexName :: DGVertex -> Id
---vertexName (Expl (x :>: _, _)) = x
---vertexName (Impl (x, _)) = x
 
 vertexAlts :: DGVertex -> [Alt]
 vertexAlts (Expl (_, alts)) = alts
@@ -77,16 +60,13 @@ dependencies dconNames alts = nub $ concat $ map depList alts
         depList :: Alt -> [Id]
         depList (_, rhs) = filter isNotDataCons $ constSymbols rhs
 
-makeDependencyGraph :: ([ExplicitBinding], [ImplicitBinding]) -> 
+makeDependencyGraph :: [ExplicitBinding] -> [ImplicitBinding] -> 
     [Id] -> DependencyGraph
-makeDependencyGraph (expls, impls) dconNames = overlay
+makeDependencyGraph expls impls dconNames = overlay
     (vertices $ explVertices ++ implVertices)
     (edges $ explEdges ++ implEdges)
     where
         toVertex :: Id -> DGVertex
-        --toVertex x = fromMaybe (Impl x) $ 
-        --    fmap (Expl . assumpName) $
-        --        find (hasName x) $ map fst expls
         toVertex x = v
             where
                 mbExpl = find (hasName x . fst) expls
@@ -99,28 +79,19 @@ makeDependencyGraph (expls, impls) dconNames = overlay
                     Just bind -> Expl bind
                     Nothing -> fromMaybe (Impl (x, [])) $ fmap Impl mbImpl
 
-        --makeEdges :: (DGVertex, [Alt]) -> [(DGVertex, DGVertex)]
-        --makeEdges (vertex, alts) = zip (repeat vertex) $ 
-        --    map toVertex $ dependencies dconNames alts
         makeEdges :: DGVertex -> [(DGVertex, DGVertex)]
         makeEdges v = zip (repeat v) $ map toVertex $ 
             dependencies dconNames $ vertexAlts v
 
-        explEdges = concat $ map makeEdges $ map Expl expls
-        implEdges = concat $ map makeEdges $ map Impl impls
-
+        explVertices, implVertices :: [DGVertex]
         explVertices = map Expl expls
         implVertices = map Impl impls
-        --explEdges = concat $ map makeEdges $ map toExplAndAlts expls
-        --    where
-        --        toExplAndAlts ((i :>: _), alts) = (toVertex i, alts)
---
-        --implEdges = concat $ map makeEdges $ map toImplAndAlts impls
-        --    where
-        --        toImplAndAlts (i, alts) = (toVertex i, alts)
 
+        explEdges, implEdges :: [(DGVertex, DGVertex)]
+        explEdges = concat $ map makeEdges explVertices
+        implEdges = concat $ map makeEdges implVertices
 
---makeBindGroups :: DependencyGraph -> [BindGroup]
+makeBindGroups :: DependencyGraph -> [BindGroup]
 makeBindGroups graph = groups
     where
         -- Since SCC gives an acylcic graph,
@@ -139,7 +110,7 @@ makeBindGroups graph = groups
         -- decomposition is available, since this implements
         -- the semantics demanded in the haskell report
         -- (see also typing haskell in haskell)
-        --toBindGroup :: NG.AdjacencyMap DGVertex -> BindGroup
+        toBindGroup :: NG.AdjacencyMap DGVertex -> BindGroup
         toBindGroup s = (expls, [impls])
             where
                 -- If either is empty (Nothing), it is natural
@@ -161,79 +132,19 @@ makeBindGroups graph = groups
         groups = map toBindGroup sortedSCCs
 
 
---inferFunctionTypes :: Env -> TI [Assump]
---inferFunctionTypes env = do
---    -- Make fresh type variables for the types
---    -- of the functions
---    funTypes <- replicateM (length funNames) $ newTVar Star
---
---    -- Make assumptions about these function types to be passed
---    -- in to tiAlts, because term type inference on the rhs may
---    -- need these e.g. in the recursive function:
---    --      length (x:xs) = 1 + length xs
---    -- term type inference for the rhs needs to know about length's
---    -- type. The schemes here are unqualified
---    let funAs = zipWith (:>:) funNames $ map toScheme funTypes
---        as = consAs ++ funAs
---
---    -- Infer function types
---    mapM (\((_, alts), t) -> tiAlts as alts t) $
---        zip funAlts funTypes
---
---    -- Apply substitution to funTypes and quantify
---    -- over any type variables left, e.g.
---    --      g :: v4 -> v4
---    -- becomes
---    --      g :: forall v0. v0 -> v0
---    s <- getSubst
---    let subFunTypes = apply s funTypes
---        subAs = zipWith (:>:) funNames $ map quantifyAll subFunTypes
---    return subAs
---    where
---        consAs = getConsAssumptions $ datatypes env
---        funAlts = functionsAlts env
---        funNames = map fst $ funAlts
-
-
-typeCheckFunctionsAlts :: Env -> TI [Assump]
-typeCheckFunctionsAlts env = tiSeq tiBindGroup dconAs bindGroups
+typeCheckBindings :: Env -> TI [Assump]
+typeCheckBindings env = tiSeq tiBindGroup dconAs bindGroups
     where
         expls = explicitBindings env
         impls = implicitBindings env
         dconAs = getConsAssumptions $ datatypes env
         dconNames = map assumpName dconAs
             
-        depGraph = makeDependencyGraph (expls, impls) dconNames
+        depGraph = makeDependencyGraph expls impls dconNames
         bindGroups = makeBindGroups depGraph
-    ---- Infer function types first 
-    --inferredFunAs <- inferFunctionTypes env
---
-    ---- Check if inferred types agree with provided
-    ---- type signatures
-    --lift $ mapM_ checkAgainstSig inferredFunAs
-    --return inferredFunAs
-    --where
-    --    typeSigs = typeSignatures env
-    --    
-    --    checkAgainstSig :: Assump -> ErrT ()
-    --    checkAgainstSig a = case find (nameEq a) typeSigs of
-    --        Just sig -> if a /= sig
-    --            then throwE $ errMsg a sig
-    --            else return ()
-    --        Nothing -> return ()
---
-    --    errMsg :: Assump -> Assump -> Doc
-    --    errMsg a@(f :>: _) sig = capIndent 
-    --        (concat 
-    --            [ "Inferred type of "
-    --            , f
-    --            , " is incompatible with its type signature:"])
-    --        [ (text "expected = ") <> assumpDoc sig
-    --        , (text "inferred = ") <> assumpDoc a]
-
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
-typeCheckProp as (Prop lhs rhs) = do
+typeCheckProp as p@(Prop lhs rhs) = do
     -- Tvars need to be created for all Schematics on the lhs
     --      -> also for Free on lhs (goals are formulated with Free "x" (WHY?))
     let (head, tail) = stripComb lhs
@@ -259,12 +170,15 @@ typeCheckProp as (Prop lhs rhs) = do
     tLhs <- tiTerm as' lhs
 
     tRhs <- tiTerm as' rhs
-    -- UNIFY WITH ERR MSG ABOUT TERMS HERE
-    unify tLhs tRhs
+    unifyWithErrMsg tLhs tRhs errMsg
     
     -- Apply subsitution
     s <- getSubst
     return (apply s tLhs, apply s tRhs)
+    where
+        errMsg = capIndent
+            "While typechecking the proposition:"
+            [unparsePropPretty p]
 
 data TheoryTypeInfo = TheoryTypeInfo 
     { ttiAssumps :: [Assump]

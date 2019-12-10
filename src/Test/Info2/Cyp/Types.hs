@@ -13,8 +13,6 @@ import Test.Info2.Cyp.Util
 -- TODO: Make typed, untyped env?
 data Env = Env
     { datatypes :: [DataType]
-    , functionsAlts :: [FunctionAlts]
-    , typeSignatures :: [Assump]
     , explicitBindings :: [ExplicitBinding]
     , implicitBindings :: [ImplicitBinding]
     , axioms :: [Named Prop]

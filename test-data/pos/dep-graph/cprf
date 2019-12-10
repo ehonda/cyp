@@ -1,0 +1,9 @@
+Lemma: c .=. a
+
+Proof by extensionality with x
+  Show: c x .=. a x
+  Proof
+                   c x
+    (by def c) .=. a x
+  QED
+QED
