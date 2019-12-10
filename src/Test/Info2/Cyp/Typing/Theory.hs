@@ -145,27 +145,8 @@ typeCheckBindings env = tiSeq tiBindGroup dconAs bindGroups
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
 typeCheckProp as p@(Prop lhs rhs) = do
-    -- Tvars need to be created for all Schematics on the lhs
-    --      -> also for Free on lhs (goals are formulated with Free "x" (WHY?))
-    let (head, tail) = stripComb lhs
-        strippedLhs = head : tail
-
-        getVars (Application a b) =
-            (getVars a) ++ (getVars b)
-        getVars (Free (x, _)) = [x]
-        getVars (Schematic (x, _)) = [x]
-        getVars _ = []
-
-        -- Convert vars to assumps
-        varToAssump x = do
-            v <- newTVar Star
-            return $ x :>: toScheme v
-
-        --schematicsLhs = filter isSchematic strippedLhs
-        varsLhs = concat $ map getVars strippedLhs
-
     -- Unify left and right hand sides types
-    asLhs <- traverse varToAssump varsLhs
+    asLhs <- traverse varToAssump $ getVars lhs
     let as' = as ++ asLhs
     tLhs <- tiTerm as' lhs
 
@@ -176,6 +157,13 @@ typeCheckProp as p@(Prop lhs rhs) = do
     s <- getSubst
     return (apply s tLhs, apply s tRhs)
     where
+        -- Tvars need to be created for all Schematics on the lhs
+        --  -> also for Free on lhs (goals are formulated with Free "x" (WHY?))
+        varToAssump :: Id -> TI Assump
+        varToAssump x = do
+            v <- newTVar Star
+            return $ x :>: toScheme v
+
         errMsg = capIndent
             "While typechecking the proposition:"
             [unparsePropPretty p]

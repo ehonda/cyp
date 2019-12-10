@@ -19,6 +19,7 @@ library
     , Test.Info2.Cyp.Util
     , Test.Info2.Cyp.Typing.Inference
     , Test.Info2.Cyp.Typing.Theory
+    , Test.Info2.Cyp.Typing.Proof
   build-depends:
       base ==4.*
     , containers ==0.5.*

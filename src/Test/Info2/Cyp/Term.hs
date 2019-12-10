@@ -15,6 +15,7 @@ module Test.Info2.Cyp.Term
     , generalizeExceptProp
     , generalizeOnly
     , generalizeOnlyProp
+    , getVars
     , iparseTerm
     , iparseProp
     , isFree
@@ -37,6 +38,7 @@ module Test.Info2.Cyp.Term
     , translatePat
     , unparseAbsTerm
     , unparseTerm
+    , unparseTermPretty
     , unparseRawTerm
     , unparseAbsProp
     , unparseProp
@@ -110,6 +112,14 @@ constSymbols :: AbsTerm a -> [String]
 constSymbols (Const x) = [x]
 constSymbols (Application x y) = constSymbols x ++ constSymbols y
 constSymbols _ = []
+
+-- Returns all variables (i.e. Frees and Schematics)
+-- in a term
+getVars :: Term -> [String]
+getVars (Application a b) = (getVars a) ++ (getVars b)
+getVars (Free (x, _)) = [x]
+getVars (Schematic (x, _)) = [x]
+getVars _ = []
 
 mApp :: Monad m => m (AbsTerm a) -> m (AbsTerm a) -> m (AbsTerm a)
 mApp = liftM2 Application
@@ -385,6 +395,7 @@ unparseAbsTerm mode = upDoc . finalizePartialApp . unparseAbsTermRaw mode
 
 unparseTerm = unparseAbsTerm upModeIdx
 unparseRawTerm = unparseAbsTerm upModeRaw
+unparseTermPretty = unparseAbsTerm upModePretty
 
 unparseAbsProp :: UnparseMode a -> AbsProp a -> Doc
 unparseAbsProp mode (Prop l r) = unparseAbsTerm mode l <+> text symPropEq <+> unparseAbsTerm mode r

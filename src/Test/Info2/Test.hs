@@ -12,6 +12,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Typing.Theory
+import Test.Info2.Cyp.Typing.Proof
 import Test.Info2.Cyp.Util
 import Test.Info2.Cyp
 
@@ -323,69 +324,69 @@ tcFunEasy = "test-data/no_unit/tc-fun/easy/cthy"
 tcFunConPatPoly = "test-data/no_unit/tc-fun/conpat-on-poly-fun/cthy"
 tcFunDouble = "test-data/no_unit/tc-fun/double/cthy"
 
-testTCFunctionAlts path = do
+testTCBindings path = do
     env <- getEnv path
-    return $ runTI $ typeCheckFunctionsAlts env
+    return $ runTI $ typeCheckBindings env
 
 prettyIOAssumps :: IO (Err [Assump]) -> IO (Err [String])
 prettyIOAssumps = fmap (fmap (map prettyAssump))
 
 -- TI EXPL BINDING
 ----------------------------------------
-testExplBinding path = do
-    env <- getEnv path
-    return $ testExplBinding' env
-
-testExplBinding' env = runTI $ 
-    mapM (tiExplBind as) expls
-    where
-        funAlts = functionsAlts env
-        typeSigs = typeSignatures env
-        as = getConsAssumptions $ datatypes env
-
-        expls = zip typeSigs $ map snd funAlts
+--testExplBinding path = do
+--    env <- getEnv path
+--    return $ testExplBinding' env
+--
+--testExplBinding' env = runTI $ 
+--    mapM (tiExplBind as) expls
+--    where
+--        funAlts = functionsAlts env
+--        typeSigs = typeSignatures env
+--        as = getConsAssumptions $ datatypes env
+--
+--        expls = zip typeSigs $ map snd funAlts
 
 -- TI IMPL BINDING
 ----------------------------------------
-testImplBinding path = do
-    env <- getEnv path
-    return $ testImplBinding' env
-
-testImplBinding' env = runTI $ 
-    tiImplBinds as impls
-    where
-        --tv = TVar $ Tyvar "a" Star
-        --sigD = "d" :>: quantifyAll (tv `fn` tv)
-        --as = sigD : (getConsAssumptions $ datatypes env)
-        as = getConsAssumptions $ datatypes env
-
-        impls = functionsAlts env
+--testImplBinding path = do
+--    env <- getEnv path
+--    return $ testImplBinding' env
+--
+--testImplBinding' env = runTI $ 
+--    tiImplBinds as impls
+--    where
+--        --tv = TVar $ Tyvar "a" Star
+--        --sigD = "d" :>: quantifyAll (tv `fn` tv)
+--        --as = sigD : (getConsAssumptions $ datatypes env)
+--        as = getConsAssumptions $ datatypes env
+--
+--        impls = functionsAlts env
 
 -- TI BIND GROUP
 ----------------------------------------
 
 -- prettyIOAssumps $ testTIBindGroup tcFunDouble
 
-testTIBindGroup path = do
-    env <- getEnv path
-    return $ testTIBindGroup' env
-
-testTIBindGroup' env = runTI $
-    tiBindGroup as bg
-    where
-        as = getConsAssumptions $ datatypes env
-        funAlts = functionsAlts env
-        --typeSigs = typeSignatures env
+--testTIBindGroup path = do
+--    env <- getEnv path
+--    return $ testTIBindGroup' env
 --
-        --expls = zip typeSigs $ map snd funAlts
-        impls = functionsAlts env
-
-        -- succeeds, d in bindgroup before t
-        --bg = ([], map (\a -> [a]) impls)
-
-        -- Fails, all in same bindgroup
-        bg = ([], [impls])
-
+--testTIBindGroup' env = runTI $
+--    tiBindGroup as bg
+--    where
+--        as = getConsAssumptions $ datatypes env
+--        funAlts = functionsAlts env
+--        --typeSigs = typeSignatures env
+----
+--        --expls = zip typeSigs $ map snd funAlts
+--        impls = functionsAlts env
+--
+--        -- succeeds, d in bindgroup before t
+--        --bg = ([], map (\a -> [a]) impls)
+--
+--        -- Fails, all in same bindgroup
+--        bg = ([], [impls])
+--
 
 
 -- MAKE DEP GRAPH
@@ -400,14 +401,13 @@ testMakeDepGraph path = do
 testMakeDepGraph' env = depGraph
 --testMakeDepGraph' env = map prettyBindGroup bindGroups
     where
-        funAlts = functionsAlts env
-        sigs = typeSignatures env
         dconNames = map assumpName $ 
             getConsAssumptions $ datatypes env
 
-        binds@(expls, impls) = toBindings funAlts sigs
+        expls = explicitBindings env
+        impls = implicitBindings env
 
-        depGraph = makeDependencyGraph binds dconNames
+        depGraph = makeDependencyGraph expls impls dconNames
 
         bindGroups = makeBindGroups depGraph
 
@@ -418,3 +418,15 @@ testMakeDepGraph' env = depGraph
 
                 pExpls = map prettyExpl expls
                 pImplss = map (map prettyImpl) implss
+
+
+
+-- TYPECHECK EQN SEQ
+----------------------------------------
+
+tcEqnTest1 = runTI $ typeCheckEqnSeq as eqns
+    where
+        as = getConsAssumptions [dtBool]
+        eqns = eqnSeqFromList 
+            (Const "True") 
+            [("", Const "False"), ("", Literal (Exts.Int 1))]

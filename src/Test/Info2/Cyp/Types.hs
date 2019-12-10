@@ -220,6 +220,7 @@ convertExtsPat _ p = errStr $ "Unsupported pattern type: " ++ show p
 -- Alt types
 ---------------------------------------------------
 
+-- TODO: Many of these are not needed anymore?
 type RawAlt = ([Exts.Pat], Term)
 type FunctionRawAlts = (String, [RawAlt])
 type FunctionAlts = (String, [Alt])
@@ -309,6 +310,10 @@ eqnSeqFromList a ((b', a') : bas) = Step a b' (eqnSeqFromList a' bas)
 eqnSeqEnds :: EqnSeq a -> (a,a)
 eqnSeqEnds (Single x) = (x,x)
 eqnSeqEnds (Step a _ es) = (a, snd $ eqnSeqEnds es)
+
+eqnSeqHead :: EqnSeq a -> a
+eqnSeqHead (Single x) = x
+eqnSeqHead (Step x _ _) = x
 
 {- Named operations --------------------------------------------------}
 
