@@ -397,8 +397,8 @@ testMakeDepGraph path = do
     env <- getEnv path
     return $ testMakeDepGraph' env
 
---testMakeDepGraph' env = depGraph
-testMakeDepGraph' env = map prettyBindGroup bindGroups
+testMakeDepGraph' env = depGraph
+--testMakeDepGraph' env = map prettyBindGroup bindGroups
     where
         funAlts = functionsAlts env
         sigs = typeSignatures env

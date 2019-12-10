@@ -79,7 +79,9 @@ dependencies dconNames alts = nub $ concat $ map depList alts
 
 makeDependencyGraph :: ([ExplicitBinding], [ImplicitBinding]) -> 
     [Id] -> DependencyGraph
-makeDependencyGraph (expls, impls) dconNames = edges $ explEdges ++ implEdges
+makeDependencyGraph (expls, impls) dconNames = overlay
+    (vertices $ explVertices ++ implVertices)
+    (edges $ explEdges ++ implEdges)
     where
         toVertex :: Id -> DGVertex
         --toVertex x = fromMaybe (Impl x) $ 
@@ -106,6 +108,9 @@ makeDependencyGraph (expls, impls) dconNames = edges $ explEdges ++ implEdges
 
         explEdges = concat $ map makeEdges $ map Expl expls
         implEdges = concat $ map makeEdges $ map Impl impls
+
+        explVertices = map Expl expls
+        implVertices = map Impl impls
         --explEdges = concat $ map makeEdges $ map toExplAndAlts expls
         --    where
         --        toExplAndAlts ((i :>: _), alts) = (toVertex i, alts)
