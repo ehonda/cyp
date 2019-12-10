@@ -1,0 +1,14 @@
+Lemma: k .=. l
+
+Proof by extensionality with x
+
+  Show: k x .=. l x
+
+  Proof
+                   k x
+    (by def k) .=. (Z : []) : []
+    (by def c) .=. (c Z []) : []
+    (by def c) .=. c (c Z []) []
+    (by def l) .=. l x
+  QED
+QED

@@ -1,0 +1,10 @@
+Lemma: t Z .=. S (S (S (S Z)))
+
+Proof
+                 t Z
+  (by def t) .=. d d S Z
+  (by def d) .=. d (d S) Z
+  (by def d) .=. (d S) (d S Z)
+  (by def d) .=. (d S) (S (S Z))
+  (by def d) .=. S (S (S (S Z)))
+QED

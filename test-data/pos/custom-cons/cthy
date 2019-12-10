@@ -1,0 +1,7 @@
+c x y = x : y
+
+k x = (Z : []) : []
+
+l x = c (c Z []) []
+
+goal k .=. l

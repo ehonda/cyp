@@ -1,0 +1,6 @@
+data N = Z | S N
+
+d f x = f (f x)
+t x = d d S x
+
+goal t Z .=. S (S (S (S Z)))
