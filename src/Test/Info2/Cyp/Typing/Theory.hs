@@ -146,7 +146,7 @@ typeCheckBindings env = tiSeq tiBindGroup dconAs bindGroups
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
 typeCheckProp as p@(Prop lhs rhs) = do
     -- Unify left and right hand sides types
-    asLhs <- traverse varToAssump $ getVars lhs
+    asLhs <- traverse newVarAssump $ getVars lhs
     let as' = as ++ asLhs
     tLhs <- tiTerm as' lhs
 
@@ -157,13 +157,6 @@ typeCheckProp as p@(Prop lhs rhs) = do
     s <- getSubst
     return (apply s tLhs, apply s tRhs)
     where
-        -- Tvars need to be created for all Schematics on the lhs
-        --  -> also for Free on lhs (goals are formulated with Free "x" (WHY?))
-        varToAssump :: Id -> TI Assump
-        varToAssump x = do
-            v <- newTVar Star
-            return $ x :>: toScheme v
-
         errMsg = capIndent
             "While typechecking the proposition:"
             [unparsePropPretty p]
@@ -177,23 +170,23 @@ data TheoryTypeInfo = TheoryTypeInfo
 printTheoryTypeInfo tinfo = do
     -- Print theory assumptions
     printHeader "THEORY ASSUMPTIONS"
-    mapM_ print $ map prettyAssump $ ttiAssumps tinfo
+    mapM_ putStrLn $ map prettyAssump $ ttiAssumps tinfo
 
     -- Print axioms and their types
     printHeader "PROPS AND TYPES"
     let prettyTypes (t, s) = (prettyType t, prettyType s)
         axs = [ax | (ax, _) <- ttiAxiomsTypes tinfo]
         axiomTypes = [ts | (_, ts) <- ttiAxiomsTypes tinfo]
-    mapM_ print $ zip axs $ map prettyTypes axiomTypes
+    mapM_ (putStrLn . show) $ zip axs $ map prettyTypes axiomTypes
     
     -- Print goals and their types
     printHeader "GOALS AND TYPES"
     let gls = [g | (g, _) <- ttiGoalsTypes tinfo]
         goalTypes = [ts | (_, ts) <- ttiGoalsTypes tinfo]
-    mapM_ print $ zip gls $ map prettyTypes goalTypes
+    mapM_ (putStrLn . show) $ zip gls $ map prettyTypes goalTypes
 
     where
-        printHeader h = mapM_ print ["", h, replicate 20 '-', ""]
+        printHeader h = mapM_ putStrLn ["", h, replicate 20 '-', ""]
 
 typeCheckTheory :: Env -> Err TheoryTypeInfo
 typeCheckTheory env = do

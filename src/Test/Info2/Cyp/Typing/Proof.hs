@@ -1,39 +1,40 @@
 module Test.Info2.Cyp.Typing.Proof where
 
-import Text.PrettyPrint (hcat, text)
+import Control.Monad (forM_)
 
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Types
 
+-- TODO: PROVIDE MORE DETAILED ERROR MESSAGES
+typeCheckEquations :: (Traversable t) => [Assump] -> Type -> t Term -> TI ()
+typeCheckEquations as t eqns = forM_ eqns $ checkTypeOfTermIs as t
+
 typeCheckEqnSeq :: [Assump] -> EqnSeq Term -> TI ()
 typeCheckEqnSeq as eqns = do
-    -- TVars for start (TODO: RESPECT FIXES)
-    asStart <- traverse varToAssump $ getVars start
-    let as' = as ++ asStart
-    foldl (tcEqnStep as') (return start) eqns
-    return ()
+    t <- tiTerm as start
+    typeCheckEquations as t eqns
     where
-        varToAssump :: Id -> TI Assump
-        varToAssump x = do
-            v <- newTVar Star
-            return $ x :>: toScheme v
-
         start = eqnSeqHead eqns
 
-        -- TODO: CLEANER! (TI TERM?)
-        tcEqnStep :: [Assump] -> TI Term -> Term -> TI Term
-        tcEqnStep as tiLhs rhs = do
-            termLhs <- tiLhs
-            tLhs <- tiTerm as termLhs
-            tRhs <- tiTerm as rhs
-            unifyWithErrMsg tLhs tRhs $ errMsg termLhs rhs
-            return rhs
+typeCheckEqnSeqq :: [Assump] -> EqnSeqq Term -> TI ()
+typeCheckEqnSeqq as eqns = do
+    t <- tiTerm as start
+    typeCheckEquations as t eqns
+    where
+        start = eqnSeqqHead eqns
 
-        -- TODO: Cleaner error message
-        errMsg lhs rhs = capIndent
-            "While typechecking a step in an equation sequence"
-            [ hcat 
-                [ unparseTermPretty lhs
-                , text " .=. "
-                , unparseTermPretty rhs ]]
+checkTypeOfTermIs :: [Assump] -> Type -> Term -> TI ()
+checkTypeOfTermIs as t term = do
+    t' <- tiTerm as term
+    unifyWithErrMsg t t' $ errMsg
+    where
+        errMsg = capIndent
+            "While checking the type of a term:"
+            [termDoc "term" term]
+
+-- TC for different types of proofs
+---------------------------------------------------------
+
+--typeCheckProof :: [Assump] -> ParseProof -> TI ()
+--typeCheckProof as (ParseEquation eqns) = typeCheckEqnSeqq as eqns

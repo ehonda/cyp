@@ -331,6 +331,11 @@ newTVar k = do
     put (s, n + 1)
     return $ TVar $ Tyvar (enumId n) k
 
+newVarAssump :: Id -> TI Assump
+newVarAssump x = do
+    v <- newTVar Star
+    return $ x :>: toScheme v
+
 freshInst :: Scheme -> TI Type
 freshInst (Forall ks t) = do
     ts <- mapM newTVar ks
@@ -693,6 +698,9 @@ patDoc name p = eqDoc name $ prettyPat p
 
 assumpDoc :: Assump -> Doc
 assumpDoc a = text $ prettyAssump' a
+
+termDoc :: String -> CT.Term -> Doc
+termDoc name t = eqDoc name $ render $ CT.unparseTermPretty t
 
 capIndent :: String -> [Doc] -> Doc
 capIndent cap docs = indent (text cap) $ vcat docs

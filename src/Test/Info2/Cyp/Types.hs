@@ -315,6 +315,9 @@ eqnSeqHead :: EqnSeq a -> a
 eqnSeqHead (Single x) = x
 eqnSeqHead (Step x _ _) = x
 
+eqnSeqqHead :: EqnSeqq a -> a
+eqnSeqqHead (EqnSeqq eqns _) = eqnSeqHead eqns
+
 {- Named operations --------------------------------------------------}
 
 instance Foldable Named where
