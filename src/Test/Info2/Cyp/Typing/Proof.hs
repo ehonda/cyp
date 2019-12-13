@@ -2,6 +2,8 @@ module Test.Info2.Cyp.Typing.Proof where
 
 import Control.Monad (forM_)
 
+import Test.Info2.Cyp.Parser
+import Test.Info2.Cyp.Proof
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Types
@@ -36,5 +38,13 @@ checkTypeOfTermIs as t term = do
 -- TC for different types of proofs
 ---------------------------------------------------------
 
---typeCheckProof :: [Assump] -> ParseProof -> TI ()
---typeCheckProof as (ParseEquation eqns) = typeCheckEqnSeqq as eqns
+typeCheckProof :: [Assump] -> ParseProof -> Env -> TI ()
+typeCheckProof as (ParseEquation reqns) env = do
+    as' <- traverse newVarAssump $ getVars start
+    typeCheckEqnSeqq (as' ++ as) eqns
+    where
+        -- We interpret the equations and generate
+        -- assumptions for all vars in the head
+        -- of the sequence
+        eqns = fst $ toInterpretedEqns reqns env
+        start = eqnSeqqHead eqns

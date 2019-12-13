@@ -430,3 +430,20 @@ tcEqnTest1 = runTI $ typeCheckEqnSeq as eqns
         eqns = eqnSeqFromList 
             (Const "True") 
             [("", Const "False"), ("", Literal (Exts.Int 1))]
+
+tcParseEqTest1 = runTI $ typeCheckProof as (ParseEquation peqns) env
+    where
+        as = getConsAssumptions [dtBool]
+        env = declEnv
+
+        reqns :: EqnSeq RawTerm
+        reqns = eqnSeqFromList
+            (Free "x") 
+            --(Const "True") 
+            [ ("", Const "False")
+            --, ("", Literal (Exts.Int 1))
+            , ("", Free "x")
+            ]
+
+        peqns :: EqnSeqq RawTerm
+        peqns = EqnSeqq reqns Nothing

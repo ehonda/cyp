@@ -18,8 +18,8 @@ import qualified Text.Parsec as Parsec
 import Text.PrettyPrint (colon, comma, empty, fsep, int, punctuate, hsep, quotes, text, vcat, (<>), (<+>), ($+$))
 
 import Test.Info2.Cyp.Env
---import qualified Test.Info2.Cyp.Typing.Inference as HM -- decomposeFuncType
 import Test.Info2.Cyp.Parser
+import Test.Info2.Cyp.Proof
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Typing.Theory
@@ -108,7 +108,8 @@ checkLemma (ParseLemma name rprop proof) env = errCtxt (text "Lemma" <+> text na
 checkProof :: Prop -> ParseProof -> Env -> Err Prop
 checkProof _ ParseCheating _ = err $ text "Cheating detected"
 checkProof prop (ParseEquation reqns) env = errCtxtStr "Equational proof" $ do
-    let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
+--    let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
+    let (eqns, env') = toInterpretedEqns reqns env
     proved <- validEqnSeqq (axioms env') eqns
     when (prop /= proved) $ err $
         text "Proved proposition does not match goal:" `indent` unparseProp proved
