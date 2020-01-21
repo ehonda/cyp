@@ -424,48 +424,6 @@ testMakeDepGraph' env = depGraph
 -- TYPECHECK EQN SEQ
 ----------------------------------------
 
-tcEqnTest1 = runTI $ typeCheckEqnSeq as eqns
-    where
-        as = getConsAssumptions [dtBool]
-        eqns = eqnSeqFromList 
-            (Const "True") 
-            [("", Const "False"), ("", Literal (Exts.Int 1))]
-
-tcParseEqTest1 = runTI $ typeCheckProof as (ParseEquation peqns) env
-    where
-        as = getConsAssumptions [dtBool]
-        env = declEnv
-
-        reqns :: EqnSeq RawTerm
-        reqns = eqnSeqFromList
-            (Free "x") 
-            --(Const "True") 
-            [ ("", Const "False")
-            --, ("", Literal (Exts.Int 1))
-            , ("", Free "x")
-            ]
-
-        peqns :: EqnSeqq RawTerm
-        peqns = EqnSeqq reqns Nothing
-
-
-
--- TYPECHECK PROOF
-----------------------------------------
-
-tcProofTest thy prf = do
-    cthy <- readFile thy
-    cprf <- readFile prf
-    return $ tcProofTest' cthy cprf
-
-tcProofTest' cthy cprf = do
-    env <- processMasterFile "thy" cthy
-    typeCheckTheory env
-
-    lemmas <- processProofFile env "prf" cprf
-    return ()
-    
-
 
 -- show lemmas
 
@@ -481,3 +439,27 @@ showLemmas' cthy cprf = do
     env <- processMasterFile "thy" cthy
     lemmas <- processProofFile env "prf" cprf
     return lemmas
+
+-- TYPECHECK PROOF
+----------------------------------------
+
+equationThy = "test-data/no_unit/tc-proof/equation/cthy"
+equationPrf = "test-data/no_unit/tc-proof/equation/cprf"
+
+tcProofTest thy prf = do
+    cthy <- readFile thy
+    cprf <- readFile prf
+    return $ tcProofTest' cthy cprf
+
+tcProofTest' cthy cprf = do
+    env <- processMasterFile "thy" cthy
+    lemmas <- processProofFile env "prf" cprf
+    as <- getTheoryAssumps env
+
+    mapM_ (\l -> runProofTC as $ typeCheckLemma l) lemmas
+    
+
+
+
+
+

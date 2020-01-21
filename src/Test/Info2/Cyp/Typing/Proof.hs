@@ -1,8 +1,10 @@
 module Test.Info2.Cyp.Typing.Proof where
 
 import Control.Monad (forM_)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
+import Data.List (nub)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 
@@ -10,6 +12,7 @@ import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Proof
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Typing.Inference
+import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 
@@ -49,8 +52,8 @@ checkTypeOfTermIs as t term = do
 -- the whole environment
 type FixesMap = M.Map String Integer    -- TODO: MOVE TO TYPES.hs
 
-interpretTermPTC :: FixesMap -> RawTerm -> Term
-interpretTermPTC fixes rt = fmap defaultToZero rt
+interpretTermWithFixes :: FixesMap -> RawTerm -> Term
+interpretTermWithFixes fixes rt = fmap defaultToZero rt
     where
         defaultToZero var = fromMaybe (var, 0) $ 
             fmap (\n -> (var, n)) $ M.lookup var fixes 
@@ -68,29 +71,89 @@ runProofTC as f = runExcept $ evalStateT f $ emptyFixesWith as
 getAssumps :: ProofTC [Assump]
 getAssumps = gets fst
 
+getFixes :: ProofTC FixesMap
+getFixes = gets snd
+
 -- Corresponds to declareTerm
 -- Inserts unfixed vars at 0, eg x0
 -- and leaves already fixed vars at n, eg xn
---fixFreesDefault :: RawTerm -> ProofTC ()
---fixFreesDefault rt =
---    where
---        ins free = M.insertWith (\_ n -> n) free 0
-
---typeCheckEquationalProof :: ParseProof -> ProofTC ()
---typeCheckEquationalProof (ParseEquation reqns) = do
-
-
--- TC for different types of proofs
----------------------------------------------------------
-
-typeCheckProof :: [Assump] -> ParseProof -> Env -> TI ()
-typeCheckProof as (ParseEquation reqns) env = do
-    -- Kind inference needed here?
-    as' <- traverse newVarAssump $ getVars start
-    typeCheckEqnSeqq (as' ++ as) eqns
+fixFreesIfNew :: [String] -> ProofTC ()
+fixFreesIfNew frees = modify $ \(as, fixes) -> (as, 
+    foldl (\fixes v -> insertIfNotPresent v fixes) fixes frees)
     where
-        -- We interpret the equations and generate
-        -- assumptions for all vars in the head
-        -- of the sequence
-        eqns = fst $ toInterpretedEqns reqns env
-        start = eqnSeqqHead eqns
+        insertIfNotPresent v = M.insertWith (\_ n -> n) v 0
+
+fixRawTermFreesIfNew :: RawTerm -> ProofTC ()
+fixRawTermFreesIfNew rt = fixFreesIfNew $ collectFrees rt []
+
+-- Corresponds to variantFixes
+-- Inserts unfixed vars at 0, eg x0
+-- and incs already fixed vars at n, eg x_{n+1}
+fixNewFrees :: [String] -> ProofTC ()
+fixNewFrees frees = modify $ \(as, fixes) -> (as, 
+    foldl (\fixes v -> insertNew v fixes) fixes frees)
+    where
+        insertNew v = M.insertWith (\_ n -> n + 1) v 0
+        
+fixRawTermNewFrees :: RawTerm -> ProofTC ()
+fixRawTermNewFrees rt = fixNewFrees $ collectFrees rt []
+
+
+
+-- TYPECHECK FOR PROOFS
+------------------------------------------------------------
+
+--exceptTI = lift $ except $ runTI
+
+typeCheckLemma :: ParseLemma -> ProofTC ()
+typeCheckLemma (ParseLemma name rawProp proof) = do
+    -- We can typecheck the raw prop with default
+    -- fixes, without modifying the state
+    as <- getAssumps
+    lift $ except $ runTI $ tiProp as $ 
+        interpretRawPropDefault rawProp
+    typeCheckProof proof
+    where
+        interpretRawPropDefault :: RawProp -> Prop
+        interpretRawPropDefault (Prop l r) =
+            Prop (interp l) (interp r)
+            where
+                interp = interpretTermWithFixes M.empty
+
+        tiProp :: [Assump] -> Prop -> TI ()
+        tiProp as p = do
+            as' <- traverse newVarAssump $ getVarsProp p
+            typeCheckProp (as ++ as') p
+            return ()
+
+typeCheckProof :: ParseProof -> ProofTC ()
+typeCheckProof (ParseEquation reqns) = 
+    typeCheckEquationalProof reqns
+
+typeCheckEquationalProof :: EqnSeqq RawTerm -> ProofTC ()
+typeCheckEquationalProof reqns = do
+    fixes <- getFixes
+    as <- getAssumps
+    lift $ except $ runTI $ tiEquations as $ interpretEqnsWith fixes
+    where
+        interpretEqnsWith :: FixesMap -> EqnSeqq Term
+        interpretEqnsWith fixes = 
+            fmap (interpretTermWithFixes fixes) reqns
+
+        tiEquations :: [Assump] -> EqnSeqq Term -> TI ()
+        tiEquations as eqns = do
+            -- Make new tvs and assumptions for the vars
+            -- Do we need kind inference here?
+            -- Putting as' at the end ensures we don't overwrite
+            -- old assumptions
+            as' <- traverse newVarAssump $ getVarsEqnSeqq eqns
+            typeCheckEqnSeqq (as ++ as') eqns
+
+
+
+-- Utility
+getVarsEqnSeqq :: EqnSeqq Term -> [String]
+getVarsEqnSeqq eqns = nub $ concat $ fmap getVars eqns
+
+getVarsProp :: Prop -> [String]
+getVarsProp (Prop l r) = nub $ concat $ [getVars l, getVars r]
