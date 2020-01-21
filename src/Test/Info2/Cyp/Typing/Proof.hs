@@ -56,8 +56,13 @@ interpretTermWithFixes :: FixesMap -> RawTerm -> Term
 interpretTermWithFixes fixes rt = fmap defaultToZero rt
     where
         defaultToZero var = fromMaybe (var, 0) $ 
-            fmap (\n -> (var, n)) $ M.lookup var fixes 
+            fmap (\n -> (var, n)) $ M.lookup var fixes
 
+interpretRawPropWith :: FixesMap -> RawProp -> Prop
+interpretRawPropWith fixes (Prop l r) =
+    Prop (interp l) (interp r)
+    where
+        interp = interpretTermWithFixes fixes
 
 type ProofTCState = ([Assump], FixesMap)
 emptyFixesWith :: [Assump] -> ProofTCState
@@ -105,6 +110,12 @@ fixRawTermNewFrees rt = fixNewFrees $ collectFrees rt []
 
 --exceptTI = lift $ except $ runTI
 
+tiProp :: [Assump] -> Prop -> TI ()
+tiProp as p = do
+    as' <- traverse newVarAssump $ getVarsProp p
+    typeCheckProp (as ++ as') p
+    return ()
+
 typeCheckLemma :: ParseLemma -> ProofTC ()
 typeCheckLemma (ParseLemma name rawProp proof) = do
     -- We can typecheck the raw prop with default
@@ -120,15 +131,11 @@ typeCheckLemma (ParseLemma name rawProp proof) = do
             where
                 interp = interpretTermWithFixes M.empty
 
-        tiProp :: [Assump] -> Prop -> TI ()
-        tiProp as p = do
-            as' <- traverse newVarAssump $ getVarsProp p
-            typeCheckProp (as ++ as') p
-            return ()
-
 typeCheckProof :: ParseProof -> ProofTC ()
 typeCheckProof (ParseEquation reqns) = 
     typeCheckEquationalProof reqns
+typeCheckProof (ParseExt rt rprop proof) =
+    typeCheckExtensionalProof rt rprop proof
 
 typeCheckEquationalProof :: EqnSeqq RawTerm -> ProofTC ()
 typeCheckEquationalProof reqns = do
@@ -149,6 +156,36 @@ typeCheckEquationalProof reqns = do
             as' <- traverse newVarAssump $ getVarsEqnSeqq eqns
             typeCheckEqnSeqq (as ++ as') eqns
 
+typeCheckExtensionalProof :: RawTerm -> RawProp -> ParseProof -> ProofTC ()
+typeCheckExtensionalProof fixTerm rawProp proof = do
+    fixRawTermNewFrees fixTerm
+    fixes <- getFixes
+    as <- getAssumps
+    lift $ except $ runTI $ tiProp as $ 
+        interpretRawPropWith fixes rawProp
+    typeCheckProof proof
+
+--typeCheckCases :: String -> RawTerm -> [ParseCase] -> ProofTC ()
+--typeCheckCases dtName rawTerm cases = do
+
+
+typeCheckCase :: ParseCase -> ProofTC ()
+typeCheckCase pcase = do
+    -- variant fixes for case cons vars
+    fixRawTermNewFrees $ pcCons pcase
+    fixes <- getFixes
+    as <- getAssumps
+
+    -- typecheck goal
+    --let action = \p -> except $ runTI $ 
+    --        tiProp as $ interpretRawPropWith fixes p
+--
+    --lift $ fmap action $ pcToShow pcase
+
+    -- convert assumps (necessary?)
+    --
+
+    typeCheckProof $ pcProof pcase
 
 
 -- Utility
