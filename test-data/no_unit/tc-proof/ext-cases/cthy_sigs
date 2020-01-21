@@ -1,0 +1,13 @@
+data Bool = True | False
+
+not :: Bool -> Bool
+not True = False
+not False = True
+
+id :: a -> a
+id x = x
+
+(.) :: (b -> c) -> (a -> b) -> (a -> c)
+(f . g) x = f (g x)
+
+goal not . not .=. id

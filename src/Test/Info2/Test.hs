@@ -447,3 +447,37 @@ tcParseEqTest1 = runTI $ typeCheckProof as (ParseEquation peqns) env
 
         peqns :: EqnSeqq RawTerm
         peqns = EqnSeqq reqns Nothing
+
+
+
+-- TYPECHECK PROOF
+----------------------------------------
+
+tcProofTest thy prf = do
+    cthy <- readFile thy
+    cprf <- readFile prf
+    return $ tcProofTest' cthy cprf
+
+tcProofTest' cthy cprf = do
+    env <- processMasterFile "thy" cthy
+    typeCheckTheory env
+
+    lemmas <- processProofFile env "prf" cprf
+    return ()
+    
+
+
+-- show lemmas
+
+caseThy = "test-data/pos/easy/cthy"
+casePrf = "test-data/pos/easy/cprf"
+
+showLemmas thy prf = do
+    cthy <- readFile thy
+    cprf <- readFile prf
+    return $ showLemmas' cthy cprf
+
+showLemmas' cthy cprf = do
+    env <- processMasterFile "thy" cthy
+    lemmas <- processProofFile env "prf" cprf
+    return lemmas
