@@ -446,6 +446,13 @@ showLemmas' cthy cprf = do
 equationThy = "test-data/no_unit/tc-proof/equation/cthy"
 equationPrf = "test-data/no_unit/tc-proof/equation/cprf"
 
+extCasesThy = "test-data/no_unit/tc-proof/ext-cases/cthy"
+extCasesPrf = "test-data/no_unit/tc-proof/ext-cases/cprf"
+
+inductionThy = "test-data/no_unit/tc-proof/induction/cthy"
+inductionPrf = "test-data/no_unit/tc-proof/induction/cprf"
+ 
+
 tcProofTest thy prf = do
     cthy <- readFile thy
     cprf <- readFile prf

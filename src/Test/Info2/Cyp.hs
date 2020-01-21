@@ -22,6 +22,7 @@ import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Proof
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
+import Test.Info2.Cyp.Typing.Proof
 import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Util
 
@@ -99,7 +100,11 @@ checkProofs env (l : ls) = do
     checkProofs env' ls
 
 checkLemma :: ParseLemma -> Env -> Err (Prop, Env)
-checkLemma (ParseLemma name rprop proof) env = errCtxt (text "Lemma" <+> text name <> colon <+> unparseRawProp rprop) $ do
+checkLemma lem@(ParseLemma name rprop proof) env = errCtxt (text "Lemma" <+> text name <> colon <+> unparseRawProp rprop) $ do
+    -- Typecheck the lemma
+    as <- getTheoryAssumps env
+    runProofTC as $ typeCheckLemma lem
+
     let (prop, env') = declareProp rprop env
     Prop _ _ <- checkProof prop proof env'
     let proved = generalizeEnvProp env prop

@@ -136,6 +136,10 @@ typeCheckProof (ParseEquation reqns) =
     typeCheckEquationalProof reqns
 typeCheckProof (ParseExt rt rprop proof) =
     typeCheckExtensionalProof rt rprop proof
+typeCheckProof (ParseCases _ _ cases) = 
+    typeCheckCasesProof cases
+typeCheckProof (ParseInduction _ _ _ cases) =
+    typeCheckCasesProof cases
 
 typeCheckEquationalProof :: EqnSeqq RawTerm -> ProofTC ()
 typeCheckEquationalProof reqns = do
@@ -165,8 +169,15 @@ typeCheckExtensionalProof fixTerm rawProp proof = do
         interpretRawPropWith fixes rawProp
     typeCheckProof proof
 
---typeCheckCases :: String -> RawTerm -> [ParseCase] -> ProofTC ()
---typeCheckCases dtName rawTerm cases = do
+
+typeCheckCasesProof = typeCheckCases
+
+-- Cases should be independet, so we restore the
+-- state after each case check (they fix new frees)
+typeCheckCases :: [ParseCase] -> ProofTC ()
+typeCheckCases cases = do
+    originalState <- get
+    mapM_ (\c -> typeCheckCase c >> (put originalState)) cases    
 
 
 typeCheckCase :: ParseCase -> ProofTC ()
