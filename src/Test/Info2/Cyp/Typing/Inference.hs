@@ -145,15 +145,15 @@ s1 @@ s2 = [(u, apply s1 t) | (u, t) <- s2] ++ s1
 -- TODO: MOVE TO A BETTER PLACE
 type ErrT = Except Doc
 
-merge :: Subst -> Subst -> ErrT Subst
-merge s s' =
-    if agree
-    then return (s ++ s')
-    else throwE $ text "Merge fails" -- TODO: Could show where substs disagree
-    where
-        agree = all subsEqual tvInter
-        subsEqual = \u -> apply s (TVar u) == apply s' (TVar u)
-        tvInter = map fst s `intersect` map fst s'
+--merge :: Subst -> Subst -> ErrT Subst
+--merge s s' =
+--    if agree
+--    then return (s ++ s')
+--    else throwE $ text "Merge fails" -- TODO: Could show where substs disagree
+--    where
+--        agree = all subsEqual tvInter
+--        subsEqual = \u -> apply s (TVar u) == apply s' (TVar u)
+--        tvInter = map fst s `intersect` map fst s'
 
 
 -- Example subs (CAN BE REMOVED LATER)
@@ -210,18 +210,18 @@ varBind u t
 -- Match: Find sub s, st. apply s t1 = t2
 ---------------------------------
 
-match :: Type -> Type -> ErrT Subst
-
-match (TAp l r) (TAp l' r') = do
-    sl <- match l l'
-    sr <- match r r'
-    merge sl sr
-
-match (TVar u) t | kind u == kind t = return (u +-> t)
-match (TCon t) (TCon t') | t == t' = return nullSubst
-match t s = throwE $ indent
-    (text "Types do not match:")
-    ((typeDoc "t" t) $$ (typeDoc "s" s)) 
+--match :: Type -> Type -> ErrT Subst
+--
+--match (TAp l r) (TAp l' r') = do
+--    sl <- match l l'
+--    sr <- match r r'
+--    merge sl sr
+--
+--match (TVar u) t | kind u == kind t = return (u +-> t)
+--match (TCon t) (TCon t') | t == t' = return nullSubst
+--match t s = throwE $ indent
+--    (text "Types do not match:")
+--    ((typeDoc "t" t) $$ (typeDoc "s" s)) 
 
 -- SECTION 8 (Type Schemes)
 --

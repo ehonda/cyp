@@ -15,6 +15,7 @@ module Test.Info2.Cyp.Parser where
 --    )
 --where
 
+import Control.Monad (when)
 import Data.Char
 import Data.Maybe
 import Data.List (nub)
@@ -54,7 +55,8 @@ data ParseCase = ParseCase
     deriving Show
 
 data ParseProof
-    = ParseInduction String RawTerm [RawTerm] [ParseCase] -- data type, induction variable, generalized variables, cases
+--    = ParseInduction String RawTerm [RawTerm] [ParseCase] -- data type, induction variable, generalized variables, cases
+    = ParseInduction ParseDeclTree [RawTerm] [ParseCase] -- typesig, generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
     | ParseCases String RawTerm [ParseCase] -- data type, term, cases
@@ -168,7 +170,8 @@ funParser = do
     cs <- toEol1 <?> "Function definition"
     return (FunDef cs)
 
-typeSigParser :: Parsec [Char] () ParseDeclTree
+--typeSigParser :: Parsec [Char] () ParseDeclTree
+typeSigParser :: Parsec [Char] u ParseDeclTree
 typeSigParser = do
     -- This could be done cleaner
     sym <- trim <$> toDoubleColon
@@ -192,9 +195,10 @@ varsParser = varParser `sepBy1` (keyword ",")
 inductionProofParser :: Parsec [Char] Env ParseProof
 inductionProofParser = do
     keyword "on"
-    datatype <- many1 (noneOf " \t\r\n" <?> "datatype")
-    lineSpaces
-    over <- varParser
+    --datatype <- many1 (noneOf " \t\r\n" <?> "datatype")
+    --lineSpaces
+    --over <- varParser
+    sig <- typeSigParser
     manySpacesOrComment
     gens <- option [] (do
       keyword "generalizing"
@@ -203,7 +207,8 @@ inductionProofParser = do
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
-    return $ ParseInduction datatype over gens cases
+    return $ ParseInduction sig gens cases
+    --return $ ParseInduction datatype over gens cases
 
 caseProofParser :: Parsec [Char] Env ParseProof
 caseProofParser = do
@@ -623,7 +628,40 @@ readTypeSig pdt = fmap concat $ sequence $ mapMaybe parseTypeSig pdt
                     _ -> errStr "Parse error"
 
         parseTypeSig _ = Nothing
+--parseTypeSig (TypeSig s) = Just $ 
+--    errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
+--        case P.parseDecl s of
+--            -- Type signatures can be specified for several
+--            -- identifiers at a time, e.g:
+--            --      f, g :: X -> X
+--            -- that is the reason syms is a list -> in that
+--            -- case we need to return assumptions for multiple
+--            -- ids from one TypeSig
+--            P.ParseOk (Exts.TypeSig syms t) -> do
+--                t' <- toCypType t
+--                return $ zipWith (:>:) ids $ schemes t'
+--                where
+--                    ids = map extractName syms
+--                    schemes t = repeat $ quantifyAll t
+--            _ -> errStr "Parse error"
+--
+--parseTypeSig _ = Nothing
 
+-- Reads the type signature in pdt, requires that the type
+-- for exactly one symbol is provided
+readTypeSigRequireExactlyOneId :: ParseDeclTree -> Err Assump
+readTypeSigRequireExactlyOneId (TypeSig s) =
+    errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
+        case P.parseDecl s of
+            P.ParseOk (Exts.TypeSig syms t) -> do
+                t' <- toCypType t
+                when (length ids /= 1) $ errStr "Only one symbol expected"
+                return $ (head ids) :>: (quantifyAll t')
+                where
+                    ids = map extractName syms
+
+            _ -> errStr "Parse error"
+readTypeSigRequireExactlyOneId _ = errStr "Not a type signature"
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
 splitStringAt _ [] h

@@ -22,6 +22,7 @@ import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Proof
 import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
+import Test.Info2.Cyp.Typing.Inference
 import Test.Info2.Cyp.Typing.Proof
 import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Util
@@ -146,7 +147,8 @@ checkProof prop (ParseExt withRaw toShowRaw proof) env = errCtxt ctxtMsg $
         return prop'
       where
         bail msg t = lift $ err $ text msg <+> quotes (unparseTerm t)
-checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ctxtMsg $ do
+checkProof prop (ParseInduction typeSig gensRaw casesRaw) env = errCtxt ctxtMsg $ do
+    --_ :>: dtSc <- parseTypeSig typeSig
     dt <- validDatatype dtRaw env
     flip evalStateT env $ do
         over <- validateVar "induction" overRaw
@@ -156,6 +158,16 @@ checkProof prop (ParseInduction dtRaw overRaw gensRaw casesRaw) env = errCtxt ct
         lift $ validateCases dt over gens casesRaw env
         return prop
   where
+    dtRaw = ""
+    overRaw = Free ""
+
+    toOldFormat :: ParseDeclTree -> Err ()
+    toOldFormat typeSig = do
+        overId :>: dtSc <- readTypeSigRequireExactlyOneId typeSig
+        
+        return ()
+
+    -- TODO: FIX, USE TYPESIG!
     ctxtMsg = text "Induction over variable"
         <+> quotes (unparseRawTerm overRaw) <+> text "of type" <+> quotes (text dtRaw)
         <+> if null gensRaw then empty else text "generalizing over" <+> fsep (map (quotes . unparseRawTerm) gensRaw)
