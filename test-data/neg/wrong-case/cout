@@ -1,5 +1,5 @@
 Lemma : length (xs ++ ys) .=. length xs + length ys
-    Induction over variable 'xs' of type 'List'
+    Induction over variable xs :: forall v0. List v0
         Case 'x : xs' Fixing 'x' 'xs'
             Equational proof
                 Invalid proof step (no rules with name "cheating")

@@ -1,6 +1,6 @@
 Lemma: snoc xs y .=. xs ++ [y]
 
-Proof by induction on List xs
+Proof by induction on xs :: List a
 
 Case []
 

@@ -1,6 +1,6 @@
 Lemma: length (xs ++ ys) .=. length xs + length ys
 
-Proof by induction on List xs
+Proof by induction on xs :: List a
 
 Case []
 

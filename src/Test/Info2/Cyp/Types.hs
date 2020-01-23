@@ -24,6 +24,7 @@ data Env = Env
 
 data DataType = DataType
     { dtName :: String
+    , dtScheme :: Scheme
     , dtConss :: [(String, Type)]
     }
     deriving Show
@@ -32,6 +33,7 @@ defaultDataTypes :: [DataType]
 defaultDataTypes = 
     [ DataType
         { dtName = "List"
+        , dtScheme = scListA
         , dtConss = 
             [ ("[]", tListA)
             , (":", tvarA `fn` tListA `fn` tListA)
@@ -41,6 +43,7 @@ defaultDataTypes =
     where
         tvarA = TVar (Tyvar "a" Star)
         tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) tvarA
+        scListA = quantifyAll tListA
 
 
 --defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
@@ -89,7 +92,14 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         tvars <- collectTVars dh []
         tyname <- tynameFromDH dh
         dcons <- traverse (processDCon tvars tyname) cons
-        return $ DataType tyname dcons
+        
+        -- Duplication from processDCon, REFACTOR
+        let tcKind = foldr Kfun Star $ replicate (length tvars) Star
+            tcon = TCon $ Tycon tyname tcKind 
+            dtype = foldl TAp tcon tvars
+            dtScheme = quantifyAll dtype
+        
+        return $ DataType tyname dtScheme dcons
     where
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)

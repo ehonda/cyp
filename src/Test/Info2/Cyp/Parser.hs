@@ -23,7 +23,7 @@ import Text.Parsec as Parsec
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 --import qualified Language.Haskell.Exts.Pretty as ExtsPretty -- NOT NEEDED?
-import Text.PrettyPrint (quotes, text, (<+>))
+import Text.PrettyPrint (quotes, text, (<+>), render)
 
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Term
@@ -55,11 +55,11 @@ data ParseCase = ParseCase
     deriving Show
 
 data ParseProof
---    = ParseInduction String RawTerm [RawTerm] [ParseCase] -- data type, induction variable, generalized variables, cases
-    = ParseInduction ParseDeclTree [RawTerm] [ParseCase] -- typesig, generalized variables, cases
+    = ParseInduction Assump [RawTerm] [ParseCase] -- (over :: Type), generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
-    | ParseCases String RawTerm [ParseCase] -- data type, term, cases
+--    | ParseCases String RawTerm [ParseCase] -- data type, term, cases
+    | ParseCases Assump [ParseCase] -- (over :: Type), cases
     | ParseCheating
     deriving Show
 
@@ -170,21 +170,33 @@ funParser = do
     cs <- toEol1 <?> "Function definition"
     return (FunDef cs)
 
+-- TODO: REWORK, UGLY CODE
 --typeSigParser :: Parsec [Char] () ParseDeclTree
 typeSigParser :: Parsec [Char] u ParseDeclTree
 typeSigParser = do
     -- This could be done cleaner
     sym <- trim <$> toDoubleColon
-    sig <- trim <$> toEol1 <?> "Type Signature"
+    sig <- trim <$> toEolOrGens <?> "Type Signature"
     return $ TypeSig $ concat [sym, " :: ", sig]
     where
-        end = eof <|> eol <|> commentParser
+        end = (try $ lookAhead $ keyword "generalizing") <|> 
+            eof <|> eol <|> commentParser
         -- Check no new line or comment is beginning
         invalid = notFollowedBy' end "end of line or comment"
         valid = (try invalid) >> anyChar
         
         toDoubleColon :: Parsec [Char] u String
         toDoubleColon = manyTill valid doubleColon
+
+        toEolOrGens :: Parsec [Char] u String
+        toEolOrGens = do
+            notFollowedBy' end "end of line or comment"
+            x <- anyChar
+            xs <- manyTill anyChar end
+            return (x : xs)
+          where
+            end = (try $ lookAhead $ keyword "generalizing") <|> 
+                eof <|> eol <|> commentParser
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -195,9 +207,6 @@ varsParser = varParser `sepBy1` (keyword ",")
 inductionProofParser :: Parsec [Char] Env ParseProof
 inductionProofParser = do
     keyword "on"
-    --datatype <- many1 (noneOf " \t\r\n" <?> "datatype")
-    --lineSpaces
-    --over <- varParser
     sig <- typeSigParser
     manySpacesOrComment
     gens <- option [] (do
@@ -207,19 +216,27 @@ inductionProofParser = do
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
-    return $ ParseInduction sig gens cases
-    --return $ ParseInduction datatype over gens cases
+
+    -- Read typesig right here and fail if its invalid
+    case readTypeSigRequireExactlyOneId sig of
+        Left err -> unexpected $ render err
+        Right sig' -> return $ ParseInduction sig' gens cases
 
 caseProofParser :: Parsec [Char] Env ParseProof
 caseProofParser = do
     keyword "on"
-    datatype <- many1 (noneOf " \t")
-    lineSpaces
-    over <- termParser defaultToFree
+    --datatype <- many1 (noneOf " \t")
+    --lineSpaces
+    --over <- termParser defaultToFree
+    sig <- typeSigParser
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
-    return $ ParseCases datatype over cases
+
+    -- Read typesig right here and fail if its invalid
+    case readTypeSigRequireExactlyOneId sig of
+        Left err -> unexpected $ render err
+        Right sig' -> return $ ParseCases sig' cases
 
 cheatingProofParser :: Parsec [Char] Env ParseProof
 cheatingProofParser = return ParseCheating

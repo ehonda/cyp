@@ -4,7 +4,7 @@ Proof by extensionality with xs
 
   Show: (reverse . filter p) xs .=. (filter p . reverse) xs
 
-  Proof by induction on List xs
+  Proof by induction on xs :: List a
 
     Case []
 
@@ -31,7 +31,7 @@ Proof by extensionality with xs
       Then
       Show: (reverse . filter p) (x:xs) .=. (filter p . reverse) (x:xs)
 
-      Proof by case analysis on Bool p x
+      Proof by case analysis on (p x) :: Bool
 
         Case False
           Assume

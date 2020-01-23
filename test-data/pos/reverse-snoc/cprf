@@ -1,6 +1,6 @@
 Lemma: reverse (snoc xs x) .=. x : reverse xs
 
-Proof by induction on List xs
+Proof by induction on xs :: List a
 
 Case []
 

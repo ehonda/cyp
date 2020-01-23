@@ -136,9 +136,8 @@ typeCheckProof (ParseEquation reqns) =
     typeCheckEquationalProof reqns
 typeCheckProof (ParseExt rt rprop proof) =
     typeCheckExtensionalProof rt rprop proof
-typeCheckProof (ParseCases _ _ cases) = 
+typeCheckProof (ParseCases  _ cases) = 
     typeCheckCasesProof cases
---typeCheckProof (ParseInduction _ _ _ cases) =
 typeCheckProof (ParseInduction _ _ cases) =
     typeCheckCasesProof cases
 

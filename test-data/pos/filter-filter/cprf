@@ -1,6 +1,6 @@
 Lemma fpfp: filter p (filter p xs) .=. filter p xs
 
-Proof by induction on List xs
+Proof by induction on xs :: List a
 
   Case []
 

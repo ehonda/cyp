@@ -4,7 +4,7 @@ Proof by extensionality with xs
 
   Show: (reverse . reverse) xs .=. id xs
 
-  Proof by induction on List xs
+  Proof by induction on xs :: List a
 
     Case []
 

@@ -147,29 +147,28 @@ checkProof prop (ParseExt withRaw toShowRaw proof) env = errCtxt ctxtMsg $
         return prop'
       where
         bail msg t = lift $ err $ text msg <+> quotes (unparseTerm t)
-checkProof prop (ParseInduction typeSig gensRaw casesRaw) env = errCtxt ctxtMsg $ do
-    --_ :>: dtSc <- parseTypeSig typeSig
-    dt <- validDatatype dtRaw env
+checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env = errCtxt ctxtMsg $ do
+    dt <- validDatatypeFromScheme dtSc env
     flip evalStateT env $ do
-        over <- validateVar "induction" overRaw
+        over <- validateVar "induction" $ Free overId -- Is it correct to always use Free here?
         gens <- traverse (validateVar "generalization") gensRaw
         env <- get
         validateGens over gens prop
         lift $ validateCases dt over gens casesRaw env
         return prop
   where
-    dtRaw = ""
-    overRaw = Free ""
+    --toOldFormat :: ParseDeclTree -> Err ()
+    --toOldFormat (overId :>: dtSc) = do
+    --    --overId :>: dtSc <- readTypeSigRequireExactlyOneId typeSig
+    --    dtInst <- runTI $ freshInst dtSc
+    --    let dtName = getName $ snd $ decomposeFuncType dtInst
+    --    return (Free overId, dtName, dtSc)
+    --    where
+    --        getName (TAp (TCon (Tycon dtName _)) _) = dtName
 
-    toOldFormat :: ParseDeclTree -> Err ()
-    toOldFormat typeSig = do
-        overId :>: dtSc <- readTypeSigRequireExactlyOneId typeSig
-        
-        return ()
-
-    -- TODO: FIX, USE TYPESIG!
+            
     ctxtMsg = text "Induction over variable"
-        <+> quotes (unparseRawTerm overRaw) <+> text "of type" <+> quotes (text dtRaw)
+        <+> (text $ prettyAssump' typeSig)
         <+> if null gensRaw then empty else text "generalizing over" <+> fsep (map (quotes . unparseRawTerm) gensRaw)
 
     unparseVarList vars = fsep (intersperse (text ",") (map (unparseTerm . Free) vars))
@@ -271,16 +270,16 @@ checkProof prop (ParseInduction typeSig gensRaw casesRaw) env = errCtxt ctxtMsg 
         return $ fmap (fmap (generalizeOnlyProp gens)) pcHyps
       where
         instOver n = [(over, Free n)]
-checkProof prop (ParseCases dtRaw onRaw casesRaw) env = errCtxt ctxtMsg $ do
-    dt <- validDatatype dtRaw env
+checkProof prop (ParseCases sig@(overId :>: dtSc) casesRaw) env = errCtxt ctxtMsg $ do
+    dt <- validDatatypeFromScheme dtSc env
     flip evalStateT env $ do
-        on <- state (declareTerm onRaw)
+        on <- state (declareTerm (Free overId))
         env <- get
         lift $ validateCases dt on casesRaw env
         return prop
   where
-    ctxtMsg = text "Case analyis on"
-        <+> quotes (unparseRawTerm onRaw) <+> text "of type" <+> quotes (text dtRaw)
+    ctxtMsg = text "Case analyis on" <+> text (prettyAssump' sig)
+--        <+> quotes (unparseRawTerm onRaw) <+> text "of type" <+> quotes (text dtRaw)
 
     -- duplicated code from ParseInduction
     validateCases dt on cases env = do
@@ -330,8 +329,16 @@ validDatatype name env = case find (\dt -> dtName dt == name) (datatypes env) of
         ++ punctuate comma (map (quotes . text . dtName) $ datatypes env)
     Just dt -> Right dt
 
+validDatatypeFromScheme :: Scheme -> Env -> Err DataType
+validDatatypeFromScheme sc env = case find (\dt -> dtScheme dt == sc) (datatypes env) of
+    Nothing -> err $ fsep $
+        [ text "Invalid datatype" <+> quotes (text $ prettyScheme sc) <> text "."
+        , text "Expected one of:" ]
+        ++ punctuate comma (map (quotes . text . prettyScheme . dtScheme) $ datatypes env)
+    Just dt -> Right dt
+
 validConsCase :: Term -> DataType -> Err (String, [(TConsArg, IdxName)])
-validConsCase t (DataType _ dcons) = errCtxt invCaseMsg $ do
+validConsCase t (DataType _ _ dcons) = errCtxt invCaseMsg $ do
     (consName, consType) <- findCons cons
     let (_, consArgs) = toOldDataConstructor (consName, consType)
     argNames <- traverse argName args

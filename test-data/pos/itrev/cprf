@@ -1,6 +1,6 @@
 Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 
-Proof by induction on List xs generalizing ys
+Proof by induction on xs :: List a generalizing ys
 
 Case [] -- base case
     For fixed ys
@@ -40,7 +40,7 @@ QED
 
 Lemma app_Nil: xs ++ [] .=. xs
 
-Proof by induction on List xs
+Proof by induction on xs :: List a
 
 Case []
     Show: [] ++ [] .=. []

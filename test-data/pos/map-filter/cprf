@@ -4,7 +4,7 @@ Proof by extensionality with xs
 
   Show: (filter p . map f) xs .=. (map f . filter (p . f)) xs
 
-  Proof by induction on List xs
+  Proof by induction on xs :: List a
 
     Case []
       Show: (filter p . map f) [] .=. (map f . filter (p . f)) []
