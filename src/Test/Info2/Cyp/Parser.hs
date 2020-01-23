@@ -30,7 +30,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 --import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
-import Test.Info2.Cyp.Typing.Inference (Assump(..), quantifyAll, prettyType) -- prettyType ONLY FOR TESTING!
+import Test.Info2.Cyp.Typing.Inference (Assump(..), quantifyAll, prettyType, Scheme(..)) -- prettyType ONLY FOR TESTING!
 
 data ParseDeclTree
     = DataDecl String
@@ -59,7 +59,8 @@ data ParseProof
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
 --    | ParseCases String RawTerm [ParseCase] -- data type, term, cases
-    | ParseCases Assump [ParseCase] -- (over :: Type), cases
+--    | ParseCases Assump [ParseCase] -- (over :: Type), cases
+    | ParseCases Scheme RawTerm [ParseCase] -- term typescheme, term, cases
     | ParseCheating
     deriving Show
 
@@ -102,6 +103,15 @@ doubleColon :: Parsec [Char] u ()
 doubleColon = do
     string "::"
     return ()
+
+
+toDoubleColon :: Parsec [Char] u String
+toDoubleColon = manyTill valid doubleColon
+    where
+        end = eof <|> eol <|> commentParser
+        -- Check no new line or comment is beginning
+        invalid = notFollowedBy' end "end of line or comment"
+        valid = (try invalid) >> anyChar
 
 lineBreak :: Parsec [Char] u ()
 lineBreak = (eof <|> eol <|> commentParser) >> manySpacesOrComment
@@ -228,15 +238,22 @@ caseProofParser = do
     --datatype <- many1 (noneOf " \t")
     --lineSpaces
     --over <- termParser defaultToFree
-    sig <- typeSigParser
+    --sig <- typeSigParser
+
+    -- Read term with type attached, eg
+    --      p x :: Bool
+    -- Only parse until double colon here
+    over <- termParserUntil toEolOrDoubleColon defaultToFree
+    sc <- trim <$> toEol1
+
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
 
     -- Read typesig right here and fail if its invalid
-    case readTypeSigRequireExactlyOneId sig of
+    case readTypeScheme sc of
         Left err -> unexpected $ render err
-        Right sig' -> return $ ParseCases sig' cases
+        Right sc' -> return $ ParseCases sc' over cases
 
 cheatingProofParser :: Parsec [Char] Env ParseProof
 cheatingProofParser = return ParseCheating
@@ -279,12 +296,20 @@ propGenParser mode = do
     return (gens, prop)
 
 termParser :: PropParserMode -> Parsec [Char] Env RawTerm
-termParser mode = flip label "term" $ do
-    s <- trim <$> toEol1 <?> "expression"
+--termParser mode = flip label "term" $ do
+--    s <- trim <$> toEol1 <?> "expression"
+--    env <- getState
+--    let term = errCtxtStr "Failed to parse expression" $
+--            iparseTerm (mode $ constants env) s
+--    toParsec show term
+termParser = termParserUntil toEol1
+
+termParserUntil toEnd mode = flip label "term" $ do
+    s <- trim <$> toEnd <?> "expression"
     env <- getState
     let term = errCtxtStr "Failed to parse expression" $
             iparseTerm (mode $ constants env) s
-    toParsec show term
+    toParsec show term 
 
 namedPropParser :: PropParserMode -> Parsec [Char] Env String -> Parsec [Char] Env (String, RawProp)
 namedPropParser mode p = do
@@ -354,6 +379,15 @@ toEol1 = do
     return (x : xs)
   where
     end = eof <|> eol <|> commentParser
+
+toEolOrDoubleColon :: Parsec [Char] u String
+toEolOrDoubleColon = do
+    notFollowedBy' end "end of line or comment"
+    x <- anyChar
+    xs <- manyTill anyChar end
+    return (x : xs)
+    where
+        end = doubleColon <|> eof <|> eol <|> commentParser
 
 byRuleParser :: Parsec [Char] u String
 byRuleParser = do
@@ -679,6 +713,17 @@ readTypeSigRequireExactlyOneId (TypeSig s) =
 
             _ -> errStr "Parse error"
 readTypeSigRequireExactlyOneId _ = errStr "Not a type signature"
+
+
+readTypeScheme :: String -> Err Scheme
+readTypeScheme s = 
+    errCtxt (text "Parsing the type scheme" <+> quotes (text s)) $
+        case P.parseType s of
+            P.ParseOk t -> do
+                t' <- toCypType t
+                return $ quantifyAll t'
+            _ -> errStr "Parse Error"
+
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
 splitStringAt _ [] h

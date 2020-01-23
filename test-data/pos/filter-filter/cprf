@@ -20,7 +20,7 @@ Proof by induction on xs :: List a
     Then
     Show: filter p (filter p (x:xs)) .=. filter p (x:xs)
 
-    Proof by case analysis on Bool p x
+    Proof by case analysis on p x :: Bool
 
       Case True
         Assume

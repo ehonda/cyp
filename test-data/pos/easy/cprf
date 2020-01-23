@@ -4,7 +4,7 @@ Proof by extensionality with x
 
 	Show: (not . not) x .=. id x
 
-	Proof by case analysis on Bool x
+	Proof by case analysis on x :: Bool
 
 		Case True
 			Assume

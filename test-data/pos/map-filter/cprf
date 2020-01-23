@@ -30,7 +30,7 @@ Proof by extensionality with xs
       Then
       Show: (filter p . map f) (y:ys) .=. (map f . filter (p . f)) (y:ys)
 
-      Proof by case analysis on Bool p (f y)
+      Proof by case analysis on p (f y) :: Bool
 
         Case True
           Assume

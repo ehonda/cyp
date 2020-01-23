@@ -270,16 +270,16 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
         return $ fmap (fmap (generalizeOnlyProp gens)) pcHyps
       where
         instOver n = [(over, Free n)]
-checkProof prop (ParseCases sig@(overId :>: dtSc) casesRaw) env = errCtxt ctxtMsg $ do
+checkProof prop (ParseCases dtSc onRaw casesRaw) env = errCtxt ctxtMsg $ do
     dt <- validDatatypeFromScheme dtSc env
     flip evalStateT env $ do
-        on <- state (declareTerm (Free overId))
+        on <- state (declareTerm onRaw)
         env <- get
         lift $ validateCases dt on casesRaw env
         return prop
   where
-    ctxtMsg = text "Case analyis on" <+> text (prettyAssump' sig)
---        <+> quotes (unparseRawTerm onRaw) <+> text "of type" <+> quotes (text dtRaw)
+    ctxtMsg = text "Case analyis on" <+> quotes (unparseRawTerm onRaw) 
+        <+> text "of type" <+> quotes (text $ prettyScheme dtSc)
 
     -- duplicated code from ParseInduction
     validateCases dt on cases env = do
