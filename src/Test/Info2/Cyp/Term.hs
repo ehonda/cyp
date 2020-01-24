@@ -121,8 +121,10 @@ constSymbols _ = []
 -- in a term
 getVars :: Term -> [String]
 getVars (Application a b) = (getVars a) ++ (getVars b)
-getVars (Free xn) = [toCompoundId xn]
-getVars (Schematic xn) = [toCompoundId xn]
+--getVars (Free xn) = [toCompoundId xn]
+--getVars (Schematic xn) = [toCompoundId xn]
+getVars (Free (x, _)) = [x]
+getVars (Schematic (x, _)) = [x]
 getVars _ = []
 
 mApp :: Monad m => m (AbsTerm a) -> m (AbsTerm a) -> m (AbsTerm a)

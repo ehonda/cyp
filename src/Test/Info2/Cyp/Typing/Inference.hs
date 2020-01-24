@@ -269,19 +269,21 @@ instance Types Assump where
     apply s (i :>: sc) = i :>: (apply s sc)
     tv (i :>: sc) = tv sc
     
---schemeFromAssumps :: Id -> [Assump] -> ErrT Scheme
---schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
---schemeFromAssumps i ((i' :>: sc) : as) = 
---    if i == i' then return sc else schemeFromAssumps i as
 schemeFromAssumps :: Id -> [Assump] -> ErrT Scheme
-schemeFromAssumps i as = schemeFromAssumps' i as as
+schemeFromAssumps i [] = throwE $ text $ "Unbound identifier: " ++ i
+schemeFromAssumps i ((i' :>: sc) : as) = 
+    if i == i' then return sc else schemeFromAssumps i as
 
-schemeFromAssumps' :: Id -> [Assump] -> [Assump] -> ErrT Scheme
-schemeFromAssumps' i [] org = throwE $ indent
-    (text $ "Unbound identifier " ++ i)
-    (text $ "Assumps: " ++ (show $ map prettyAssump' org))
-schemeFromAssumps' i ((i' :>: sc) : as) org = 
-    if i == i' then return sc else schemeFromAssumps' i as org
+-- DEBUG VERSION
+--schemeFromAssumps :: Id -> [Assump] -> ErrT Scheme
+--schemeFromAssumps i as = schemeFromAssumps' i as as
+--
+--schemeFromAssumps' :: Id -> [Assump] -> [Assump] -> ErrT Scheme
+--schemeFromAssumps' i [] org = throwE $ indent
+--    (text $ "Unbound identifier " ++ i)
+--    (text $ "Assumps: " ++ (show $ map prettyAssump' org))
+--schemeFromAssumps' i ((i' :>: sc) : as) org = 
+--    if i == i' then return sc else schemeFromAssumps' i as org
 
 assumpName :: Assump -> Id
 assumpName (i :>: _) = i
@@ -469,8 +471,12 @@ tiRawTerm as (CT.Application e f) = do
 -- Code duplication: Use Generics!
 tiTerm :: Infer CT.Term Type
 tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
-tiTerm as (CT.Free xn) = tiRawTerm as (CT.Free $ CT.toCompoundId xn)
-tiTerm as (CT.Schematic xn) = tiRawTerm as (CT.Schematic $ CT.toCompoundId xn)
+-- Don't want to use the fixes info here (i.e. (x, n)), because that is
+-- proof specific and shouldn't leak into typechecking
+--tiTerm as (CT.Free xn) = tiRawTerm as (CT.Free $ CT.toCompoundId xn)
+--tiTerm as (CT.Schematic xn) = tiRawTerm as (CT.Schematic $ CT.toCompoundId xn)
+tiTerm as (CT.Free (x, _)) = tiRawTerm as (CT.Free x)
+tiTerm as (CT.Schematic (x, _)) = tiRawTerm as (CT.Schematic x)
 tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
 tiTerm as term@(CT.Application e f) = do
     te <- tiTerm as e

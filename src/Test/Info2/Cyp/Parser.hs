@@ -57,10 +57,7 @@ data ParseCase = ParseCase
 data ParseProof
     = ParseInduction Assump [RawTerm] [ParseCase] -- (over :: Type), generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
---    | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
     | ParseExt Assump RawProp ParseProof -- (fixedvar :: Type), to show, subproof
---    | ParseCases String RawTerm [ParseCase] -- data type, term, cases
---    | ParseCases Assump [ParseCase] -- (over :: Type), cases
     | ParseCases Scheme RawTerm [ParseCase] -- term typescheme, term, cases
     | ParseCheating
     deriving Show

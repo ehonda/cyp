@@ -82,26 +82,26 @@ getFixes = gets snd
 -- Corresponds to declareTerm
 -- Inserts unfixed vars at 0, eg x0
 -- and leaves already fixed vars at n, eg xn
-fixFreesIfNew :: [String] -> ProofTC ()
-fixFreesIfNew frees = modify $ \(as, fixes) -> (as, 
+fixIdentifierIfNew :: [String] -> ProofTC ()
+fixIdentifierIfNew frees = modify $ \(as, fixes) -> (as, 
     foldl (\fixes v -> insertIfNotPresent v fixes) fixes frees)
     where
         insertIfNotPresent v = M.insertWith (\_ n -> n) v 0
 
 fixRawTermFreesIfNew :: RawTerm -> ProofTC ()
-fixRawTermFreesIfNew rt = fixFreesIfNew $ collectFrees rt []
+fixRawTermFreesIfNew rt = fixIdentifierIfNew $ collectFrees rt []
 
 -- Corresponds to variantFixes
 -- Inserts unfixed vars at 0, eg x0
 -- and incs already fixed vars at n, eg x_{n+1}
-fixNewFrees :: [String] -> ProofTC ()
-fixNewFrees frees = modify $ \(as, fixes) -> (as, 
+fixNewIdentifiers :: [String] -> ProofTC ()
+fixNewIdentifiers frees = modify $ \(as, fixes) -> (as, 
     foldl (\fixes v -> insertNew v fixes) fixes frees)
     where
         insertNew v = M.insertWith (\_ n -> n + 1) v 0
         
 fixRawTermNewFrees :: RawTerm -> ProofTC ()
-fixRawTermNewFrees rt = fixNewFrees $ collectFrees rt []
+fixRawTermNewFrees rt = fixNewIdentifiers $ collectFrees rt []
 
 
 
