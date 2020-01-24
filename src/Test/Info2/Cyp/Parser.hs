@@ -57,7 +57,8 @@ data ParseCase = ParseCase
 data ParseProof
     = ParseInduction Assump [RawTerm] [ParseCase] -- (over :: Type), generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
-    | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
+--    | ParseExt RawTerm RawProp ParseProof -- fixed variable, to show, subproof
+    | ParseExt Assump RawProp ParseProof -- (fixedvar :: Type), to show, subproof
 --    | ParseCases String RawTerm [ParseCase] -- data type, term, cases
 --    | ParseCases Assump [ParseCase] -- (over :: Type), cases
     | ParseCases Scheme RawTerm [ParseCase] -- term typescheme, term, cases
@@ -99,19 +100,26 @@ eol = do
         <?> "end of line"
     return ()
 
+eolOrComment :: Parsec [Char] u ()
+eolOrComment = eof <|> eol <|> commentParser
+
+unexpectedEolOrComment :: String
+unexpectedEolOrComment = "end of line or comment" 
+
 doubleColon :: Parsec [Char] u ()
 doubleColon = do
     string "::"
     return ()
 
+toDoubleColonWith :: Parsec [Char] u () -> String
+    -> Parsec [Char] u String
+toDoubleColonWith end unexpectedMsg = manyTill valid doubleColon
+    where
+        invalid = notFollowedBy' end unexpectedMsg
+        valid = (try invalid) >> anyChar
 
 toDoubleColon :: Parsec [Char] u String
-toDoubleColon = manyTill valid doubleColon
-    where
-        end = eof <|> eol <|> commentParser
-        -- Check no new line or comment is beginning
-        invalid = notFollowedBy' end "end of line or comment"
-        valid = (try invalid) >> anyChar
+toDoubleColon = toDoubleColonWith eolOrComment unexpectedEolOrComment
 
 lineBreak :: Parsec [Char] u ()
 lineBreak = (eof <|> eol <|> commentParser) >> manySpacesOrComment
@@ -180,33 +188,25 @@ funParser = do
     cs <- toEol1 <?> "Function definition"
     return (FunDef cs)
 
--- TODO: REWORK, UGLY CODE
---typeSigParser :: Parsec [Char] () ParseDeclTree
-typeSigParser :: Parsec [Char] u ParseDeclTree
-typeSigParser = do
-    -- This could be done cleaner
-    sym <- trim <$> toDoubleColon
-    sig <- trim <$> toEolOrGens <?> "Type Signature"
+typeSigToParser :: Parsec [Char] u () -> String 
+    -> Parsec [Char] u ParseDeclTree
+typeSigToParser end unexpectedMsg = do
+    sym <- trim <$> toDoubleColonWith end unexpectedMsg
+    sig <- trim <$> toEnd <?> "Type Signature"
     return $ TypeSig $ concat [sym, " :: ", sig]
     where
-        end = (try $ lookAhead $ keyword "generalizing") <|> 
-            eof <|> eol <|> commentParser
-        -- Check no new line or comment is beginning
-        invalid = notFollowedBy' end "end of line or comment"
-        valid = (try invalid) >> anyChar
-        
-        toDoubleColon :: Parsec [Char] u String
-        toDoubleColon = manyTill valid doubleColon
-
-        toEolOrGens :: Parsec [Char] u String
-        toEolOrGens = do
-            notFollowedBy' end "end of line or comment"
+        toEnd = do
+            notFollowedBy' end unexpectedMsg
             x <- anyChar
             xs <- manyTill anyChar end
             return (x : xs)
-          where
-            end = (try $ lookAhead $ keyword "generalizing") <|> 
-                eof <|> eol <|> commentParser
+
+-- TODO: REWORK, UGLY CODE
+typeSigParser :: Parsec [Char] u ParseDeclTree
+typeSigParser = typeSigToParser end unexpectedMsg
+    where
+        end = eof <|> eol <|> commentParser
+        unexpectedMsg = "end of line or comment"
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -217,7 +217,7 @@ varsParser = varParser `sepBy1` (keyword ",")
 inductionProofParser :: Parsec [Char] Env ParseProof
 inductionProofParser = do
     keyword "on"
-    sig <- typeSigParser
+    sig <- typeSigToParser sigEnd sigUnexpectedMsg
     manySpacesOrComment
     gens <- option [] (do
       keyword "generalizing"
@@ -231,14 +231,14 @@ inductionProofParser = do
     case readTypeSigRequireExactlyOneId sig of
         Left err -> unexpected $ render err
         Right sig' -> return $ ParseInduction sig' gens cases
+    where
+        sigEnd = (try $ lookAhead $ keyword "generalizing") <|>
+            eolOrComment
+        sigUnexpectedMsg = "end of line, comment or keyword 'generalizing'"
 
 caseProofParser :: Parsec [Char] Env ParseProof
 caseProofParser = do
     keyword "on"
-    --datatype <- many1 (noneOf " \t")
-    --lineSpaces
-    --over <- termParser defaultToFree
-    --sig <- typeSigParser
 
     -- Read term with type attached, eg
     --      p x :: Bool
@@ -262,13 +262,19 @@ extProofParser :: Parsec [Char] Env ParseProof
 extProofParser = do
     keyword "with"
     lineSpaces
-    with <- termParser defaultToFree
+    --with <- termParser defaultToFree
+    sig <- typeSigParser
     manySpacesOrComment
     toShow <- toShowParser
     manySpacesOrComment
     proof <- proofParser
     manySpacesOrComment
-    return $ ParseExt with toShow proof
+
+    -- Read typesig right here and fail if its invalid
+    case readTypeSigRequireExactlyOneId sig of
+        Left err -> unexpected $ render err
+        Right sig' -> return $ ParseExt sig' toShow proof
+    --return $ ParseExt with toShow proof
 
 type PropParserMode = [String] -> String -> Err RawTerm
 
@@ -296,12 +302,6 @@ propGenParser mode = do
     return (gens, prop)
 
 termParser :: PropParserMode -> Parsec [Char] Env RawTerm
---termParser mode = flip label "term" $ do
---    s <- trim <$> toEol1 <?> "expression"
---    env <- getState
---    let term = errCtxtStr "Failed to parse expression" $
---            iparseTerm (mode $ constants env) s
---    toParsec show term
 termParser = termParserUntil toEol1
 
 termParserUntil toEnd mode = flip label "term" $ do
@@ -455,77 +455,7 @@ caseParser = do
 
 
 manySpacesOrComment :: Parsec [Char] u ()
-manySpacesOrComment = skipMany $ (space >> return ()) <|> commentParser
-
------------------------------------------------------------------------
------------------------------------------------------------------------
------------------------------------------------------------------------
------------------------------------------------------------------------
------------------------------------------------------------------------
------------------------------------------------------------------------
-
--- READ DATATYPE TESTS
-treeStr = "Tree a = Leaf a | Node a (Tree a) (Tree a)"
-dtTree = DataDecl treeStr
-dtWrapped = DataDecl $ "Wrapped = WT (Int -> Int)"
-dtWrapped2 = DataDecl $ "Wrapped = WT (Int -> (Int -> Int))"
--- THIS IS ILLEGAL -> PROBLEM
--- Either use the version with Nil and Cons, or make lists builtin
-listStr = "List a = [] | a : (List a)"
-listStr' = "List a = Nil | Cons a (List a)"
-dtList = DataDecl listStr
-dtMixed = DataDecl "Mixed a b = AB a b | BA b a"
-
-dtRec = DataDecl "Rec a = R (Rec a)"
-dtNested = DataDecl "Nested a = N (Other a)"        -- Illegal in readDataType
-dtNestedInt = DataDecl "Nested a = N Int"           -- Legal in readDataType
-dtNestedList = DataDecl "NList a = N [a]"           -- Illegal in readDataType
-
--- Existential quantification, we do not allow this!
--- THIS WAS TEST CODE WHILE WRITING THE FUNCTION, CAN BE REMOVED
---exQStr = "Worker x b = forall b. Num b => Worker {buf :: b, input :: x}"
---
---modeExQ = P.defaultParseMode { P.extensions = [HE.EnableExtension HE.ExistentialQuantification] }
-
-dtInfix = DataDecl "Assump = Id :>: Scheme"
-dtInfixHeadFail = DataDecl "a & b = Tuple a b"
-dtDerivingFail = DataDecl "Tree a = Leaf a deriving Show"
--- This does not fail, since the parser doesn't know that b is not in scope.
--- Needs to be handlded separately
-dtABFail = DataDecl "Tree a = Leaf b"
-dtQualArgNameFail = DataDecl "D = D OtherModule.Type"
-
-dtListAsArg = DataDecl "D a = D [a]"
-
---dataDeclStr (DataDecl s) = "data " ++ s
-
-dataBool = "data Bool = True | False"
-dataList = "data L a = Nil | Cons a (L a)"
-dataMixed = "data Mixed a b = AB a b | BA b a"
-dataUnboundTV = "data UB = UB a"
-dataABC = "data ABC a b c = ABC a b c"
-dataParen = "data P a b c = P (a b) c"
-dataTwoParam = "data TP a b = TP"
-dataListParam = "data LP a = LP [a]"
-dataOneParam = "data D a = D a"
-
-getDataDecl decl = case P.parseDecl decl of
-    P.ParseOk decl' -> decl'
-    _ -> Exts.DefaultDecl []
-
-testConv decl = toCypDataType $ getDataDecl decl
-
-prettyConv decl = do
-    dt <- testConv decl
-    return $ map prettyDCon $ dtConss dt 
-    where
-        prettyDCon = \(dcon, dtype) -> concat 
-            [dcon, " :: ", prettyType dtype]
-
-showConv decl = case prettyConv decl of
-    Left e -> print e
-    Right sigs -> mapM_ print sigs
-    
+manySpacesOrComment = skipMany $ (space >> return ()) <|> commentParser    
 
 -- This will use parseDecl to parse the declaration
 -- We want datatype declarations, i.e. this constructor:
@@ -591,18 +521,6 @@ readSym = sequence . mapMaybe parseSym
     parseSym _ = Nothing
 
 
--- TEST CASES READ FUNC
------------------------------------------------------------------------
-
-defId = FunDef "id x = x"
-defPLit = FunDef "f 1 = 2"
-defApp = FunDef "app x xs = xs ++ [x]"
-dc = defaultConsts
-
-
---type RawAlt = ([Exts.Pat], Term)
---type FunctionRawAlts = (String, [RawAlt])
-
 readFunc :: [String] -> [ParseDeclTree] 
     -> Err ([Named Prop], [String], [FunctionRawAlts])
 readFunc syms pds = do
@@ -658,7 +576,7 @@ readFunc syms pds = do
     parseFunc _ = Nothing
 
 
---readTypeSig :: [ParseDeclTree] -> Err [Assump]
+readTypeSig :: [ParseDeclTree] -> Err [Assump]
 readTypeSig pdt = fmap concat $ sequence $ mapMaybe parseTypeSig pdt
     where
         parseTypeSig (TypeSig s) = Just $ 
@@ -679,24 +597,6 @@ readTypeSig pdt = fmap concat $ sequence $ mapMaybe parseTypeSig pdt
                     _ -> errStr "Parse error"
 
         parseTypeSig _ = Nothing
---parseTypeSig (TypeSig s) = Just $ 
---    errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
---        case P.parseDecl s of
---            -- Type signatures can be specified for several
---            -- identifiers at a time, e.g:
---            --      f, g :: X -> X
---            -- that is the reason syms is a list -> in that
---            -- case we need to return assumptions for multiple
---            -- ids from one TypeSig
---            P.ParseOk (Exts.TypeSig syms t) -> do
---                t' <- toCypType t
---                return $ zipWith (:>:) ids $ schemes t'
---                where
---                    ids = map extractName syms
---                    schemes t = repeat $ quantifyAll t
---            _ -> errStr "Parse error"
---
---parseTypeSig _ = Nothing
 
 -- Reads the type signature in pdt, requires that the type
 -- for exactly one symbol is provided
@@ -706,7 +606,8 @@ readTypeSigRequireExactlyOneId (TypeSig s) =
         case P.parseDecl s of
             P.ParseOk (Exts.TypeSig syms t) -> do
                 t' <- toCypType t
-                when (length ids /= 1) $ errStr "Only one symbol expected"
+                when (length ids /= 1) $ errStr $
+                    "Only one symbol expected, got: " ++ show ids
                 return $ (head ids) :>: (quantifyAll t')
                 where
                     ids = map extractName syms

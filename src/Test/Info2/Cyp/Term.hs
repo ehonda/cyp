@@ -6,6 +6,7 @@ module Test.Info2.Cyp.Term
     , AbsProp (..)
     , Prop
     , RawProp
+    , toCompoundId
     , collectFrees
     , collectFreesProp
     , constSymbols
@@ -59,6 +60,9 @@ import Text.PrettyPrint (parens, quotes, text, (<+>), Doc)
 import Test.Info2.Cyp.Util
 
 type IdxName = (String, Integer)
+
+toCompoundId :: IdxName -> String
+toCompoundId (x, n) = concat [x, "~", show n]
 
 data AbsTerm a
     = Application (AbsTerm a) (AbsTerm a)
@@ -117,8 +121,8 @@ constSymbols _ = []
 -- in a term
 getVars :: Term -> [String]
 getVars (Application a b) = (getVars a) ++ (getVars b)
-getVars (Free (x, _)) = [x]
-getVars (Schematic (x, _)) = [x]
+getVars (Free xn) = [toCompoundId xn]
+getVars (Schematic xn) = [toCompoundId xn]
 getVars _ = []
 
 mApp :: Monad m => m (AbsTerm a) -> m (AbsTerm a) -> m (AbsTerm a)

@@ -72,7 +72,7 @@ QED
 
 Lemma: filter p . filter p .=. filter p
 
-Proof by extensionality with xs
+Proof by extensionality with xs :: List a
 
   Show: (filter p . filter p) xs .=. filter p xs
 

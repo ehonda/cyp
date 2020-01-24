@@ -1,6 +1,6 @@
 Lemma: k .=. l
 
-Proof by extensionality with x
+Proof by extensionality with x :: a
 
   Show: k x .=. l x
 

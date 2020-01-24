@@ -120,14 +120,14 @@ checkProof prop (ParseEquation reqns) env = errCtxtStr "Equational proof" $ do
     when (prop /= proved) $ err $
         text "Proved proposition does not match goal:" `indent` unparseProp proved
     return proved
-checkProof prop (ParseExt withRaw toShowRaw proof) env = errCtxt ctxtMsg $
+checkProof prop (ParseExt sig@(withId :>: _) toShowRaw proof) env = errCtxt ctxtMsg $
     flip evalStateT env $ do
-        with <- validateWith withRaw
+        with <- validateWith $ Free withId
         prop' <- validateShow with toShowRaw
         env <- get
         lift $ checkProof prop' proof env
   where
-    ctxtMsg = text "Extensionality with" <+> quotes (unparseRawTerm withRaw)
+    ctxtMsg = text "Extensionality with" <+> text (prettyAssump' sig)
 
     validateWith t = do -- lazy code duplication
         t' <- state (declareTerm t)
@@ -150,23 +150,13 @@ checkProof prop (ParseExt withRaw toShowRaw proof) env = errCtxt ctxtMsg $
 checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env = errCtxt ctxtMsg $ do
     dt <- validDatatypeFromScheme dtSc env
     flip evalStateT env $ do
-        over <- validateVar "induction" $ Free overId -- Is it correct to always use Free here?
+        over <- validateVar "induction" $ Free overId
         gens <- traverse (validateVar "generalization") gensRaw
         env <- get
         validateGens over gens prop
         lift $ validateCases dt over gens casesRaw env
         return prop
-  where
-    --toOldFormat :: ParseDeclTree -> Err ()
-    --toOldFormat (overId :>: dtSc) = do
-    --    --overId :>: dtSc <- readTypeSigRequireExactlyOneId typeSig
-    --    dtInst <- runTI $ freshInst dtSc
-    --    let dtName = getName $ snd $ decomposeFuncType dtInst
-    --    return (Free overId, dtName, dtSc)
-    --    where
-    --        getName (TAp (TCon (Tycon dtName _)) _) = dtName
-
-            
+  where           
     ctxtMsg = text "Induction over variable"
         <+> (text $ prettyAssump' typeSig)
         <+> if null gensRaw then empty else text "generalizing over" <+> fsep (map (quotes . unparseRawTerm) gensRaw)

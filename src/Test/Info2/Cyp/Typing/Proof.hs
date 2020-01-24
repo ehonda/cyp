@@ -121,10 +121,12 @@ typeCheckLemma (ParseLemma name rawProp proof) = do
     -- We can typecheck the raw prop with default
     -- fixes, without modifying the state
     as <- getAssumps
-    lift $ except $ runTI $ tiProp as $ 
-        interpretRawPropDefault rawProp
+    --lift $ withExcept errMsg $ except $ runTI $ tiProp as $ 
+    --    interpretRawPropDefault rawProp
     typeCheckProof proof
     where
+        errMsg err = capIndent "Checking Lemma" [err]
+
         interpretRawPropDefault :: RawProp -> Prop
         interpretRawPropDefault (Prop l r) =
             Prop (interp l) (interp r)
@@ -134,8 +136,8 @@ typeCheckLemma (ParseLemma name rawProp proof) = do
 typeCheckProof :: ParseProof -> ProofTC ()
 typeCheckProof (ParseEquation reqns) = 
     typeCheckEquationalProof reqns
-typeCheckProof (ParseExt rt rprop proof) =
-    typeCheckExtensionalProof rt rprop proof
+typeCheckProof (ParseExt withSig rprop proof) =
+    typeCheckExtensionalProof withSig rprop proof
 typeCheckProof (ParseCases _ _ cases) = 
     typeCheckCasesProof cases
 typeCheckProof (ParseInduction _ _ cases) =
@@ -145,8 +147,11 @@ typeCheckEquationalProof :: EqnSeqq RawTerm -> ProofTC ()
 typeCheckEquationalProof reqns = do
     fixes <- getFixes
     as <- getAssumps
-    lift $ except $ runTI $ tiEquations as $ interpretEqnsWith fixes
+    lift $ withExcept errMsg $ except $ runTI $ 
+        tiEquations as $ interpretEqnsWith fixes
     where
+        errMsg err = capIndent "Type checking equational proof" [err]
+
         interpretEqnsWith :: FixesMap -> EqnSeqq Term
         interpretEqnsWith fixes = 
             fmap (interpretTermWithFixes fixes) reqns
@@ -160,9 +165,9 @@ typeCheckEquationalProof reqns = do
             as' <- traverse newVarAssump $ getVarsEqnSeqq eqns
             typeCheckEqnSeqq (as ++ as') eqns
 
-typeCheckExtensionalProof :: RawTerm -> RawProp -> ParseProof -> ProofTC ()
-typeCheckExtensionalProof fixTerm rawProp proof = do
-    fixRawTermNewFrees fixTerm
+typeCheckExtensionalProof :: Assump -> RawProp -> ParseProof -> ProofTC ()
+typeCheckExtensionalProof (withId :>: withSc) rawProp proof = do
+    fixRawTermNewFrees $ Free withId
     fixes <- getFixes
     as <- getAssumps
     lift $ except $ runTI $ tiProp as $ 

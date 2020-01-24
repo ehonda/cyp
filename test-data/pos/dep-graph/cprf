@@ -1,6 +1,6 @@
 Lemma: c .=. a
 
-Proof by extensionality with x
+Proof by extensionality with x :: a
   Show: c x .=. a x
   Proof
                    c x

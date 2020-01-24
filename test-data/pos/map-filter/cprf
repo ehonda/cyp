@@ -1,6 +1,6 @@
 Lemma: filter p . map f .=. map f . filter (p . f)
 
-Proof by extensionality with xs
+Proof by extensionality with xs :: List a
 
   Show: (filter p . map f) xs .=. (map f . filter (p . f)) xs
 

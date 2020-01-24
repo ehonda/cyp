@@ -1,6 +1,6 @@
 Lemma: reverse . filter p .=. filter p . reverse
 
-Proof by extensionality with xs
+Proof by extensionality with xs :: List a
 
   Show: (reverse . filter p) xs .=. (filter p . reverse) xs
 

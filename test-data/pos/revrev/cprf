@@ -1,6 +1,6 @@
 Lemma: reverse . reverse .=. id
 
-Proof by extensionality with xs
+Proof by extensionality with xs :: List a
 
   Show: (reverse . reverse) xs .=. id xs
 
