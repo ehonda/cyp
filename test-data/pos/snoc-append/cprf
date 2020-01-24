@@ -14,7 +14,7 @@ Case []
     QED
 
 Case x:xs
-    Fix x, xs
+    Fix x :: a, xs :: List a
     Assume
         IH: snoc xs y .=. xs ++ [y]
     Then

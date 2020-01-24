@@ -17,6 +17,7 @@ module Test.Info2.Cyp.Parser where
 
 import Control.Monad (when)
 import Data.Char
+import Data.Either
 import Data.Maybe
 import Data.List (nub)
 import Text.Parsec as Parsec
@@ -30,7 +31,7 @@ import Test.Info2.Cyp.Term
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 --import Test.Info2.Cyp.Types     -- ONLY FOR TESTING, REMOVE AGAIN!
-import Test.Info2.Cyp.Typing.Inference (Assump(..), quantifyAll, prettyType, Scheme(..)) -- prettyType ONLY FOR TESTING!
+import Test.Info2.Cyp.Typing.Inference --(Assump(..), assumpName, quantifyAll, prettyType, Scheme(..)) -- prettyType ONLY FOR TESTING!
 
 data ParseDeclTree
     = DataDecl String
@@ -47,6 +48,7 @@ data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
 data ParseCase = ParseCase
     { pcCons :: RawTerm
     , pcFixs :: Maybe [RawTerm] -- fixed variables
+--    , pcFixs :: Maybe [Assump] -- [fixvar :: Type]
     , pcGens :: Maybe [RawTerm] -- generalized variables
     , pcToShow :: Maybe RawProp -- goal
     , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
@@ -415,28 +417,49 @@ caseParser = do
     lineSpaces
     t <- termParser defaultToFree
     manySpacesOrComment
-    fxs <- optionMaybe $ do
-      keyword "Fix"
-      varsParser <* manySpacesOrComment  
+    --fxs <- optionMaybe $ do
+    --  keyword "Fix"
+    --  varsParser <* manySpacesOrComment  
+    fixSigs <- optionMaybe $ do
+        keyword "Fix"
+        (sepBy1 (typeSigToParser (sigEnd <|> (try $ lookAhead $ keyword ",")) unexpectedMsg) $ 
+            char ',') <* manySpacesOrComment
+
     assms <- assmsP
     manySpacesOrComment
     gens <- optionMaybe $ do
-      choice [char 'f', char 'F']
-      keyword "or fixed"
+      gensStart
       varsParser <* manySpacesOrComment
     toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
     manyTill anyChar (lookAhead (string "Proof"))
     proof <- proofParser
     manySpacesOrComment
-    return $ ParseCase
-        { pcCons = t
-        , pcFixs = fxs
-        , pcGens = gens
-        , pcToShow = toShow
-        , pcAssms = assms
-        , pcProof = proof
-        }
+
+    -- Read fix sigs
+    let fixAs = map readTypeSigRequireExactlyOneId $ fromMaybe [] fixSigs
+    if not $ null $ lefts fixAs
+    then unexpected $ render $ head $ lefts fixAs
+    else do
+        let fxs = case rights fixAs of
+                [] -> Nothing
+                as -> Just $ map (Free . assumpName) as
+        return $ ParseCase
+            { pcCons = t
+            , pcFixs = fxs
+            , pcGens = gens
+            , pcToShow = toShow
+            , pcAssms = assms
+            , pcProof = proof
+            }
   where
+    gensStart = do
+        choice [char 'f', char 'F']
+        keyword "or fixed"
+
+    sigEnd = (try $ lookAhead $ keyword "Assume") <|> eolOrComment
+
+    unexpectedMsg = "end of line or comment"
+    
     assmsP = option [] $ do
         keyword "Assume"
         manySpacesOrComment

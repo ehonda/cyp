@@ -24,7 +24,7 @@ Proof by extensionality with xs :: List a
       QED
 
     Case y:ys
-      Fix y, ys
+      Fix y :: a, ys :: List a
       Assume
         IH: (filter p . map f) ys .=. (map f . filter (p . f)) ys
       Then

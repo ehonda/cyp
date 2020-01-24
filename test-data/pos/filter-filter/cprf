@@ -14,7 +14,7 @@ Proof by induction on xs :: List a
     QED
 
   Case x:xs
-    Fix x, xs
+    Fix x :: a, xs :: List a
     Assume
       IH: filter p (filter p xs) .=. filter p xs
     Then
