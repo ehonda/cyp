@@ -184,9 +184,14 @@ mgu (TAp l r) (TAp l' r') = do
 mgu (TVar u) t = varBind u t
 mgu t (TVar u) = varBind u t
 mgu (TCon tc1) (TCon tc2) | tc1 == tc2 = return nullSubst
-mgu t s = throwE $ indent
-    (text "Types do not unify:")
-    ((typeDoc "t" t) $$ (typeDoc "s" s))
+--mgu t s = throwE $ indent
+--    (text "Types do not unify:")
+--    ((typeDoc "t" t) $$ (typeDoc "s" s))
+mgu t s = throwE $ capIndent
+    "Types do not unify:"
+    [ typeDoc "t" t
+    , typeDoc "s" s
+    ]
 
 varBind :: Tyvar -> Type -> ErrT Subst
 varBind u t 
@@ -316,11 +321,18 @@ addErrorContext :: Doc -> TI ()
 addErrorContext err = modify $ 
     \(s, n, es) -> (s, n, es ++ [err])
 
+removeLastErrorContext :: TI ()
+removeLastErrorContext = modify $
+    \(s, n, es) -> if null es
+        then (s, n, es)
+        else (s, n, init es)
+
 getErrorContexts :: TI [Doc]
 getErrorContexts = gets $ \(_, _, es) -> es
 
 contextsDoc :: [Doc] -> Doc
-contextsDoc es = foldl (\esDoc e -> indent esDoc e) empty es
+contextsDoc es = foldr (\e doc -> indent e doc) empty es
+--contextsDoc es = foldl (\esDoc e -> indent esDoc e) empty es
 --contextsDoc = vcat
 
 unifyWithExceptTransform :: Type -> Type -> (Doc -> Doc) -> TI ()
@@ -358,13 +370,20 @@ unifyErrStack :: Type -> Type -> TI ()
 unifyErrStack t t' = do
     s <- getSubst
 
+    -- TODO: Make helper function for
+    --  addErr
+    --  doSomething
+    --  removeLastErr
     addErrorContext $ expectedActualDoc s
     es <- getErrorContexts
-
-    u <- lift $ withExcept (\e -> indent (contextsDoc es) e) $
+    u <- lift $ withExcept (\e -> contextsDoc $ es ++ [e]) $
         mgu (apply s t) (apply s t')
+    -- Remove the error from the stack if mgu succeeded
+    removeLastErrorContext
+    
     extSubst u
     where
+        
         expectedActualDoc s = capIndent
             "While unifying:"
             [ typeDoc "expected" $ apply s t
