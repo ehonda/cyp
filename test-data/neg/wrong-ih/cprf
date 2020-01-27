@@ -1,6 +1,6 @@
 Lemma: length (xs ++ ys) .=. length xs + length ys
 
-Proof by induction on xs :: List a
+Proof by induction on xs :: [a]
 
 Case []
 
@@ -16,7 +16,7 @@ Case []
     QED
 
 Case x:xs
-    Fix x :: a, xs :: List a
+    Fix x :: a, xs :: [a]
     Assume
         IH: length (zs ++ ys) .=. length zs + length ys
     Then
