@@ -40,8 +40,7 @@ defaultDataTypes =
     ]
     where
         tvarA = TVar (Tyvar "a" Star)
-        tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) tvarA
-        --tListA = TAp tList tvarA
+        tListA = TAp tList tvarA
         scListA = quantifyAll tListA
 
 
@@ -71,8 +70,7 @@ defaultConstAssumps =
         c = TVar $ Tyvar "c" Star
         scBinOp = quantifyAll (a `fn` a `fn` a)
         -- TODO: Duplication from default datatype
-        tListA = TAp (TCon (Tycon "List" (Kfun Star Star))) a
-        --tListA = TAp tList tvarA
+        tListA = TAp tList tvarA
         tBool = TCon (Tycon "Bool" Star)
 
 data Named a = Named String a
@@ -175,9 +173,6 @@ toCypType (Exts.TyList t) = do
     t' <-  toCypType t
     return $ TAp tList t'
     where
-        -- TODO: Change this along with the other appearances
-        -- to use [] instead of List
-        tList = TCon (Tycon "List" (Kfun Star Star))
 
 --toCypType (Exts.TyApp tc arg) = liftM2 TAp (toCypType tc) (toCypType arg)
 toCypType (Exts.TyApp a b) = liftM2 TAp (convertTCAps 1 a) (toCypType b)

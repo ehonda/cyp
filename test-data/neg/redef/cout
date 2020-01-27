@@ -1,8 +1,8 @@
 While typechecking the proposition:
     xs ++ ys .=. 0
     While unifying:
-        expected = List v2
+        expected = [v2]
         actual = Int
         Types do not unify:
-            t = List v2
+            t = [v2]
             s = Int
