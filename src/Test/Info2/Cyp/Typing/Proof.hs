@@ -16,6 +16,9 @@ import Test.Info2.Cyp.Typing.Theory
 import Test.Info2.Cyp.Types
 import Test.Info2.Cyp.Util
 
+-- REMOVE: ONLY FOR TESTING
+import Text.PrettyPrint
+
 -- TODO: PROVIDE MORE DETAILED ERROR MESSAGES
 typeCheckEquations :: (Traversable t) => [Assump] -> Type -> t Term -> TI ()
 typeCheckEquations as t eqns = forM_ eqns $ checkTypeOfTermIs as t
@@ -72,6 +75,9 @@ type ProofTC = StateT ProofTCState ErrT
 
 runProofTC :: [Assump] -> ProofTC a -> Err a
 runProofTC as f = runExcept $ evalStateT f $ emptyFixesWith as
+
+addAssump :: Assump -> ProofTC ()
+addAssump a = modify $ (\(as, fs) -> (a : as, fs))
 
 getAssumps :: ProofTC [Assump]
 getAssumps = gets fst
@@ -166,12 +172,31 @@ typeCheckEquationalProof reqns = do
             typeCheckEqnSeqq (as ++ as') eqns
 
 typeCheckExtensionalProof :: Assump -> RawProp -> ParseProof -> ProofTC ()
-typeCheckExtensionalProof (withId :>: withSc) rawProp proof = do
+typeCheckExtensionalProof varAssump@(withId :>: _) rawProp proof = do
+    -- Fix var, is that really needed?
     fixRawTermNewFrees $ Free withId
+    -- Add assump about ext var
+    addAssump varAssump
+
     fixes <- getFixes
     as <- getAssumps
-    lift $ except $ runTI $ tiProp as $ 
-        interpretRawPropWith fixes rawProp
+
+    -- Debug
+    --let toShow = interpretRawPropWith fixes rawProp
+    --    showAs = text $ concat ["as: ", showWithoutDefaults as]
+    --    showFs = text $ concat ["fixes: ", show fixes]
+    --    showProp = hsep [text "show:", unparseProp toShow]
+    --lift $ throwE $ showAs $$ showFs $$ showProp
+
+    -- Validate to show
+    let tiShow = tiProp as $ interpretRawPropWith fixes rawProp
+        errMsg = capIndent 
+            "While checking 'To Show:' under the assumption:"
+            [assumpDoc varAssump]
+
+        withToShowErr e = withExcept (indent errMsg) $ except e
+
+    lift $ withToShowErr $ runTI $ tiShow 
     typeCheckProof proof
 
 

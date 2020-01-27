@@ -1,0 +1,12 @@
+Lemma : not . not .=. id
+    While typechecking the proof
+        While checking 'To Show:' under the assumption:
+            x :: Int
+            While inferring the type of the term:
+                (not . not) x
+                While unifying:
+                    expected = Int -> v7
+                    actual = Bool -> Bool
+                    Types do not unify:
+                        t = Int
+                        s = Bool

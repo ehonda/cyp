@@ -17,7 +17,6 @@ import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import qualified Language.Haskell.Exts.Pretty as ExtsPretty
 import qualified Test.Info2.Cyp.Term as CT
 import Test.Info2.Cyp.Util -- Err functionality
---import Test.Info2.Cyp.Typing.Pretty
 
 -- SECTION 4 (TYPES)
 --------------------------------------------------------------
@@ -485,8 +484,11 @@ tiTerm as term@(CT.Application e f) = do
     unifyWithErrMsg (tf `fn` t) te errMsg
     return t
     where
-        errMsg = (text "While inferring the type of the term ")
-            <> CT.unparseTerm term
+        --errMsg = (text "While inferring the type of the term:")
+        --    <+> CT.unparseTermPretty term
+        errMsg = capIndent
+            "While inferring the type of the term:"
+            [CT.unparseTermPretty term]
 
 
 -- Type inference for Alts

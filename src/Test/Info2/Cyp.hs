@@ -104,7 +104,8 @@ checkLemma :: ParseLemma -> Env -> Err (Prop, Env)
 checkLemma lem@(ParseLemma name rprop proof) env = errCtxt (text "Lemma" <+> text name <> colon <+> unparseRawProp rprop) $ do
     -- Typecheck the lemma
     as <- getTheoryAssumps env
-    runProofTC as $ typeCheckLemma lem
+    errCtxt (text "While typechecking the proof") $
+        runProofTC as $ typeCheckLemma lem
 
     let (prop, env') = declareProp rprop env
     Prop _ _ <- checkProof prop proof env'

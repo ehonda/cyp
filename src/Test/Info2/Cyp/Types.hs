@@ -1,7 +1,8 @@
 module Test.Info2.Cyp.Types where
 
 import Control.Monad (liftM, liftM2)
-import qualified Data.List as L (find)
+--import qualified Data.List as L (find, (\\))
+import Data.List (find, (\\))
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
@@ -73,6 +74,13 @@ defaultConstAssumps =
         tListA = TAp tList tvarA
         tBool = TCon (Tycon "Bool" Star)
 
+
+-- This is mostly for debugging purposes
+showWithoutDefaults :: [Assump] -> String
+showWithoutDefaults as = show $ map prettyAssump' $
+    as \\ defaultConstAssumps
+
+
 data Named a = Named String a
     deriving Show
 
@@ -89,14 +97,16 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
     | validDataHead dh = do
         tvars <- collectTVars dh []
         tyname <- tynameFromDH dh
-        dcons <- traverse (processDCon tvars tyname) cons
-        
-        -- Duplication from processDCon, REFACTOR
-        let tcKind = foldr Kfun Star $ replicate (length tvars) Star
+
+        let -- The kind of the type constructor is 
+            --  * -> ... -> *   with |tv| arrows
+            -- e.g. :k (T a b) = * -> * > *
+            tcKind = foldr Kfun Star $ replicate (length tvars) Star
             tcon = TCon $ Tycon tyname tcKind 
             dtype = foldl TAp tcon tvars
             dtScheme = quantifyAll dtype
-        
+
+        dcons <- traverse (processDCon tvars dtype) cons
         return $ DataType dtScheme dcons
     where
         -- We don't allow paren or infix expressions for the data head
@@ -128,18 +138,13 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
         -- Convert data constructors into internal representation
         -- We can ignore the first two arguments to QualConDecl since we
         -- do not allow existential quantification
-        processDCon tvs tyname (Exts.QualConDecl _ _ (Exts.ConDecl name targs)) = do
+        --processDCon tvs tyname (Exts.QualConDecl _ _ (Exts.ConDecl name targs)) = do
+        processDCon tvs dtype (Exts.QualConDecl _ _ (Exts.ConDecl name targs)) = do
             cargs <- mapM toCypType targs
             checkForUnbounds tvs cargs
-            let -- The kind of the type constructor is 
-                --  * -> ... -> *   with |tv| arrows
-                -- e.g. :k (T a b) = * -> * > *
-                tcKind = foldr Kfun Star $ replicate (length tvs) Star
-                tcon = TCon $ Tycon tyname tcKind 
-                dtype = foldl TAp tcon tvs
-                conType = foldr fn dtype cargs
+            let conType = foldr fn dtype cargs
             return (extractName name, quantifyAll conType)
-        -- TODO: HANDLING OF INFIX AND RECORD CONSTRUCTORS
+        
         processDCon _ _ _ = errStr "Invalid data constructor"
 
         -- Checks for unbound type variables in cargs
@@ -195,7 +200,6 @@ toCypType _ = errStr "Type can not be converted to Cyp-Type"
 -- Convert Exts.Pat to our custom Pat. Needs
 -- an environment that contains constructors
 -- and their types, to find the assumps for PCon.
---type TypedDCon = (String, Type)
 
 convertExtsPat :: [Assump] -> Exts.Pat -> Err Pat
 convertExtsPat _ (Exts.PVar v) = return $ PVar $ extractName v
@@ -205,7 +209,7 @@ convertExtsPat consAs (Exts.PInfixApp p1 qName p2) =
     convertExtsPat consAs (Exts.PApp qName [p1, p2])
 
 convertExtsPat consAs (Exts.PApp qName ps) =
-    case L.find (hasName dconName) consAs of
+    case find (hasName dconName) consAs of
         Just dconAssump -> do
             pats <- traverse (convertExtsPat consAs) ps
             return $ PCon dconAssump pats
