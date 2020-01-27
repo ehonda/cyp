@@ -10,7 +10,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
 import Data.Maybe (fromMaybe)
 import Data.List (union, nub, intersect, intercalate, (\\))
-import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest, render)
+import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest, render, empty)
 
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
@@ -297,9 +297,11 @@ nameEq (i :>: _) (j :>: _) = i == j
 --------------------------------------------------------------
 --------------------------------------------------------------
 
-type TIState = (Subst, Int)
+-- Tuple type representing the state
+--  (current sub, fresh var, error context stack)
+type TIState = (Subst, Int, [Doc])
 nullTIState :: TIState
-nullTIState = (nullSubst, 0)
+nullTIState = (nullSubst, 0, [])
 
 type TI = StateT TIState ErrT
     
@@ -307,7 +309,19 @@ runTI :: TI a -> Err a
 runTI f = runExcept $ evalStateT f nullTIState
 
 getSubst :: TI Subst
-getSubst = gets fst
+--getSubst = gets fst
+getSubst = gets $ \(s, _, _) -> s
+
+addErrorContext :: Doc -> TI ()
+addErrorContext err = modify $ 
+    \(s, n, es) -> (s, n, es ++ [err])
+
+getErrorContexts :: TI [Doc]
+getErrorContexts = gets $ \(_, _, es) -> es
+
+contextsDoc :: [Doc] -> Doc
+contextsDoc es = foldl (\esDoc e -> indent esDoc e) empty es
+--contextsDoc = vcat
 
 unifyWithExceptTransform :: Type -> Type -> (Doc -> Doc) -> TI ()
 unifyWithExceptTransform t t' errTransform = do
@@ -316,15 +330,20 @@ unifyWithExceptTransform t t' errTransform = do
         mgu (apply s t) (apply s t')
     extSubst u
     where
-        expectedActual s = indent
-            (text "While unifying:")
-            (      (typeDoc "expected" (apply s t)) 
-                $$ (typeDoc "actual" (apply s t')))
+        --expectedActual s = indent
+        --    (text "While unifying:")
+        --    (      (typeDoc "expected" (apply s t)) 
+        --        $$ (typeDoc "actual" (apply s t')))
+        expectedActual s = capIndent
+            "While unifying:"
+            [ typeDoc "expected" $ apply s t
+            , typeDoc "actual" $ apply s t'
+            ]
 
         errTransform' s = errTransform . (indent (expectedActual s))
 
         extSubst :: Subst -> TI ()
-        extSubst s' = modify $ \(s, n) -> (s' @@ s, n)
+        extSubst s' = modify $ \(s, n, es) -> (s' @@ s, n, es)
 
 unifyWithErrMsg :: Type -> Type -> Doc -> TI ()
 unifyWithErrMsg t t' errMsg = 
@@ -334,11 +353,31 @@ unifyWithErrMsg t t' errMsg =
 
 unify :: Type -> Type -> TI ()
 unify t t' = unifyWithExceptTransform t t' id
+
+unifyErrStack :: Type -> Type -> TI ()
+unifyErrStack t t' = do
+    s <- getSubst
+
+    addErrorContext $ expectedActualDoc s
+    es <- getErrorContexts
+
+    u <- lift $ withExcept (\e -> indent (contextsDoc es) e) $
+        mgu (apply s t) (apply s t')
+    extSubst u
+    where
+        expectedActualDoc s = capIndent
+            "While unifying:"
+            [ typeDoc "expected" $ apply s t
+            , typeDoc "actual" $ apply s t'
+            ]
+
+        extSubst :: Subst -> TI ()
+        extSubst s' = modify $ \(s, n, es) -> (s' @@ s, n, es)
     
 newTVar :: Kind -> TI Type
 newTVar k = do
-    (s, n) <- get
-    put (s, n + 1)
+    (s, n, es) <- get
+    put (s, n + 1, es)
     return $ TVar $ Tyvar (enumId n) k
 
 newVarAssump :: Id -> TI Assump
@@ -468,27 +507,41 @@ tiRawTerm as (CT.Application e f) = do
     return t
 
 -- Code duplication: Use Generics!
-tiTerm :: Infer CT.Term Type
-tiTerm as (CT.Literal l) = tiRawTerm as (CT.Literal l)
 -- Don't want to use the fixes info here (i.e. (x, n)), because that is
 -- proof specific and shouldn't leak into typechecking
---tiTerm as (CT.Free xn) = tiRawTerm as (CT.Free $ CT.toCompoundId xn)
---tiTerm as (CT.Schematic xn) = tiRawTerm as (CT.Schematic $ CT.toCompoundId xn)
-tiTerm as (CT.Free (x, _)) = tiRawTerm as (CT.Free x)
-tiTerm as (CT.Schematic (x, _)) = tiRawTerm as (CT.Schematic x)
-tiTerm as (CT.Const s) = tiRawTerm as (CT.Const s)
-tiTerm as term@(CT.Application e f) = do
-    te <- tiTerm as e
-    tf <- tiTerm as f
+tiTerm' :: Infer CT.Term Type
+tiTerm' as (CT.Literal l) = tiRawTerm as (CT.Literal l)
+tiTerm' as (CT.Free (x, _)) = tiRawTerm as (CT.Free x)
+tiTerm' as (CT.Schematic (x, _)) = tiRawTerm as (CT.Schematic x)
+tiTerm' as (CT.Const s) = tiRawTerm as (CT.Const s)
+tiTerm' as term@(CT.Application e f) = do
+    --addErrorContext errContext
+    --contextStack <- getErrorContexts
+
+    te <- tiTerm' as e
+    tf <- tiTerm' as f
     t <- newTVar Star
-    unifyWithErrMsg (tf `fn` t) te errMsg
+    --unifyWithErrMsg (tf `fn` t) te errMsg
+    unifyErrStack (tf `fn` t) te
     return t
     where
-        --errMsg = (text "While inferring the type of the term:")
-        --    <+> CT.unparseTermPretty term
-        errMsg = capIndent
+        errContext = capIndent
             "While inferring the type of the term:"
             [CT.unparseTermPretty term]
+
+        errMsg = errContext
+
+-- This is to not have a recursive error context
+-- stack on repeated invocatinos of tiTerm App
+tiTerm :: Infer CT.Term Type
+tiTerm as term = do
+    addErrorContext errContext
+    tiTerm' as term
+    where
+        errContext = capIndent
+            "While inferring the type of the term:"
+            [CT.unparseTermPretty term]
+
 
 
 -- Type inference for Alts
