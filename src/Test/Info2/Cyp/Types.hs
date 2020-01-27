@@ -23,20 +23,18 @@ data Env = Env
     deriving Show
 
 data DataType = DataType
-    { dtName :: String
-    , dtScheme :: Scheme
-    , dtConss :: [(String, Type)]
+    { dtScheme :: Scheme
+    , dtConss :: [(String, Scheme)]
     }
     deriving Show
 
 defaultDataTypes :: [DataType]
 defaultDataTypes = 
     [ DataType
-        { dtName = "List"
-        , dtScheme = scListA
+        { dtScheme = scListA
         , dtConss = 
-            [ ("[]", tListA)
-            , (":", tvarA `fn` tListA `fn` tListA)
+            [ ("[]", scListA)
+            , (":", quantifyAll (tvarA `fn` tListA `fn` tListA))
             ] 
         }
     ]
@@ -101,7 +99,7 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
             dtype = foldl TAp tcon tvars
             dtScheme = quantifyAll dtype
         
-        return $ DataType tyname dtScheme dcons
+        return $ DataType dtScheme dcons
     where
         -- We don't allow paren or infix expressions for the data head
         --      (i.e. D (a :< b) c)
@@ -142,7 +140,7 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
                 tcon = TCon $ Tycon tyname tcKind 
                 dtype = foldl TAp tcon tvs
                 conType = foldr fn dtype cargs
-            return (extractName name, conType)
+            return (extractName name, quantifyAll conType)
         -- TODO: HANDLING OF INFIX AND RECORD CONSTRUCTORS
         processDCon _ _ _ = errStr "Invalid data constructor"
 
@@ -263,7 +261,7 @@ getConsAssumptions :: [DataType] -> [Assump]
 getConsAssumptions dts = dconsAs ++ defaultConstAssumps
     where 
         dcons = concat $ map dtConss dts
-        dconsAs = map (\(n, t) -> n :>: quantifyAll t) dcons
+        dconsAs = map (\(n, sc) -> n :>: sc) dcons
 
 convertFunctionRawAlts :: [Assump] -> FunctionRawAlts -> Err FunctionAlts
 convertFunctionRawAlts consAs (name, rawAlts) = do

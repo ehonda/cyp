@@ -187,14 +187,8 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
        where
          frees = delete over (collectFreesProp prop [])
 
-
-    validateCases dt over gens cases env = do
-        caseNames <- traverse (validateCase dt over gens env) cases
-        case missingCase caseNames of
-            Nothing -> return ()
-            Just (name, _) -> errStr $ "Missing case '" ++ name ++ "'"
-      where
-        missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
+    validateCases dt over gens cases env = 
+        validateCasesWith (validateCase dt over gens env) dt cases 
 
     validateCase dt over gens env pc = errCtxt 
       (text "Case" <+> quotes (unparseRawTerm $ pcCons pc) <+>
@@ -271,14 +265,8 @@ checkProof prop (ParseCases dtSc onRaw casesRaw) env = errCtxt ctxtMsg $ do
     ctxtMsg = text "Case analyis on" <+> quotes (unparseRawTerm onRaw) 
         <+> text "of type" <+> quotes (text $ prettyScheme dtSc)
 
-    -- duplicated code from ParseInduction
-    validateCases dt on cases env = do
-        caseNames <- traverse (validateCase dt on env) cases
-        case missingCase caseNames of
-            Nothing -> return ()
-            Just (name, _) -> errStr $ "Missing case '" ++ name ++ "'"
-      where
-        missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
+    validateCases dt on cases env = 
+        validateCasesWith (validateCase dt on env) dt cases 
 
     validateCase dt on env pc = errCtxt (text "Case" <+> quotes (unparseRawTerm $ pcCons pc)) $ do
         flip evalStateT env $ do
@@ -311,13 +299,15 @@ checkProof prop (ParseCases dtSc onRaw casesRaw) env = errCtxt ctxtMsg $ do
     checkPcAssms _ _ _ = lift $ errStr "Expected exactly one assumption"
 
 
-validDatatype :: String -> Env -> Err DataType
-validDatatype name env = case find (\dt -> dtName dt == name) (datatypes env) of
-    Nothing -> err $ fsep $
-        [ text "Invalid datatype" <+> quotes (text name) <> text "."
-        , text "Expected one of:" ]
-        ++ punctuate comma (map (quotes . text . dtName) $ datatypes env)
-    Just dt -> Right dt
+-- Helper function for ParseInduction, ParseCases
+validateCasesWith validateCase dt cases = do
+    caseNames <- traverse validateCase cases
+    case missingCase caseNames of
+        Nothing -> return ()
+        Just (name, _) -> errStr $ "Missing case '" ++ name ++ "'"
+  where
+    missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
+
 
 validDatatypeFromScheme :: Scheme -> Env -> Err DataType
 validDatatypeFromScheme sc env = case find (\dt -> dtScheme dt == sc) (datatypes env) of
@@ -328,9 +318,11 @@ validDatatypeFromScheme sc env = case find (\dt -> dtScheme dt == sc) (datatypes
     Just dt -> Right dt
 
 validConsCase :: Term -> DataType -> Err (String, [(TConsArg, IdxName)])
-validConsCase t (DataType _ _ dcons) = errCtxt invCaseMsg $ do
-    (consName, consType) <- findCons cons
+validConsCase t (DataType _ dcons) = errCtxt invCaseMsg $ do
+    (consName, consScheme) <- findCons cons
+    consType <- runTI $ freshInst consScheme
     let (_, consArgs) = toOldDataConstructor (consName, consType)
+    
     argNames <- traverse argName args
     when (not $ nub args == args) $
         errStr "Constructor arguments must be distinct"
