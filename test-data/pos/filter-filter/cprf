@@ -1,6 +1,6 @@
 Lemma fpfp: filter p (filter p xs) .=. filter p xs
 
-Proof by induction on xs :: List a
+Proof by induction on xs :: [a]
 
   Case []
 
@@ -14,7 +14,7 @@ Proof by induction on xs :: List a
     QED
 
   Case x:xs
-    Fix x :: a, xs :: List a
+    Fix x :: a, xs :: [a]
     Assume
       IH: filter p (filter p xs) .=. filter p xs
     Then
@@ -72,7 +72,7 @@ QED
 
 Lemma: filter p . filter p .=. filter p
 
-Proof by extensionality with xs :: List a
+Proof by extensionality with xs :: [a]
 
   Show: (filter p . filter p) xs .=. filter p xs
 

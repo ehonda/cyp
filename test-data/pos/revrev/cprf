@@ -1,10 +1,10 @@
 Lemma: reverse . reverse .=. id
 
-Proof by extensionality with xs :: List a
+Proof by extensionality with xs :: [a]
 
   Show: (reverse . reverse) xs .=. id xs
 
-  Proof by induction on xs :: List a
+  Proof by induction on xs :: [a]
 
     Case []
 
@@ -21,7 +21,7 @@ Proof by extensionality with xs :: List a
       QED
 
     Case x:xs
-      Fix x :: a, xs :: List a
+      Fix x :: a, xs :: [a]
       Assume
         IH: (reverse . reverse) xs .=. id xs
       Then

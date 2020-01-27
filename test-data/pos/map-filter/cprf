@@ -1,10 +1,10 @@
 Lemma: filter p . map f .=. map f . filter (p . f)
 
-Proof by extensionality with xs :: List a
+Proof by extensionality with xs :: [a]
 
   Show: (filter p . map f) xs .=. (map f . filter (p . f)) xs
 
-  Proof by induction on xs :: List a
+  Proof by induction on xs :: [a]
 
     Case []
       Show: (filter p . map f) [] .=. (map f . filter (p . f)) []
@@ -24,7 +24,7 @@ Proof by extensionality with xs :: List a
       QED
 
     Case y:ys
-      Fix y :: a, ys :: List a
+      Fix y :: a, ys :: [a]
       Assume
         IH: (filter p . map f) ys .=. (map f . filter (p . f)) ys
       Then

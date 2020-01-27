@@ -1,6 +1,6 @@
 Lemma: snoc xs y .=. xs ++ [y]
 
-Proof by induction on xs :: List a
+Proof by induction on xs :: [a]
 
 Case []
 
@@ -14,7 +14,7 @@ Case []
     QED
 
 Case x:xs
-    Fix x :: a, xs :: List a
+    Fix x :: a, xs :: [a]
     Assume
         IH: snoc xs y .=. xs ++ [y]
     Then

@@ -1,6 +1,6 @@
 Lemma: reverse (snoc xs x) .=. x : reverse xs
 
-Proof by induction on xs :: List a
+Proof by induction on xs :: [a]
 
 Case []
 
@@ -19,7 +19,7 @@ Case []
     QED
 
 Case y:ys
-    Fix y :: a, ys :: List a
+    Fix y :: a, ys :: [a]
     Assume
         IH: reverse (snoc ys x) .=. x : reverse ys
     Then
