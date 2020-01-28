@@ -47,8 +47,8 @@ data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
 
 data ParseCase = ParseCase
     { pcCons :: RawTerm
-    , pcFixs :: Maybe [RawTerm] -- fixed variables
---    , pcFixs :: Maybe [Assump] -- [fixvar :: Type]
+--    , pcFixs :: Maybe [RawTerm] -- fixed variables
+    , pcFixs :: Maybe [Assump] -- [fixvar :: Type]
     , pcGens :: Maybe [RawTerm] -- generalized variables
     , pcToShow :: Maybe RawProp -- goal
     , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
@@ -436,21 +436,19 @@ caseParser = do
     manySpacesOrComment
 
     -- Read fix sigs
-    let fixAs = map readExactlyOneTypeSig $ fromMaybe [] fixSigs
-    if not $ null $ lefts fixAs
-    then unexpected $ render $ head $ lefts fixAs
-    else do
-        let fxs = case rights fixAs of
-                [] -> Nothing
-                as -> Just $ map (Free . assumpName) as
-        return $ ParseCase
-            { pcCons = t
-            , pcFixs = fxs
-            , pcGens = gens
-            , pcToShow = toShow
-            , pcAssms = assms
-            , pcProof = proof
-            }
+    let fixAs = readTypeSigsFixed $ fromMaybe [] fixSigs
+    case fixAs of
+        Left err -> unexpected $ render err
+        Right as -> do
+            --let fxs = Just $ map (Free . assumpName) as
+            return $ ParseCase
+                { pcCons = t
+                , pcFixs = Just as
+                , pcGens = gens
+                , pcToShow = toShow
+                , pcAssms = assms
+                , pcProof = proof
+                }
   where
     gensStart = do
         choice [char 'f', char 'F']
@@ -623,8 +621,8 @@ parseTypeSigWith makeScheme s =
         _ -> errStr "Parse error"
 
 
-readTypeSigWith :: (Type -> Scheme) -> [ParseDeclTree] -> Err [Assump]
-readTypeSigWith makeScheme pdt = fmap concat $
+readTypeSigsWith :: (Type -> Scheme) -> [ParseDeclTree] -> Err [Assump]
+readTypeSigsWith makeScheme pdt = fmap concat $
     sequence $ mapMaybe parseMaybeTypeSig pdt
     where
         parseMaybeTypeSig :: ParseDeclTree -> Maybe (Err [Assump])
@@ -633,8 +631,8 @@ readTypeSigWith makeScheme pdt = fmap concat $
                 parseTypeSigWith makeScheme s
         parseMaybeTypeSig _ = Nothing
 
-readTypeSig :: [ParseDeclTree] -> Err [Assump]
-readTypeSig = readTypeSigWith quantifyAll
+readTypeSigs :: [ParseDeclTree] -> Err [Assump]
+readTypeSigs = readTypeSigsWith quantifyAll
 
 -- If we fix variables in proof with a type signature, eg
 --      x :: a
@@ -654,14 +652,14 @@ makeSchemeFixed = toScheme . fixArbitraries
             TCon $ Tycon n k
         fixArbitraries t = t
 
-readTypeSigFixed :: [ParseDeclTree] -> Err [Assump]
-readTypeSigFixed = readTypeSigWith makeSchemeFixed
+readTypeSigsFixed :: [ParseDeclTree] -> Err [Assump]
+readTypeSigsFixed = readTypeSigsWith makeSchemeFixed
 
 -- Requires that the type in the sig is specified for
 -- exactly one symbol, error otherwise
 readExactlyOneTypeSigWith :: (Type -> Scheme) -> ParseDeclTree -> Err Assump
 readExactlyOneTypeSigWith makeScheme pdt = do
-    sigs <- readTypeSigWith makeScheme [pdt]
+    sigs <- readTypeSigsWith makeScheme [pdt]
     when (length sigs /= 1) $ errStr $
         "Expected only one type signature, got: " ++ (show $ 
             map prettyAssump' sigs)

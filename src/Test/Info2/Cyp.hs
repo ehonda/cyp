@@ -65,7 +65,7 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     let consAs = getConsAssumptions dts
 
     -- Read user type signatures
-    typeSigs <- readTypeSig mResult
+    typeSigs <- readTypeSigs mResult
 
     -- Symbols
     syms <- fmap (defaultConsts ++) $ readSym mResult
@@ -195,7 +195,8 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
       (text "Case" <+> quotes (unparseRawTerm $ pcCons pc) <+>
         (case pcFixs pc of
            Nothing -> empty
-           Just rawVars -> text "Fixing" <+> hsep (map (quotes . unparseRawTerm) rawVars)) <+>
+           Just as -> text "Fixing" <+> hsep (map (quotes . text . prettyAssump') as)) <+>
+
         case pcGens pc of
            Nothing -> empty
            Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars)) 
@@ -208,8 +209,9 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
 
             case pcFixs pc of
                 Nothing -> when (not $ null recArgNames) $ lift $ err $ text "Missing 'Fix {constructor arguments...}'"
-                Just rawVars -> do
+                Just as -> do
                     let conNs = map (Free . fst . snd) consArgNs
+                        rawVars = map (Free . assumpName) as
                     when (sort rawVars /= sort conNs) $ lift . err
                         $ text "Fixed variables do not match with the Case"
 

@@ -194,10 +194,15 @@ typeCheckExtensionalProof varAssump@(withId :>: _) rawProp proof = do
             "While checking 'To Show:' under the assumption:"
             [assumpDoc varAssump]
 
-        withToShowErr e = withExcept (indent errMsg) $ except e
-
-    lift $ withToShowErr $ runTI $ tiShow 
+    lift $ tiWithErr errMsg tiShow
     typeCheckProof proof
+
+tiWithErr :: Doc -> TI a -> ErrT a
+tiWithErr err ti = exceptWithErr $ runTI ti
+    where
+        exceptWithErr :: Err a -> ErrT a
+        exceptWithErr = (withExcept (indent err)) . except
+
 
 
 typeCheckCasesProof = typeCheckCases
@@ -213,8 +218,14 @@ typeCheckCases cases = do
 typeCheckCase :: ParseCase -> ProofTC ()
 typeCheckCase pcase = do
     -- variant fixes for case cons vars
+    -- Necessary?
     fixRawTermNewFrees $ pcCons pcase
     fixes <- getFixes
+
+    -- Need to add fixes to assumps
+    --fmap (mapM_ addAssump) $ pcFixs pcase
+    mapM_ addAssump $ fromMaybe [] $ pcFixs pcase
+
     as <- getAssumps
 
     -- typecheck goal
