@@ -144,20 +144,21 @@ typeCheckBindings env = tiSeq tiBindGroup dconAs bindGroups
         bindGroups = makeBindGroups depGraph
 
 typeCheckProp :: [Assump] -> Prop -> TI (Type, Type)
-typeCheckProp as p@(Prop lhs rhs) = do
+typeCheckProp as p@(Prop lhs rhs) = withErrorContext errContext $ do
     -- Unify left and right hand sides types
-    asLhs <- traverse newVarAssump $ getVars lhs
-    let as' = as ++ asLhs
+    -- Need assumps for vars on lhs and rhs
+    asVars <- traverse newVarAssump $ getVarsProp p
+    let as' = as ++ asVars
     tLhs <- tiTerm as' lhs
-
     tRhs <- tiTerm as' rhs
-    unifyWithErrMsg tLhs tRhs errMsg
-    
+    unify tLhs tRhs
+
     -- Apply subsitution
     s <- getSubst
     return (apply s tLhs, apply s tRhs)
     where
-        errMsg = capIndent
+        --errMsg = capIndent
+        errContext = capIndent
             "While typechecking the proposition:"
             [unparsePropPretty p]
 

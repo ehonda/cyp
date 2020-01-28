@@ -38,11 +38,11 @@ typeCheckEqnSeqq as eqns = do
         start = eqnSeqqHead eqns
 
 checkTypeOfTermIs :: [Assump] -> Type -> Term -> TI ()
-checkTypeOfTermIs as t term = do
+checkTypeOfTermIs as t term = withErrorContext errContext $ do
     t' <- tiTerm as term
-    unifyWithErrMsg t t' $ errMsg
+    unify t t'
     where
-        errMsg = capIndent
+        errContext = capIndent
             "While checking the type of a term:"
             [termDoc "term" term]
 
@@ -232,6 +232,3 @@ typeCheckCase pcase = do
 -- Utility
 getVarsEqnSeqq :: EqnSeqq Term -> [String]
 getVarsEqnSeqq eqns = nub $ concat $ fmap getVars eqns
-
-getVarsProp :: Prop -> [String]
-getVarsProp (Prop l r) = nub $ concat $ [getVars l, getVars r]

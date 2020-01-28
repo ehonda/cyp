@@ -17,6 +17,7 @@ module Test.Info2.Cyp.Term
     , generalizeOnly
     , generalizeOnlyProp
     , getVars
+    , getVarsProp
     , iparseTerm
     , iparseProp
     , isFree
@@ -126,6 +127,9 @@ getVars (Application a b) = (getVars a) ++ (getVars b)
 getVars (Free (x, _)) = [x]
 getVars (Schematic (x, _)) = [x]
 getVars _ = []
+
+getVarsProp :: Prop -> [String]
+getVarsProp (Prop l r) = nub $ concat $ [getVars l, getVars r]
 
 mApp :: Monad m => m (AbsTerm a) -> m (AbsTerm a) -> m (AbsTerm a)
 mApp = liftM2 Application

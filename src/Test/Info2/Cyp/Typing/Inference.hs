@@ -314,76 +314,42 @@ runTI :: TI a -> Err a
 runTI f = runExcept $ evalStateT f nullTIState
 
 getSubst :: TI Subst
---getSubst = gets fst
 getSubst = gets $ \(s, _, _) -> s
 
-addErrorContext :: Doc -> TI ()
-addErrorContext err = modify $ 
-    \(s, n, es) -> (s, n, es ++ [err])
+withErrorContext :: Doc -> TI a -> TI a
+withErrorContext err ti = do
+    es <- getErrorContexts
+    addErrorContext err
+    res <- ti
+    restoreErrorContextStack es
+    return res
+    where
+        addErrorContext :: Doc -> TI ()
+        addErrorContext err = modify $ 
+            \(s, n, es) -> (s, n, es ++ [err])
 
-removeLastErrorContext :: TI ()
-removeLastErrorContext = modify $
-    \(s, n, es) -> if null es
-        then (s, n, es)
-        else (s, n, init es)
+        restoreErrorContextStack :: [Doc] -> TI ()
+        restoreErrorContextStack es = modify $
+            \(s, n, _) -> (s, n, es)
 
 getErrorContexts :: TI [Doc]
 getErrorContexts = gets $ \(_, _, es) -> es
 
 contextsDoc :: [Doc] -> Doc
 contextsDoc es = foldr (\e doc -> indent e doc) empty es
---contextsDoc es = foldl (\esDoc e -> indent esDoc e) empty es
---contextsDoc = vcat
 
-unifyWithExceptTransform :: Type -> Type -> (Doc -> Doc) -> TI ()
-unifyWithExceptTransform t t' errTransform = do
-    s <- getSubst
-    u <- lift $ withExcept (errTransform' s) $
-        mgu (apply s t) (apply s t')
-    extSubst u
-    where
-        --expectedActual s = indent
-        --    (text "While unifying:")
-        --    (      (typeDoc "expected" (apply s t)) 
-        --        $$ (typeDoc "actual" (apply s t')))
-        expectedActual s = capIndent
-            "While unifying:"
-            [ typeDoc "expected" $ apply s t
-            , typeDoc "actual" $ apply s t'
-            ]
-
-        errTransform' s = errTransform . (indent (expectedActual s))
-
-        extSubst :: Subst -> TI ()
-        extSubst s' = modify $ \(s, n, es) -> (s' @@ s, n, es)
-
-unifyWithErrMsg :: Type -> Type -> Doc -> TI ()
-unifyWithErrMsg t t' errMsg = 
-    unifyWithExceptTransform t t' prependErrMsg
-    where
-        prependErrMsg = indent errMsg
+liftWithContexts :: ErrT a -> TI a
+liftWithContexts action = do
+    es <- getErrorContexts
+    lift $ withExcept (\e -> contextsDoc $ es ++ [e]) action
 
 unify :: Type -> Type -> TI ()
-unify t t' = unifyWithExceptTransform t t' id
-
-unifyErrStack :: Type -> Type -> TI ()
-unifyErrStack t t' = do
+unify t t' = do
     s <- getSubst
-
-    -- TODO: Make helper function for
-    --  addErr
-    --  doSomething
-    --  removeLastErr
-    addErrorContext $ expectedActualDoc s
-    es <- getErrorContexts
-    u <- lift $ withExcept (\e -> contextsDoc $ es ++ [e]) $
-        mgu (apply s t) (apply s t')
-    -- Remove the error from the stack if mgu succeeded
-    removeLastErrorContext
-    
-    extSubst u
+    withErrorContext (expectedActualDoc s) $ do
+        u <- liftWithContexts $ mgu (apply s t) (apply s t')
+        extSubst u
     where
-        
         expectedActualDoc s = capIndent
             "While unifying:"
             [ typeDoc "expected" $ apply s t
@@ -450,26 +416,26 @@ tiPat (PLit l) = do
     return ([], t)
 
 -- Constructor pattern
-tiPat p@(PCon conA@(i :>: sc) pats) = do
+tiPat p@(PCon conA@(i :>: sc) pats) = withErrorContext errContext $ do
     -- Check if the right amount of
     -- argument patterns were provided
     t <- freshInst sc
     let expArgs = length (fst (decomposeFuncType t))
         actArgs = length pats
     if expArgs /= actArgs
-    then lift $ throwE $ errWrongArgNumber expArgs actArgs
+    then liftWithContexts $ throwE $ errWrongArgNumber expArgs actArgs
     else do
         -- Check if types agree
         (as, ts) <- tiPats pats
         t' <- newTVar Star
-        unifyWithErrMsg t (foldr fn t' ts) errMsg
+        unify t (foldr fn t' ts)
         return (as, t')
     where
-        errMsg = capIndent
+        errContext = capIndent
             "While inferring the type of a constructor pattern:"
             [patDoc "p" p, assumpDoc conA]
 
-        errWrongArgNumber exp act = indent errMsg $ 
+        errWrongArgNumber exp act =
             text $ concat 
                 [ "Wrong number of arguments in p. Expected = "
                 , show exp
@@ -534,14 +500,10 @@ tiTerm' as (CT.Free (x, _)) = tiRawTerm as (CT.Free x)
 tiTerm' as (CT.Schematic (x, _)) = tiRawTerm as (CT.Schematic x)
 tiTerm' as (CT.Const s) = tiRawTerm as (CT.Const s)
 tiTerm' as term@(CT.Application e f) = do
-    --addErrorContext errContext
-    --contextStack <- getErrorContexts
-
     te <- tiTerm' as e
     tf <- tiTerm' as f
     t <- newTVar Star
-    --unifyWithErrMsg (tf `fn` t) te errMsg
-    unifyErrStack (tf `fn` t) te
+    unify (tf `fn` t) te
     return t
     where
         errContext = capIndent
@@ -553,8 +515,7 @@ tiTerm' as term@(CT.Application e f) = do
 -- This is to not have a recursive error context
 -- stack on repeated invocatinos of tiTerm App
 tiTerm :: Infer CT.Term Type
-tiTerm as term = do
-    addErrorContext errContext
+tiTerm as term = withErrorContext errContext $
     tiTerm' as term
     where
         errContext = capIndent
