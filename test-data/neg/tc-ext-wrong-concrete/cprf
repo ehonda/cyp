@@ -1,6 +1,6 @@
 Lemma: not . not .=. id
 
-Proof by extensionality with x :: a
+Proof by extensionality with x :: Int
 
 	Show: (not . not) x .=. id x
 

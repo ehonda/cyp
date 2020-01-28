@@ -227,7 +227,7 @@ inductionProofParser = do
     manySpacesOrComment
 
     -- Read typesig right here and fail if its invalid
-    case readTypeSigRequireExactlyOneId sig of
+    case readExactlyOneTypeSig sig of
         Left err -> unexpected $ render err
         Right sig' -> return $ ParseInduction sig' gens cases
     where
@@ -270,7 +270,7 @@ extProofParser = do
     manySpacesOrComment
 
     -- Read typesig right here and fail if its invalid
-    case readTypeSigRequireExactlyOneId sig of
+    case readExactlyOneTypeSigFixed sig of
         Left err -> unexpected $ render err
         Right sig' -> return $ ParseExt sig' toShow proof
     --return $ ParseExt with toShow proof
@@ -436,7 +436,7 @@ caseParser = do
     manySpacesOrComment
 
     -- Read fix sigs
-    let fixAs = map readTypeSigRequireExactlyOneId $ fromMaybe [] fixSigs
+    let fixAs = map readExactlyOneTypeSig $ fromMaybe [] fixSigs
     if not $ null $ lefts fixAs
     then unexpected $ render $ head $ lefts fixAs
     else do
@@ -596,44 +596,83 @@ readFunc syms pds = do
     parseFunc _ = Nothing
 
 
-readTypeSig :: [ParseDeclTree] -> Err [Assump]
-readTypeSig pdt = fmap concat $ sequence $ mapMaybe parseTypeSig pdt
+-- TYPE SIGNATURE READING
+---------------------------------------------------------------
+
+-- Type signatures can be specified for several
+-- identifiers at a time, e.g:
+--      f, g :: X -> X
+-- that is the reason syms is a list -> in that
+-- case we need to return assumptions for multiple
+-- ids from one TypeSig
+--
+-- We need different ways to transform the specified type to
+-- a scheme, in a theory we want f :: a -> a to be
+--      f :: forall v0. v0 -> v0
+-- where in a proof it should bekomme (for fixed, arbitrary a)
+--      f :: a -> a
+-- that is what makeScheme is used for
+parseTypeSigWith :: (Type -> Scheme) -> String -> Err [Assump]
+parseTypeSigWith makeScheme s = 
+    case P.parseDecl s of
+        P.ParseOk (Exts.TypeSig syms t) -> do
+            t' <- toCypType t
+            return $ zipWith (:>:) ids $ repeat $ makeScheme t'
+            where
+                ids = map extractName syms
+        _ -> errStr "Parse error"
+
+
+readTypeSigWith :: (Type -> Scheme) -> [ParseDeclTree] -> Err [Assump]
+readTypeSigWith makeScheme pdt = fmap concat $
+    sequence $ mapMaybe parseMaybeTypeSig pdt
     where
-        parseTypeSig (TypeSig s) = Just $ 
+        parseMaybeTypeSig :: ParseDeclTree -> Maybe (Err [Assump])
+        parseMaybeTypeSig (TypeSig s) = Just $ 
             errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
-                case P.parseDecl s of
-                    -- Type signatures can be specified for several
-                    -- identifiers at a time, e.g:
-                    --      f, g :: X -> X
-                    -- that is the reason syms is a list -> in that
-                    -- case we need to return assumptions for multiple
-                    -- ids from one TypeSig
-                    P.ParseOk (Exts.TypeSig syms t) -> do
-                        t' <- toCypType t
-                        return $ zipWith (:>:) ids $ schemes t'
-                        where
-                            ids = map extractName syms
-                            schemes t = repeat $ quantifyAll t
-                    _ -> errStr "Parse error"
+                parseTypeSigWith makeScheme s
+        parseMaybeTypeSig _ = Nothing
 
-        parseTypeSig _ = Nothing
+readTypeSig :: [ParseDeclTree] -> Err [Assump]
+readTypeSig = readTypeSigWith quantifyAll
 
--- Reads the type signature in pdt, requires that the type
--- for exactly one symbol is provided
-readTypeSigRequireExactlyOneId :: ParseDeclTree -> Err Assump
-readTypeSigRequireExactlyOneId (TypeSig s) =
-    errCtxt (text "Parsing the type signature" <+> quotes (text s)) $
-        case P.parseDecl s of
-            P.ParseOk (Exts.TypeSig syms t) -> do
-                t' <- toCypType t
-                when (length ids /= 1) $ errStr $
-                    "Only one symbol expected, got: " ++ show ids
-                return $ (head ids) :>: (quantifyAll t')
-                where
-                    ids = map extractName syms
+-- If we fix variables in proof with a type signature, eg
+--      x :: a
+-- then that means we want the type a of x to be fixed but
+-- arbitrary, and not polymorphic. We therefore instantiate
+-- the scheme we get from reading the sig with the variables
+-- listed and give back that as the assumption, i.e.
+--      sc = x :: forall v0. v0
+--      -> sc' = x :: a
+makeSchemeFixed :: Type -> Scheme
+makeSchemeFixed = toScheme . fixArbitraries
+    where
+        fixArbitraries :: Type -> Type
+        fixArbitraries (TAp a b) =
+            TAp (fixArbitraries a) (fixArbitraries b)
+        fixArbitraries (TVar (Tyvar n k)) =
+            TCon $ Tycon n k
+        fixArbitraries t = t
 
-            _ -> errStr "Parse error"
-readTypeSigRequireExactlyOneId _ = errStr "Not a type signature"
+readTypeSigFixed :: [ParseDeclTree] -> Err [Assump]
+readTypeSigFixed = readTypeSigWith makeSchemeFixed
+
+-- Requires that the type in the sig is specified for
+-- exactly one symbol, error otherwise
+readExactlyOneTypeSigWith :: (Type -> Scheme) -> ParseDeclTree -> Err Assump
+readExactlyOneTypeSigWith makeScheme pdt = do
+    sigs <- readTypeSigWith makeScheme [pdt]
+    when (length sigs /= 1) $ errStr $
+        "Expected only one type signature, got: " ++ (show $ 
+            map prettyAssump' sigs)
+    return $ head sigs
+
+readExactlyOneTypeSig :: ParseDeclTree -> Err Assump
+readExactlyOneTypeSig = readExactlyOneTypeSigWith quantifyAll
+
+readExactlyOneTypeSigFixed :: ParseDeclTree -> Err Assump
+readExactlyOneTypeSigFixed = readExactlyOneTypeSigWith makeSchemeFixed
+
 
 
 readTypeScheme :: String -> Err Scheme
