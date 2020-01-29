@@ -3,7 +3,7 @@ Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 Proof by induction on xs :: [a] generalizing ys :: [a]
 
 Case [] -- base case
-    For fixed ys :: [a]
+    For fixed ys :: [Int]
     Show: itrev [] ys .=. reverse [] ++ ys
 
     Proof

@@ -1,6 +1,6 @@
 Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 
-Proof by induction on xs :: [a] generalizing ys :: [a]
+Proof by induction on xs :: [a] generalizing ys :: [Int]
 
 Case [] -- base case
     For fixed ys :: [a]

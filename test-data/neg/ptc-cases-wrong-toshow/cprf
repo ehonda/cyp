@@ -4,11 +4,11 @@ Proof by extensionality with x :: Bool
 
 	Show: (not . not) x .=. id x
 
-	Proof by case analysis on x :: Int
+	Proof by case analysis on x :: Bool
 
 		Case True
 			Assume
-				AS: x .=. True
+				AS: x .=. 1
 			Then
 
 			Proof

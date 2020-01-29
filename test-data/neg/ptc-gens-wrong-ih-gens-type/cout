@@ -1,0 +1,20 @@
+Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
+    While typechecking the proof
+        While typechecking induction proof over xs :: forall v0. [v0] generalizing ys :: [a]
+            While typechecking the case 'x : xs'
+            With fixed variables
+                x :: a
+                xs :: [a]
+                While typechecking the assumption with generalizations:
+                    IH1: itrev xs ys .=. reverse xs ++ ys
+                    ys :: [Int]
+                    While typechecking the proposition:
+                        itrev xs ys .=. reverse xs ++ ys
+                        While inferring the type of the term:
+                            itrev xs ys
+                            While unifying:
+                                expected = [Int] -> v4
+                                actual = [a] -> [a]
+                                Types do not unify:
+                                    t = Int
+                                    s = a

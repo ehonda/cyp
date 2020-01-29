@@ -46,12 +46,9 @@ data ParseLemma = ParseLemma String RawProp ParseProof -- Proposition, Proof
 
 data ParseCase = ParseCase
     { pcCons :: RawTerm
---    , pcFixs :: Maybe [RawTerm] -- fixed variables
     , pcFixs :: Maybe [Assump] -- [fixvar :: Type]
---    , pcGens :: Maybe [RawTerm] -- generalized variables
     , pcGens :: Maybe [Assump] -- [genvar :: Type]
     , pcToShow :: Maybe RawProp -- goal
---    , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
     , pcAssms :: [Named ([Assump], RawProp)] -- (generalized variables, assumption)
     , pcProof :: ParseProof
     }
@@ -238,7 +235,7 @@ inductionProofParser = do
     -- Read typesigs
     case readExactlyOneTypeSig sig of
         Left err -> unexpected $ render err
-        Right sig' -> case readTypeSigs gensSigs of
+        Right sig' -> case readTypeSigsFixed gensSigs of
             Left err -> unexpected $ render err
             Right gens -> return $ ParseInduction sig' gens cases
     where

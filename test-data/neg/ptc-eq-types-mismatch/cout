@@ -1,0 +1,11 @@
+Lemma : z : zs .=. zs ++ z : []
+    While typechecking the proof
+        Type checking equational proof
+            While checking the type of a term:
+                term = zs ++ z : []
+                While unifying:
+                    expected = Int
+                    actual = [v2]
+                    Types do not unify:
+                        t = Int
+                        s = [v2]

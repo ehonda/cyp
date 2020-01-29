@@ -1,0 +1,18 @@
+Lemma : length (xs ++ ys) .=. length xs + length ys
+    While typechecking the proof
+        While typechecking induction proof over xs :: forall v0. [v0]
+            While typechecking the case 'x : xs'
+            With fixed variables
+                x :: Int
+                xs :: [a]
+                While typechecking 'To Show: length ((x : xs) ++ ys) .=. length (x : xs) + length ys'
+                    While typechecking the proposition:
+                        length ((x : xs) ++ ys) .=. length (x : xs) + length ys
+                        While inferring the type of the term:
+                            length ((x : xs) ++ ys)
+                            While unifying:
+                                expected = [a] -> v7
+                                actual = [Int] -> [Int]
+                                Types do not unify:
+                                    t = a
+                                    s = Int

@@ -1,10 +1,12 @@
 module Test.Info2.Cyp.Typing.Proof where
 
+import Prelude hiding ((<>))
+
 import Control.Monad (forM_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
-import Data.List (nub)
+import Data.List (nub, find)
 import Data.Maybe
 
 import Test.Info2.Cyp.Parser
@@ -71,6 +73,11 @@ ptcWithErrorContexts errs tc = do
 
 ptcWithErrorContext :: Doc -> ProofTC a -> ProofTC a
 ptcWithErrorContext err = ptcWithErrorContexts [err]
+
+ptcLiftWithContexts :: ErrT a -> ProofTC a
+ptcLiftWithContexts action = do
+    es <- ptcGetErrorContexts
+    lift $ withExcept (\e -> contextsDoc $ es ++ [e]) action
 
 -- Lifts TI to PTC and uses err ctxt stack
 liftTI :: TI a -> ProofTC a
@@ -182,12 +189,15 @@ typeCheckInductionProof overAssump gensAs cases =
     mapM_ addAssump gensAs
     typeCheckCases cases
     where
-        errInd = hsep $ map text 
+        errInd = hsep $ map text ( 
             [ "While typechecking induction proof over"
             , prettyAssump' overAssump
-            , "generalizing"
-            , concat $ map prettyAssump' gensAs
-            ]
+            ] ++ if null gensAs
+                then []
+                else 
+                    [ "generalizing"
+                    , concat $ map prettyAssump' gensAs
+                    ])
 
 -- Cases should be independent, so we restore the
 -- state after each case check (in case assumptions got added)
@@ -203,26 +213,81 @@ typeCheckCase pcase = ptcWithErrorContext errCase $ do
     mapM_ addAssump $ fromMaybe [] $ pcFixs pcase
     as <- getAssumps
 
+    -- Check if case gen types agree with known types
+    checkCaseGens
+
     -- Typecheck to show
-    maybe noAction (\p -> ptcWithErrorContext errToShow $ ptcProp as p) $ 
+    maybe noAction (\p -> ptcWithErrorContext (errToShow p) $ ptcProp as p) $ 
         pcToShow pcase
 
     -- Typecheck assumps
-    let gensAs = map (fst . namedVal) $ pcAssms pcase
-        assumps = map (snd . namedVal) $ pcAssms pcase
-    -- Use zipWith here, detailed err message!
-    --mapM_ addAssump gensAs
-    mapM_ (\p -> ptcWithErrorContext errAssumps $ ptcProp as p) assumps
+    mapM_ ptcAssump $ pcAssms pcase
 
     typeCheckProof $ pcProof pcase
-
     where
-        errCase = hsep 
+        -- Check if case generalizations are valid, these must
+        -- have been introduced ago, so their type then declared
+        -- type is known
+        checkCaseGens :: ProofTC ()
+        checkCaseGens = mapM_ checkGen gens
+            where
+                gens = fromMaybe [] $ pcGens pcase
+
+                checkGen :: Assump -> ProofTC ()
+                checkGen gen = do
+                    as <- getAssumps
+                    case find (hasName (assumpName gen)) as of
+                        Nothing -> ptcLiftWithContexts $ throwE $
+                            errNotFound gen
+                        Just gen' -> 
+                            if gen /= gen'
+                            then ptcLiftWithContexts $ throwE $
+                                errMismatch gen' gen
+                            else return ()
+
+                errMismatch expected actual = capIndent 
+                    "Type mismatch for generalization variable"
+                    [ eqDoc "expected" $ prettyAssump' expected
+                    , eqDoc "actual" $ prettyAssump' actual
+                    ]
+
+                errNotFound gen = capIndent
+                    "Not a generalization variable"
+                    [text $ prettyAssump' gen]
+
+        ptcAssump :: Named ([Assump], RawProp) -> ProofTC ()
+        ptcAssump assump@(Named _ (gensAs, prop)) = do
+            as <- getAssumps
+            ptcWithErrorContext (errAssump assump) $
+                ptcProp (gensAs ++ as) prop
+
+
+        errHeader = hsep 
             [ text "While typechecking the case"
             , quotes $ unparseRawTerm $ pcCons pcase
             ]
-        errToShow = text "While typechecking 'To Show:'"
-        errAssumps = text "While typechecking assumptions:"
+
+        fixAs = fromMaybe [] $ pcFixs pcase
+        fixesDoc = if null fixAs
+            then empty
+            else capIndent "With fixed variables" $
+                map assumpDoc fixAs
+
+        errCase = vcat [errHeader, fixesDoc]
+        errToShow p = text "While typechecking 'To Show:" <+> 
+            unparseRawProp p <> text "'"
+        errAssump assump = capIndent
+            caption
+            (propDoc : gensDocs)
+            where
+                name = namedName assump
+                prop = snd $ namedVal assump
+                gens = fst $ namedVal assump
+
+                caption = "While typechecking the assumption" ++
+                    if null gens then "" else " with generalizations:"
+                propDoc = text name <> text ":" <+> unparseRawProp prop
+                gensDocs = map assumpDoc gens
 
 
 --------------------------------------------------------------

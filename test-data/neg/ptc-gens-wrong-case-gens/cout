@@ -1,0 +1,7 @@
+Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
+    While typechecking the proof
+        While typechecking induction proof over xs :: forall v0. [v0] generalizing ys :: [a]
+            While typechecking the case '[]'
+                Type mismatch for generalization variable
+                    expected = ys :: [a]
+                    actual = ys :: [Int]

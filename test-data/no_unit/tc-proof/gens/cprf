@@ -1,9 +1,9 @@
 Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
 
-Proof by induction on xs :: [a] -- generalizing ys
+Proof by induction on xs :: [a] generalizing ys :: [a]
 
 Case [] -- base case
-    -- For fixed ys
+    For fixed ys :: [a]
     Show: itrev [] ys .=. reverse [] ++ ys
 
     Proof
@@ -18,10 +18,9 @@ Case [] -- base case
 Case x:xs  -- induction step
     Fix x :: a, xs :: [a]
     Assume
-        --IH1: forall ys: itrev xs ys .=. reverse xs ++ ys
-        IH1: itrev xs ys .=. reverse xs ++ ys
+        IH1: forall ys :: [a]: itrev xs ys .=. reverse xs ++ ys
 
-    Then -- for fixed ys
+    Then for fixed ys :: [a]
     Show: itrev (x:xs) ys .=. reverse (x:xs) ++ ys
 
     Proof

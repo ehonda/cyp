@@ -1,10 +1,10 @@
 Lemma: not . not .=. id
 
-Proof by extensionality with x :: Bool
+Proof by extensionality with x
 
 	Show: (not . not) x .=. id x
 
-	Proof by case analysis on x :: Int
+	Proof by case analysis on Bool x
 
 		Case True
 			Assume
@@ -12,13 +12,13 @@ Proof by extensionality with x :: Bool
 			Then
 
 			Proof
-								         (not . not) x
-				(by AS)		   .=. (not . not) True
+								 (not . not) x
+				(by AS)		 .=. (not . not) True
 				(by def .)   .=. not (not True)
 				(by def not) .=. not False
 				(by def not) .=. True
 				(by def id)  .=. id True
-				(by AS)		   .=. id x
+				(by AS)		 .=. id x
 
 			QED
 
@@ -28,13 +28,13 @@ Proof by extensionality with x :: Bool
 			Then
 
 			Proof
-								         (not . not) x
-				(by AS)		   .=. (not . not) False
+								 (not . not) x
+				(by AS)		 .=. (not . not) False
 				(by def .)   .=. not (not False)
 				(by def not) .=. not True
 				(by def not) .=. False
 				(by def id)  .=. id False
-				(by AS)		   .=. id x
+				(by AS)		 .=. id x
 
 			QED
 	QED

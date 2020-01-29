@@ -1,0 +1,11 @@
+Lemma : not . not .=. id
+    While typechecking the proof
+        While checking 'To Show:' under the assumption:
+            x :: Bool
+            While typechecking case analysis on x :: a
+                While unifying:
+                    expected = Bool
+                    actual = a
+                    Types do not unify:
+                        t = Bool
+                        s = a
