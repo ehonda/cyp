@@ -1,6 +1,6 @@
 Lemma: not . not .=. id
 
-Proof by extensionality with x :: a
+Proof by extensionality with x :: Bool
 
 	Show: (not . not) x .=. id x
 
@@ -8,7 +8,7 @@ Proof by extensionality with x :: a
 
 		Case True
 			Assume
-				AS: x .=. True
+				AS: x .=. 1
 			Then
 
 			Proof

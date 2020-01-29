@@ -1,55 +1,55 @@
-module Test.Info2.Cyp.Term
-    ( IdxName
-    , AbsTerm (..)
-    , Term
-    , RawTerm
-    , AbsProp (..)
-    , Prop
-    , RawProp
-    , toCompoundId
-    , collectFrees
-    , collectFreesProp
-    , constSymbols
-    , defaultConsts
-    , defaultToFree
-    , generalizeExcept
-    , generalizeExceptProp
-    , generalizeOnly
-    , generalizeOnlyProp
-    , getVars
-    , getVarsProp
-    , iparseTerm
-    , iparseProp
-    , isFree
-    , isSchematic
-    , listComb
-    , mApp
-    , match
-    , matchProp
-    , propMap
-    , stripComb
-    , subst
-    , substFree
-    , substFreeProp
-    , substProp
-    , symPropEq
-    , symIf
-    , symUMinus
-    , translateExp
-    , translateName
-    , translatePat
-    , unparseAbsTerm
-    , unparseTerm
-    , unparseTermPretty
-    , unparseRawTerm
-    , unparseAbsProp
-    , unparseProp
-    , unparseRawProp
-    , unparsePropPretty
-    , upModeIdx
-    , upModeRaw
-    )
-where
+module Test.Info2.Cyp.Term where
+--    ( IdxName
+--    , AbsTerm (..)
+--    , Term
+--    , RawTerm
+--    , AbsProp (..)
+--    , Prop
+--    , RawProp
+--    , toCompoundId
+--    , collectFrees
+--    , collectFreesProp
+--    , constSymbols
+--    , defaultConsts
+--    , defaultToFree
+--    , generalizeExcept
+--    , generalizeExceptProp
+--    , generalizeOnly
+--    , generalizeOnlyProp
+--    , getVars
+--    , getVarsProp
+--    , iparseTerm
+--    , iparseProp
+--    , isFree
+--    , isSchematic
+--    , listComb
+--    , mApp
+--    , match
+--    , matchProp
+--    , propMap
+--    , stripComb
+--    , subst
+--    , substFree
+--    , substFreeProp
+--    , substProp
+--    , symPropEq
+--    , symIf
+--    , symUMinus
+--    , translateExp
+--    , translateName
+--    , translatePat
+--    , unparseAbsTerm
+--    , unparseTerm
+--    , unparseTermPretty
+--    , unparseRawTerm
+--    , unparseAbsProp
+--    , unparseProp
+--    , unparseRawProp
+--    , unparsePropPretty
+--    , upModeIdx
+--    , upModeRaw
+--    )
+--where
 
 import Control.Monad ((>=>), liftM2, when)
 import Data.List (find, nub)
@@ -211,6 +211,18 @@ symCons = ":"
 -- Choose an invalid symbol to represent an if
 symIf :: String
 symIf = ".if"
+
+
+-----------------------------------------------------
+-- Interpret Term/Prop default
+interpretTermDefault :: RawTerm -> Term
+interpretTermDefault = fmap (\x -> (x, 0))
+
+interpretPropDefault :: RawProp -> Prop
+interpretPropDefault (Prop l r) =
+    Prop (interp l) (interp r)
+    where
+        interp = interpretTermDefault
 
 
 {- Prop operations --------------------------------------------------}

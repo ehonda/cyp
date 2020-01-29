@@ -184,9 +184,6 @@ mgu (TAp l r) (TAp l' r') = do
 mgu (TVar u) t = varBind u t
 mgu t (TVar u) = varBind u t
 mgu (TCon tc1) (TCon tc2) | tc1 == tc2 = return nullSubst
---mgu t s = throwE $ indent
---    (text "Types do not unify:")
---    ((typeDoc "t" t) $$ (typeDoc "s" s))
 mgu t s = throwE $ capIndent
     "Types do not unify:"
     [ typeDoc "t" t
@@ -210,22 +207,6 @@ varBind u t
 
 
     | otherwise         = return (u +-> t)
-    
--- Match: Find sub s, st. apply s t1 = t2
----------------------------------
-
---match :: Type -> Type -> ErrT Subst
---
---match (TAp l r) (TAp l' r') = do
---    sl <- match l l'
---    sr <- match r r'
---    merge sl sr
---
---match (TVar u) t | kind u == kind t = return (u +-> t)
---match (TCon t) (TCon t') | t == t' = return nullSubst
---match t s = throwE $ indent
---    (text "Types do not match:")
---    ((typeDoc "t" t) $$ (typeDoc "s" s)) 
 
 -- SECTION 8 (Type Schemes)
 --
@@ -316,21 +297,24 @@ runTI f = runExcept $ evalStateT f nullTIState
 getSubst :: TI Subst
 getSubst = gets $ \(s, _, _) -> s
 
-withErrorContext :: Doc -> TI a -> TI a
-withErrorContext err ti = do
+withErrorContexts :: [Doc] -> TI a -> TI a
+withErrorContexts errs ti = do
     es <- getErrorContexts
-    addErrorContext err
+    addErrorContexts errs
     res <- ti
     restoreErrorContextStack es
     return res
     where
-        addErrorContext :: Doc -> TI ()
-        addErrorContext err = modify $ 
-            \(s, n, es) -> (s, n, es ++ [err])
+        addErrorContexts :: [Doc] -> TI ()
+        addErrorContexts errs = modify $ 
+            \(s, n, es) -> (s, n, es ++ errs)
 
         restoreErrorContextStack :: [Doc] -> TI ()
         restoreErrorContextStack es = modify $
             \(s, n, _) -> (s, n, es)
+
+withErrorContext :: Doc -> TI a -> TI a
+withErrorContext err = withErrorContexts [err]
 
 getErrorContexts :: TI [Doc]
 getErrorContexts = gets $ \(_, _, es) -> es
@@ -465,22 +449,22 @@ tiRawTerm as (CT.Literal l) = tiLit l
         tiLit (Exts.String _) = return tString
         tiLit (Exts.Int _) = return tInt
         tiLit (Exts.Frac _) = return tFrac
-        tiLit l = lift $ throwE $ text $ concat
+        tiLit l = liftWithContexts $ throwE $ text $ concat
             ["Unsupported literal: ", show l]
 
 -- Free
 tiRawTerm as (CT.Free x) = do
-    sc <- lift $ schemeFromAssumps x as
+    sc <- liftWithContexts $ schemeFromAssumps x as
     freshInst sc
 
 -- Schematic
 tiRawTerm as (CT.Schematic x) = do
-    sc <- lift $ schemeFromAssumps x as
+    sc <- liftWithContexts $ schemeFromAssumps x as
     freshInst sc 
 
 -- Const
 tiRawTerm as (CT.Const x) = do
-    sc <- lift $ schemeFromAssumps x as
+    sc <- liftWithContexts $ schemeFromAssumps x as
     freshInst sc
 
 -- Application
@@ -505,12 +489,6 @@ tiTerm' as term@(CT.Application e f) = do
     t <- newTVar Star
     unify (tf `fn` t) te
     return t
-    where
-        errContext = capIndent
-            "While inferring the type of the term:"
-            [CT.unparseTermPretty term]
-
-        errMsg = errContext
 
 -- This is to not have a recursive error context
 -- stack on repeated invocatinos of tiTerm App

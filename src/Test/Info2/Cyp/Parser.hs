@@ -17,7 +17,6 @@ module Test.Info2.Cyp.Parser where
 
 import Control.Monad (when)
 import Data.Char
-import Data.Either
 import Data.Maybe
 import Data.List (nub)
 import Text.Parsec as Parsec
@@ -250,7 +249,7 @@ caseProofParser = do
     manySpacesOrComment
 
     -- Read typesig right here and fail if its invalid
-    case readTypeScheme sc of
+    case readTypeSchemeFixed sc of
         Left err -> unexpected $ render err
         Right sc' -> return $ ParseCases sc' over cases
 
@@ -672,16 +671,20 @@ readExactlyOneTypeSigFixed :: ParseDeclTree -> Err Assump
 readExactlyOneTypeSigFixed = readExactlyOneTypeSigWith makeSchemeFixed
 
 
-
-readTypeScheme :: String -> Err Scheme
-readTypeScheme s = 
+readTypeSchemeWith :: (Type -> Scheme) -> String -> Err Scheme
+readTypeSchemeWith makeScheme s = 
     errCtxt (text "Parsing the type scheme" <+> quotes (text s)) $
         case P.parseType s of
             P.ParseOk t -> do
                 t' <- toCypType t
-                return $ quantifyAll t'
+                return $ makeScheme t'
             _ -> errStr "Parse Error"
 
+readTypeScheme :: String -> Err Scheme
+readTypeScheme = readTypeSchemeWith quantifyAll
+
+readTypeSchemeFixed :: String -> Err Scheme
+readTypeSchemeFixed = readTypeSchemeWith makeSchemeFixed
 
 splitStringAt :: Eq a => [a] -> [a] -> [a] -> [[a]]
 splitStringAt _ [] h

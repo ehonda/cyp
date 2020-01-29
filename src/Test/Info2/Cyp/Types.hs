@@ -2,7 +2,7 @@ module Test.Info2.Cyp.Types where
 
 import Control.Monad (liftM, liftM2)
 --import qualified Data.List as L (find, (\\))
-import Data.List (find, (\\))
+import Data.List (find, (\\), nub)
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 
@@ -340,6 +340,9 @@ eqnSeqHead (Step x _ _) = x
 
 eqnSeqqHead :: EqnSeqq a -> a
 eqnSeqqHead (EqnSeqq eqns _) = eqnSeqHead eqns
+
+getVarsEqnSeqq :: EqnSeqq Term -> [String]
+getVarsEqnSeqq eqns = nub $ concat $ fmap getVars eqns
 
 {- Named operations --------------------------------------------------}
 

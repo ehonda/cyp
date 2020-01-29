@@ -7,7 +7,7 @@ Lemma : not . not .=. id
                 While inferring the type of the term:
                     (not . not) x
                     While unifying:
-                        expected = Int -> v7
+                        expected = Int -> v6
                         actual = Bool -> Bool
                         Types do not unify:
                             t = Int
