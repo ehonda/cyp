@@ -148,7 +148,7 @@ checkProof prop (ParseExt sig@(withId :>: _) toShowRaw proof) env = errCtxt ctxt
         return prop'
       where
         bail msg t = lift $ err $ text msg <+> quotes (unparseTerm t)
-checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env = errCtxt ctxtMsg $ do
+checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gens casesRaw) env = errCtxt ctxtMsg $ do
     dt <- validDatatypeFromScheme dtSc env
     flip evalStateT env $ do
         over <- validateVar "induction" $ Free overId
@@ -157,10 +157,12 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
         validateGens over gens prop
         lift $ validateCases dt over gens casesRaw env
         return prop
-  where           
+  where
     ctxtMsg = text "Induction over variable"
         <+> (text $ prettyAssump' typeSig)
         <+> if null gensRaw then empty else text "generalizing over" <+> fsep (map (quotes . unparseRawTerm) gensRaw)
+
+    gensRaw = map (Free . assumpName) gens
 
     unparseVarList vars = fsep (intersperse (text ",") (map (unparseTerm . Free) vars))
     unparseGenProp gens prop =
@@ -199,7 +201,8 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
 
         case pcGens pc of
            Nothing -> empty
-           Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars)) 
+           --Just rawVars -> text "For arbitrary" <+> hsep (map (quotes . unparseRawTerm) rawVars))
+           Just as -> text "For arbitrary" <+> hsep (map (quotes . text . prettyAssump') as))
       $ do flip evalStateT env $ do
             caseT <- state (variantFixesTerm $ pcCons pc)
             (consName, consArgNs) <- lift $ validConsCase caseT dt
@@ -217,12 +220,14 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
 
             case pcGens pc of
                 Nothing -> when (not $ null gens) $ lift $ err $ text "Missing 'For fixed ...'"
-                Just rawVars -> do
+                Just as -> do
                     vars <- traverse (validateVar "generalization") rawVars
                     when (vars /= gens) $ lift . err
                          $ text "Variable names do not match"
                          `indent` (text "Generalization variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) gens))
                          $+$ text "'fixed' variables:" <+> fsep (intersperse (text ",") (map (unparseTerm . Free) vars)))
+                    where
+                        rawVars = map (Free . assumpName) as
 
             case pcToShow pc of
                 Nothing ->
@@ -235,7 +240,8 @@ checkProof prop (ParseInduction typeSig@(overId :>: dtSc) gensRaw casesRaw) env 
                             text "Show:" <+> unparseGenProp gens toShow
                             $+$ debug (text "Subgoal:" <+> unparseGenProp gens subgoal))
 
-                    userHyps <- checkPcHyps over gens recArgNames $ pcAssms pc
+                    userHyps <- checkPcHyps over gens recArgNames $
+                        map toOldAssm $ pcAssms pc
 
                     modify (\env -> env { axioms = userHyps ++ axioms env })
                     env <- get
@@ -282,7 +288,7 @@ checkProof prop (ParseCases dtSc onRaw casesRaw) env = errCtxt ctxtMsg $ do
             when (isJust $ pcToShow pc) $
                 lift $ errStr "Superfluous 'Show'"
 
-            userAssm <- checkPcAssms on caseT $ pcAssms pc
+            userAssm <- checkPcAssms on caseT $ map toOldAssm $ pcAssms pc
 
             modify (\env -> env { axioms = userAssm : axioms env })
             env <- get
@@ -302,7 +308,12 @@ checkProof prop (ParseCases dtSc onRaw casesRaw) env = errCtxt ctxtMsg $ do
     checkPcAssms _ _ _ = lift $ errStr "Expected exactly one assumption"
 
 
--- Helper function for ParseInduction, ParseCases
+-- Helper functions for ParseInduction, ParseCases
+toOldAssm :: Named ([Assump], RawProp) -> Named ([RawTerm], RawProp)
+toOldAssm (Named name (genAs, prop)) = Named name (gens, prop)
+    where
+        gens = map (Free . assumpName) genAs 
+
 validateCasesWith validateCase dt cases = do
     caseNames <- traverse validateCase cases
     case missingCase caseNames of

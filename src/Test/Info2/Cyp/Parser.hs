@@ -48,15 +48,17 @@ data ParseCase = ParseCase
     { pcCons :: RawTerm
 --    , pcFixs :: Maybe [RawTerm] -- fixed variables
     , pcFixs :: Maybe [Assump] -- [fixvar :: Type]
-    , pcGens :: Maybe [RawTerm] -- generalized variables
+--    , pcGens :: Maybe [RawTerm] -- generalized variables
+    , pcGens :: Maybe [Assump] -- [genvar :: Type]
     , pcToShow :: Maybe RawProp -- goal
-    , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
+--    , pcAssms :: [Named ([RawTerm], RawProp)] -- (generalized variables, assumption)
+    , pcAssms :: [Named ([Assump], RawProp)] -- (generalized variables, assumption)
     , pcProof :: ParseProof
     }
     deriving Show
 
 data ParseProof
-    = ParseInduction Assump [RawTerm] [ParseCase] -- (over :: Type), generalized variables, cases
+    = ParseInduction Assump [Assump] [ParseCase] -- (over :: Type), generalized variables, cases
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt Assump RawProp ParseProof -- (fixedvar :: Type), to show, subproof
     | ParseCases Scheme RawTerm [ParseCase] -- term typescheme, term, cases
@@ -199,12 +201,20 @@ typeSigToParser end unexpectedMsg = do
             xs <- manyTill anyChar end
             return (x : xs)
 
--- TODO: REWORK, UGLY CODE
 typeSigParser :: Parsec [Char] u ParseDeclTree
 typeSigParser = typeSigToParser end unexpectedMsg
     where
         end = eof <|> eol <|> commentParser
         unexpectedMsg = "end of line or comment"
+
+-- Parses type sigs until end is reached, separated by commas
+typeSigsToParser1 :: Parsec [Char] u () -> String
+    -> Parsec [Char] u [ParseDeclTree]
+typeSigsToParser1 end unexpectedMsg = sepBy1
+    (typeSigToParser end' unexpectedMsg)
+    (char ',')
+    where
+        end' = end <|> (try $ lookAhead $ keyword ",")
 
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
@@ -217,22 +227,27 @@ inductionProofParser = do
     keyword "on"
     sig <- typeSigToParser sigEnd sigUnexpectedMsg
     manySpacesOrComment
-    gens <- option [] (do
+    gensSigs <- option [] (do
       keyword "generalizing"
       lineSpaces
-      varsParser)
+      typeSigsToParser1 gensEnd unexpectedMsg)
     manySpacesOrComment
     cases <- many1 caseParser
     manySpacesOrComment
 
-    -- Read typesig right here and fail if its invalid
+    -- Read typesigs
     case readExactlyOneTypeSig sig of
         Left err -> unexpected $ render err
-        Right sig' -> return $ ParseInduction sig' gens cases
+        Right sig' -> case readTypeSigs gensSigs of
+            Left err -> unexpected $ render err
+            Right gens -> return $ ParseInduction sig' gens cases
     where
         sigEnd = (try $ lookAhead $ keyword "generalizing") <|>
             eolOrComment
         sigUnexpectedMsg = "end of line, comment or keyword 'generalizing'"
+
+        gensEnd = eolOrComment
+        unexpectedMsg = "end of line or comment"
 
 caseProofParser :: Parsec [Char] Env ParseProof
 caseProofParser = do
@@ -284,20 +299,27 @@ propParser mode = do
             iparseProp (mode $ constants env) s
     toParsec show prop
 
-propGenParser :: PropParserMode -> Parsec [Char] Env ([RawTerm], RawProp)
+propGenParser :: PropParserMode -> Parsec [Char] Env ([Assump], RawProp)
 propGenParser mode = do
-    gens <- option [] (do
+    gensSigs <- option [] (do
       keyword "forall"
-      gens <- varsParser
+      --gens <- varsParser
+      gensSigs <- typeSigsToParser1 gensEnd unexpectedMsg
       char ':'
       lineSpaces
-      return gens)
+      return gensSigs)
     s <- trim <$> toEol1 <?> "expression"
     env <- getState
     let prop = errCtxtStr "Failed to parse expression" $
             iparseProp (mode $ constants env) s
     prop <- toParsec show prop
-    return (gens, prop)
+
+    case readTypeSigsFixed gensSigs of
+        Left err -> unexpected $ render err
+        Right gens -> return (gens, prop)
+    where
+        gensEnd = (try $ lookAhead $ keyword ":") <|> eolOrComment
+        unexpectedMsg = "end of line or comment"
 
 termParser :: PropParserMode -> Parsec [Char] Env RawTerm
 termParser = termParserUntil toEol1
@@ -316,7 +338,8 @@ namedPropParser mode p = do
     prop <- propParser mode
     return (name, prop)
 
-namedPropGenParser :: PropParserMode -> Parsec [Char] Env String -> Parsec [Char] Env (String, [RawTerm], RawProp)
+namedPropGenParser :: PropParserMode -> Parsec [Char] Env String 
+    -> Parsec [Char] Env (String, [Assump], RawProp)
 namedPropGenParser mode p = do
     name <- option "" p
     char ':'
@@ -416,44 +439,53 @@ caseParser = do
     lineSpaces
     t <- termParser defaultToFree
     manySpacesOrComment
-    --fxs <- optionMaybe $ do
-    --  keyword "Fix"
-    --  varsParser <* manySpacesOrComment  
+    
     fixSigs <- optionMaybe $ do
         keyword "Fix"
-        (sepBy1 (typeSigToParser (sigEnd <|> (try $ lookAhead $ keyword ",")) unexpectedMsg) $ 
-            char ',') <* manySpacesOrComment
-
+        typeSigsToParser1 fixSigsEnd unexpectedMsg
+    
+    manySpacesOrComment
     assms <- assmsP
     manySpacesOrComment
-    gens <- optionMaybe $ do
+    gensSigs <- optionMaybe $ do
       gensStart
-      varsParser <* manySpacesOrComment
+      typeSigsToParser1 gensSigsEnd unexpectedMsg
+    
+    manySpacesOrComment
     toShow <- optionMaybe (toShowParser <* manySpacesOrComment)
     manyTill anyChar (lookAhead (string "Proof"))
     proof <- proofParser
     manySpacesOrComment
 
-    -- Read fix sigs
+    -- TODO: This could be done cleaner
     let fixAs = readTypeSigsFixed $ fromMaybe [] fixSigs
+        gensAs = readTypeSigsFixed $ fromMaybe [] gensSigs
     case fixAs of
         Left err -> unexpected $ render err
-        Right as -> do
-            --let fxs = Just $ map (Free . assumpName) as
-            return $ ParseCase
-                { pcCons = t
-                , pcFixs = Just as
-                , pcGens = gens
-                , pcToShow = toShow
-                , pcAssms = assms
-                , pcProof = proof
-                }
+        Right fixAs' -> case gensAs of
+            Left err -> unexpected $ render err
+            Right gensAs' -> do
+                let fxs = if null fixAs'
+                        then Nothing
+                        else Just fixAs'
+                    gens = if null gensAs'
+                        then Nothing
+                        else Just gensAs'
+                return $ ParseCase
+                    { pcCons = t
+                    , pcFixs = fxs
+                    , pcGens = gens
+                    , pcToShow = toShow
+                    , pcAssms = assms
+                    , pcProof = proof
+                    }
   where
     gensStart = do
         choice [char 'f', char 'F']
         keyword "or fixed"
 
-    sigEnd = (try $ lookAhead $ keyword "Assume") <|> eolOrComment
+    fixSigsEnd = (try $ lookAhead $ keyword "Assume") <|> eolOrComment
+    gensSigsEnd = (try $ lookAhead $ keyword "Show") <|> eolOrComment
 
     unexpectedMsg = "end of line or comment"
     

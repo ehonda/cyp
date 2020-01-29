@@ -82,29 +82,40 @@ liftTI ti = do
 -- TYPECHECK FOR PROOFS
 ------------------------------------------------------------
 typeCheckLemma :: ParseLemma -> ProofTC ()
-typeCheckLemma (ParseLemma name rawProp proof) = do
+typeCheckLemma (ParseLemma name rawProp proof) = do 
+    --ptcWithErrorContext errContext $ do
     as <- getAssumps
-    ptcWithErrorContext errContext $ ptcProp as rawProp
+    ptcProp as rawProp
     typeCheckProof proof
     where
-        errContext = text "Checking Lemma"
+        -- Don't need this, there is already an error
+        -- context about the lemma from outside
+        --errContext = hsep
+        --    [ text "Checking Lemma"
+        --    , text $ name ++ ":"
+        --    , quotes $ unparseRawProp rawProp
+        --    ]
 
 
+-- Original proposition is passed around so generalization
+-- variables can be checked in induction proofs
 typeCheckProof :: ParseProof -> ProofTC ()
 typeCheckProof (ParseEquation reqns) = 
     typeCheckEquationalProof reqns
+
 typeCheckProof (ParseExt withSig rprop proof) =
     typeCheckExtensionalProof withSig rprop proof
+
 typeCheckProof (ParseCases overSc overTerm cases) = 
     typeCheckCasesProof overSc overTerm cases
-typeCheckProof (ParseInduction _ _ cases) =
-    typeCheckCases cases
+
+typeCheckProof (ParseInduction over gens cases) =
+    typeCheckInductionProof over gens cases
 
 typeCheckEquationalProof :: EqnSeqq RawTerm -> ProofTC ()
-typeCheckEquationalProof reqns = do
+typeCheckEquationalProof reqns = ptcWithErrorContext errContext $ do
     as <- getAssumps
-    ptcWithErrorContext errContext $ liftTI $
-        tiEquations as eqns
+    liftTI $ tiEquations as eqns
     where
         errContext = text "Type checking equational proof"
 
@@ -120,13 +131,14 @@ typeCheckEquationalProof reqns = do
             typeCheckEqnSeqq (as ++ as') eqns
 
 typeCheckExtensionalProof :: Assump -> RawProp -> ParseProof -> ProofTC ()
-typeCheckExtensionalProof varAssump rawProp proof = do
+typeCheckExtensionalProof varAssump rawProp proof = 
+    ptcWithErrorContext errToShow $ do
     -- Add assumptions about ext var
     addAssump varAssump
     as <- getAssumps
 
     -- Typecheck to show
-    ptcWithErrorContext errToShow $ ptcProp as rawProp
+    ptcProp as rawProp
     
     typeCheckProof proof
     where
@@ -137,32 +149,48 @@ typeCheckExtensionalProof varAssump rawProp proof = do
 
 
 typeCheckCasesProof :: Scheme -> RawTerm -> [ParseCase] -> ProofTC ()
-typeCheckCasesProof overSc overRawTerm cases = ptcWithErrorContext errCases $ do
-    -- Check that overTerm has the right type
-    -- eg (p x) :: Bool
-    as <- getAssumps
-    liftTI $ tiOver as
+typeCheckCasesProof overSc overRawTerm cases = 
+    ptcWithErrorContext errCases $ do
+        -- Check that overTerm has the right type
+        -- eg (p x) :: Bool
+        as <- getAssumps
+        liftTI $ tiOver as
+        typeCheckCases cases
+        where
+            errCases = hsep 
+                [ text "While typechecking case analysis on"
+                , unparseRawTerm overRawTerm
+                , text "::"
+                , text $ prettyScheme overSc
+                ]
+
+            overTerm = interpretTermDefault overRawTerm
+
+            tiOver :: [Assump] -> TI ()
+            tiOver as = do
+                -- Generate tvs for unbounds
+                as' <- traverse newVarAssump $ getVars overTerm
+                t <- tiTerm (as ++ as') overTerm
+                t' <- freshInst overSc
+                unify t t'
+
+typeCheckInductionProof ::Assump -> [Assump] -> [ParseCase] -> ProofTC ()
+typeCheckInductionProof overAssump gensAs cases = 
+    ptcWithErrorContext errInd $ do
+    -- Add the assumptions
+    addAssump overAssump
+    mapM_ addAssump gensAs
     typeCheckCases cases
     where
-        errCases = hsep 
-            [ text "While typechecking case analysis on"
-            , unparseRawTerm overRawTerm
-            , text "::"
-            , text $ prettyScheme overSc
+        errInd = hsep $ map text 
+            [ "While typechecking induction proof over"
+            , prettyAssump' overAssump
+            , "generalizing"
+            , concat $ map prettyAssump' gensAs
             ]
 
-        overTerm = interpretTermDefault overRawTerm
-
-        tiOver :: [Assump] -> TI ()
-        tiOver as = do
-            -- Generate tvs for unbounds
-            as' <- traverse newVarAssump $ getVars overTerm
-            t <- tiTerm (as ++ as') overTerm
-            t' <- freshInst overSc
-            unify t t'
-
--- Cases should be independet, so we restore the
--- state after each case check (they fix new frees)
+-- Cases should be independent, so we restore the
+-- state after each case check (in case assumptions got added)
 typeCheckCases :: [ParseCase] -> ProofTC ()
 typeCheckCases cases = do
     originalState <- get
@@ -180,7 +208,10 @@ typeCheckCase pcase = ptcWithErrorContext errCase $ do
         pcToShow pcase
 
     -- Typecheck assumps
-    let assumps = map (snd . namedVal) $ pcAssms pcase
+    let gensAs = map (fst . namedVal) $ pcAssms pcase
+        assumps = map (snd . namedVal) $ pcAssms pcase
+    -- Use zipWith here, detailed err message!
+    --mapM_ addAssump gensAs
     mapM_ (\p -> ptcWithErrorContext errAssumps $ ptcProp as p) assumps
 
     typeCheckProof $ pcProof pcase
