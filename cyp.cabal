@@ -21,6 +21,7 @@ library
     , Test.Info2.Cyp.Typing.Inference
     , Test.Info2.Cyp.Typing.Theory
     , Test.Info2.Cyp.Typing.Proof
+    , Test.Info2.Cyp.Blueprint.Blueprint
   build-depends:
       base ==4.*
     , containers ==0.5.*

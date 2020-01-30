@@ -51,7 +51,7 @@ module Test.Info2.Cyp.Term where
 --    )
 --where
 
-import Control.Monad ((>=>), liftM2, when)
+import Control.Monad ((>=>), liftM2, when, liftM)
 import Data.List (find, nub)
 import qualified Language.Haskell.Exts.Simple.Parser as P
 import Language.Haskell.Exts.Simple.Fixity (Fixity (..), baseFixities)
@@ -212,6 +212,10 @@ symCons = ":"
 symIf :: String
 symIf = ".if"
 
+-- Used for blueprints
+symHole :: String
+symHole = "_"
+
 
 -----------------------------------------------------
 -- Interpret Term/Prop default
@@ -259,17 +263,31 @@ defaultConsts :: [String]
 defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
 -- TODO: Do we want to allow <, <=, etc. as well?
 
+iparseTermRawWithTranslation ::
+        ((String -> Err (AbsTerm a)) -> Exts.Exp -> Err (AbsTerm a))
+    ->  (String -> Err (AbsTerm a)) 
+    ->  String 
+    ->  Err (AbsTerm a)
+iparseTermRawWithTranslation translate f s = 
+    errCtxt (text "Parsing term" <+> quotes (text s)) $
+        case P.parseExpWithMode mode s of
+            P.ParseOk p -> translate (withDefConsts f) p
+            x@(P.ParseFailed _ _) -> err $ renderSrcExtsFail "expression" x
+    where
+        mode = P.defaultParseMode
+            { P.fixities = Just $ Fixity Exts.AssocNone (-1) 
+                (Exts.UnQual $ Exts.Symbol symPropEq) : baseFixities }
+        withDefConsts f x = if x `elem` defaultConsts 
+            then return (Const x) else f x
+ 
+
 iparseTermRaw :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
-iparseTermRaw f s = errCtxt (text "Parsing term" <+> quotes (text s)) $
-    case P.parseExpWithMode mode s of
-        P.ParseOk p -> translateExp (withDefConsts f) p
-        x@(P.ParseFailed _ _) -> err $ renderSrcExtsFail "expression" x
-  where
-    mode = P.defaultParseMode
-      { P.fixities = Just $ Fixity Exts.AssocNone (-1) (Exts.UnQual $ Exts.Symbol symPropEq) : baseFixities
---      , P.extensions = [PE.EnableExtension PE.ViewPatterns]
-      }
-    withDefConsts f x = if x `elem` defaultConsts then return (Const x) else f x
+iparseTermRaw f s = iparseTermRawWithTranslation translateExp f s
+
+iparseTermRawBlueprint :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
+iparseTermRawBlueprint f s = iparseTermRawWithTranslation 
+    translateExpBlueprint f s
+
 
 defaultToFree :: [String] -> String -> Err RawTerm
 defaultToFree consts x = return $ if x `elem` consts then Const x else Free x
@@ -303,29 +321,61 @@ iparseProp f s = do
 {- Transform Exp to Term ---------------------------------------------}
 
 translateExp :: (String -> Err (AbsTerm a)) -> Exts.Exp -> Err (AbsTerm a)
-translateExp f (Exts.Var v) = f $ translateQName v
-translateExp _ (Exts.Con c) = return . Const $ translateQName c
+translateExp f (Exts.Var v) = do
+    name <- translateQName v
+    f name
+translateExp _ (Exts.Con c) = do 
+    name <- translateQName c
+    return $ Const name
 translateExp _ (Exts.Lit l) = return $ Literal l
 translateExp f (Exts.If b c1 c2) = Right (Const symIf)
     `mApp` translateExp f b `mApp` translateExp f c1 `mApp` translateExp f c2
 translateExp f (Exts.InfixApp e1 op e2) =
     translateQOp f op `mApp` translateExp f e1 `mApp` translateExp f e2
 translateExp f (Exts.App e1 e2) = translateExp f e1 `mApp` translateExp f e2
+-- We don't really support NegAgg and LeftSection do we
 translateExp f (Exts.NegApp e) = return (Const symUMinus) `mApp` translateExp f e
 translateExp f (Exts.LeftSection e op) = translateQOp f op `mApp` translateExp f e
 translateExp f (Exts.Paren e) = translateExp f e
 translateExp f (Exts.List l) = foldr (\e es -> Right (Const symCons) `mApp` translateExp f e `mApp` es) (Right $ Const "[]") l
 translateExp _ e = errStr $ "Unsupported expression syntax used: " ++ show e
 
+
+-- The recursive branches need to call the blueprint version again to find
+-- all holes, everything else can just translateExp
+translateExpBlueprint :: (String -> Err (AbsTerm a)) -> Exts.Exp -> Err (AbsTerm a)
+translateExpBlueprint _ (Exts.Var (Exts.Special (Exts.ExprHole))) =
+    return $ Const "_"
+translateExpBlueprint f (Exts.If b c1 c2) = 
+    Right (Const symIf)
+    `mApp` translateExpBlueprint f b 
+    `mApp` translateExpBlueprint f c1 
+    `mApp` translateExpBlueprint f c2
+translateExpBlueprint f (Exts.InfixApp e1 op e2) =
+    translateQOp f op 
+    `mApp` translateExpBlueprint f e1 
+    `mApp` translateExpBlueprint f e2
+translateExpBlueprint f (Exts.App e1 e2) = 
+    translateExpBlueprint f e1 
+    `mApp` translateExpBlueprint f e2
+translateExpBlueprint f (Exts.Paren e) = translateExpBlueprint f e
+translateExpBlueprint f (Exts.List l) = foldr 
+    (\e es -> Right (Const symCons) `mApp` translateExpBlueprint f e `mApp` es) 
+    (Right $ Const "[]") l
+
+translateExpBlueprint f e = translateExp f e
+
 translatePat :: Exts.Pat -> Err RawTerm
 translatePat (Exts.PVar v) = Right $ Schematic $ translateName v
 translatePat (Exts.PLit Exts.Signless l) = Right $ Literal l
 translatePat (Exts.PNPlusK _ _) = errStr "n+k patterns are not supported"
-translatePat (Exts.PInfixApp p1 qn p2) =
-    (return . Const $ translateQName qn) `mApp` translatePat p1 `mApp` translatePat p2
+translatePat (Exts.PInfixApp p1 qn p2) = do
+    name <- translateQName qn
+    (return $ Const name) `mApp` translatePat p1 `mApp` translatePat p2
 translatePat (Exts.PApp qn ps) = do
     cs <- traverse translatePat ps
-    return $ listComb (Const $ translateQName qn) cs
+    name <- translateQName qn
+    return $ listComb (Const name) cs
 translatePat (Exts.PTuple _ _) = errStr "tuple patterns are not supported"
 translatePat (Exts.PList ps) = foldr (\p cs -> Right (Const ":") `mApp` translatePat p `mApp` cs) (Right $ Const "[]") ps
 translatePat (Exts.PParen p) = translatePat p
@@ -334,22 +384,30 @@ translatePat Exts.PWildCard = errStr "wildcard patterns are not supported"
 translatePat f = errStr $ "unsupported pattern type: " ++ show f
 
 translateQOp :: (String -> Err (AbsTerm a)) -> Exts.QOp -> Err (AbsTerm a)
-translateQOp _ (Exts.QConOp op) = return . Const $ translateQName op
-translateQOp f (Exts.QVarOp op) = f $ translateQName op
+translateQOp _ (Exts.QConOp op) = do 
+    name <- translateQName op
+    return $ Const name
+translateQOp f (Exts.QVarOp op) = do
+    name <- translateQName op
+    f name
 
-translateQName :: Exts.QName -> String
-translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Ident n)) = m ++ "." ++ n
-translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Symbol n)) = m ++ "." ++ n
-translateQName (Exts.UnQual (Exts.Ident n)) = n
-translateQName (Exts.UnQual (Exts.Symbol n)) = n
-translateQName (Exts.Special Exts.UnitCon) = "()"
-translateQName (Exts.Special Exts.ListCon) = "[]"
-translateQName (Exts.Special Exts.FunCon) = "->"
-translateQName (Exts.Special Exts.Cons) = ":"
+translateQName :: Exts.QName -> Err String
+translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Ident n)) = 
+    return $ m ++ "." ++ n
+translateQName (Exts.Qual (Exts.ModuleName m) (Exts.Symbol n)) = 
+    return $ m ++ "." ++ n
+translateQName (Exts.UnQual (Exts.Ident n)) = return n
+translateQName (Exts.UnQual (Exts.Symbol n)) = return n
+translateQName (Exts.Special Exts.UnitCon) = return "()"
+translateQName (Exts.Special Exts.ListCon) = return "[]"
+translateQName (Exts.Special Exts.FunCon) = return "->"
+translateQName (Exts.Special Exts.Cons) = return ":"
 translateQName (Exts.Special (Exts.TupleCon b n)) = case b of
-    Exts.Boxed -> "(#" ++ replicate n ',' ++ "#)"
-    Exts.Unboxed -> "(" ++ replicate n ',' ++ ")"
-translateQName (Exts.Special Exts.UnboxedSingleCon) = "(# #)"
+    Exts.Boxed -> return $ "(#" ++ replicate n ',' ++ "#)"
+    Exts.Unboxed -> return $ "(" ++ replicate n ',' ++ ")"
+translateQName (Exts.Special Exts.UnboxedSingleCon) = return "(# #)"
+translateQName (Exts.Special Exts.ExprHole) = errStr "Holes not allowed"
+translateQName _ = errStr "Unsupported qualified name"
 
 translateName :: Exts.Name -> String
 translateName (Exts.Ident s) = s
@@ -402,7 +460,15 @@ upApplied (Unparse _ (_, _, x)) = x
 
 
 unparseFixities :: [CypFixity]
-unparseFixities = map (\(Fixity assoc prio name) -> CypFixity assoc (IntPrio prio) $ translateQName name) baseFixities
+unparseFixities = map 
+    (\(Fixity assoc prio name) ->
+        -- TODO: Kind of a hack, should never get an
+        -- untranslatable name here though
+        let name' = case translateQName name of
+                Left err -> "invalid_name"
+                Right qn -> qn
+        in CypFixity assoc (IntPrio prio) name') 
+    baseFixities
 
 atomFixity :: (Exts.Assoc, Prio, CypApplied)
 atomFixity = (Exts.AssocNone, AtomPrio, AppliedFull)

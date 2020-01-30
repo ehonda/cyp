@@ -567,9 +567,12 @@ readSym = sequence . mapMaybe parseSym
     parseSym _ = Nothing
 
 
-readFunc :: [String] -> [ParseDeclTree] 
-    -> Err ([Named Prop], [String], [FunctionRawAlts])
-readFunc syms pds = do
+readFuncWithExpTranslation ::
+        ((String -> Err RawTerm) -> Exts.Exp -> Err RawTerm)
+    ->  [String]
+    ->  [ParseDeclTree] 
+    ->  Err ([Named Prop], [String], [FunctionRawAlts])
+readFuncWithExpTranslation translateExp syms pds = do
     rawDecls <- sequence . mapMaybe parseFunc $ pds
     let syms' = syms ++ map (\(sym, _, _) -> sym) rawDecls
     props0 <- traverse (declToProp syms') rawDecls
@@ -620,6 +623,16 @@ readFunc syms pds = do
             P.ParseOk _ -> errStr "Invalid function definition."
             f@(P.ParseFailed _ _ ) -> err $ renderSrcExtsFail "declaration" f
     parseFunc _ = Nothing
+
+
+readFunc :: [String] -> [ParseDeclTree] 
+    -> Err ([Named Prop], [String], [FunctionRawAlts])
+readFunc syms pds = readFuncWithExpTranslation translateExp syms pds
+
+readFuncBlueprint :: [String] -> [ParseDeclTree] 
+    -> Err ([Named Prop], [String], [FunctionRawAlts])
+readFuncBlueprint syms pds = readFuncWithExpTranslation 
+    translateExpBlueprint syms pds
 
 
 -- TYPE SIGNATURE READING

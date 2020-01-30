@@ -6,6 +6,7 @@ import Text.PrettyPrint.HughesPJ
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import qualified Language.Haskell.Exts.Simple.Parser as P
 
+import Test.Info2.Cyp.Blueprint.Blueprint
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Term
@@ -363,5 +364,13 @@ tcProofTest' cthy cprf = do
 
 
 
+-- TEST BLUEPRINT
+----------------------------------------
 
+natThyBP = "test-data/no_unit/blueprint/nat-add/bpthy"
+natThy = "test-data/no_unit/blueprint/nat-add/cthy"
 
+bpThyTest bp thy = do
+    bpthy <- readFile bp
+    cthy <- readFile thy
+    return $ matchBlueprintWithTheory bpthy cthy

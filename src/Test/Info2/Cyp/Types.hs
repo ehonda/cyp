@@ -27,7 +27,7 @@ data DataType = DataType
     { dtScheme :: Scheme
     , dtConss :: [(String, Scheme)]
     }
-    deriving Show
+    deriving (Eq, Show)
 
 defaultDataTypes :: [DataType]
 defaultDataTypes = 
