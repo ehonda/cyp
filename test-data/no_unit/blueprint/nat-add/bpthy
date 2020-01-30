@@ -1,8 +1,8 @@
 data N = Z | S N
 
 plus :: N -> N -> N
-plus Z b = b
-plus (S a) b = _
+qlus Z b = b
+qlus (S a) b = _
 
 axiom triv: Z .=. Z
 
