@@ -1,6 +1,7 @@
 module Test.Info2.Cyp.Blueprint.Blueprint where
 
 import Control.Monad
+import Data.List
 import qualified Text.Parsec as Parsec
 
 import Test.Info2.Cyp.Parser
@@ -91,28 +92,20 @@ matchBlueprintWithTheory blueprint theory =
         (thyDts, thySigs, thyFuns, thyAxs, thyGls) <-
             getTheoryContents readFunc theory "Parsing solution"
 
-        -- Match Datatypes
-        --when (bpDts /= thyDts) $
-        --    errStr "Datatypes mismatch"
-        --zipWithM_ compareDts bpDts thyDts
+        -- Compare Datatypes
+        compareDataTypes bpDts thyDts
 
         -- Match sigs
-        when (bpSigs /= thySigs) $
-            errStr "Type signatures mismatch"
+        compareTypeSignatures bpSigs thySigs
 
         -- Match functions
         zipWithM_ matchBlueprintWithFunction bpFuns thyFuns
         
         -- Match axioms
-        --when (bpAxs /= thyAxs) $
-        --    errStr "Axioms mismatch"
-        --zipWithM_ matchBlueprintWithAxiom bpAxs thyAxs
-        zipWithM_ compareAxioms bpAxs thyAxs
+        compareAxioms bpAxs thyAxs
 
         -- Match goals
-        when (bpGls /= thyGls) $
-            errStr "Goals mismatch"
-        --zipWithM_ matchBlueprintWithProp bpGls thyGls
+        compareGoals bpGls thyGls
 
         return ()
         where
@@ -125,7 +118,7 @@ matchBlueprintWithTheory blueprint theory =
                 (_, consts, funsRawAlts) <- readFunc syms res
                 axs <- readAxiom consts res
                 gls <- readGoal consts res
-                return (dts, sigs, funsRawAlts, axs, gls)
+                return (dts \\ defaultDataTypes, sigs, funsRawAlts, axs, gls)
 
             matchBlueprintWithAlt :: RawAlt -> RawAlt -> Err ()
             matchBlueprintWithAlt (bpPats, bpTerm) (pats, term) = do
@@ -141,36 +134,88 @@ matchBlueprintWithTheory blueprint theory =
                         errStr "Function name mismatch"
                     zipWithM_ matchBlueprintWithAlt bpAlts alts
 
-            compareAxioms :: Named Prop -> Named Prop -> Err ()
-            compareAxioms (Named n p) (Named n' p') = do
-                when (n /= n') $
-                    errStr "Axiom names mismatch"
-                when (p /= p') $
-                    errStr "Axiom props mismatch"
+            --compareAxioms :: Named Prop -> Named Prop -> Err ()
+            --compareAxioms (Named n p) (Named n' p') = do
+            --    when (n /= n') $
+            --        errStr "Axiom names mismatch"
+            --    when (p /= p') $
+            --        errStr "Axiom props mismatch"
 
-            --comparisonDoc :: String -> (a -> Doc) -> a -> a -> Doc
-            --comparisonDoc header toDoc blueprint solution =
-            --    capIndent
-            --        header
-            --        [ capIndent "blueprint" [toDoc blueprint]
-            --        , capIndent "solution" [toDoc solution]
-            --        ]
---
-            --compare :: Eq a => String -> (a -> Doc) -> a -> a -> Err ()
-            --compare header header toDoc blueprint solution = 
-            --    when (a /= b) $ err $ 
-            --        comparisonDoc header toDoc blueprint solution
---
-            --compareDts :: DataType -> DataType -> Err ()
-            --compareDts bp sol = compare "Type mismatch" dataTypeDoc bp sol
+            comparisonDoc :: String -> (a -> Doc) -> a -> a -> Doc
+            comparisonDoc header toDoc blueprint solution =
+                capIndent
+                    header
+                    [ capIndent "Blueprint:" [toDoc blueprint]
+                    , capIndent "Solution:" [toDoc solution]
+                    ]
 
-            --compareDts = compareAndShowMismatches showMismatch a b
+            compare :: (a -> a -> Bool)
+                -> String 
+                -> (a -> Doc)
+                -> a -> a -> Err ()
+            compare cmp header toDoc blueprint solution = 
+                when (not $ cmp blueprint solution) $ err $ 
+                    comparisonDoc header toDoc blueprint solution
+   
+            compareMany :: (a -> a -> Bool) 
+                -> String 
+                -> String 
+                -> (a -> Doc) 
+                -> [a] -> [a] -> Err ()
+            compareMany cmp msgLenMismatch msgCmpMismatch toDoc bps sols = do
+                when (length bps /= length sols) $ err $
+                    hcat $ map text $
+                        [ msgLenMismatch
+                        , " Blueprint has "
+                        , show $ length bps
+                        , ", Solution has "
+                        , show $ length sols
+                        , "."
+                        ]
+                zipWithM_ (compare cmp msgCmpMismatch toDoc) bps sols
+
+            compareManyEq :: Eq a => String -> String -> (a -> Doc) 
+                -> [a] -> [a] -> Err ()
+            compareManyEq msgLenMismatch msgCmpMismatch toDoc bps sols =
+                compareMany (==) msgLenMismatch msgCmpMismatch toDoc bps sols
+
+            compareDataTypes :: [DataType] -> [DataType] -> Err ()
+            compareDataTypes bps sols = compareManyEq
+                "Number of datatypes doesn't match."
+                "Datatype mismatch:"
+                dataTypeDoc
+                bps sols
+
+            compareTypeSignatures :: [Assump] -> [Assump] -> Err ()
+            compareTypeSignatures bps sols = compareManyEq
+                "Number of type signatures doesn't match."
+                "Type signature mismatch:"
+                assumpDoc
+                bps sols
+
+            compareAxioms :: [Named Prop] -> [Named Prop] -> Err ()
+            compareAxioms bps sols = compareManyEq
+                "Number of axioms doesn't match."
+                "Axiom mismatch:"
+                axiomDoc
+                bps sols
+                where
+                    axiomDoc (Named n a) = (text $ n ++ ":") <+>
+                        unparsePropPretty a
+
+            compareGoals :: [Prop] -> [Prop] -> Err ()
+            compareGoals bps sols = compareManyEq
+                "Number of goals doesn't match."
+                "Goal mismatch:"
+                unparsePropPretty
+                bps sols
+
+            --compareFunctions :: [FunctionRawAlts] 
+            --    -> [FunctionRawAlts] -> Err ()
+            --compareFunctions bps sols = compareMany
+            --    "Number of function declarations doesn't match."
+            --    "Function declaration mismatch:"
+            --    funcDoc
+            --    bps sols
             --    where
-            --        showMismatch a b 
-
-            --matchBlueprintWithAxiom :: Named Prop 
-            --    -> Named Prop -> Err ()
-            --matchBlueprintWithAxiom bp ax = do
-            --    when (namedName bp /= namedName ax) $
-            --        errStr "Axiom name mismatch"
-            --    matchBlueprintWithProp (namedVal bp) (namedVal ax)
+            --        funcDoc (f, alts) = 

@@ -27,19 +27,18 @@ data Env = Env
 data DataType = DataType
     { dtScheme :: Scheme
     , dtConss :: [Assump]
-    --, dtConss :: [(String, Scheme)]
     }
     deriving (Eq, Show)
 
---dataTypeDoc :: DataType -> Doc
---dataTypeDoc dt = vcat 
---    [ capIndent 
---        "Type Constructor:" 
---        [ text $ prettyScheme $ dtScheme dt ]
---    , capIndent 
---        "Data Constructors:" $ 
---        map (text . prettyAssump') $ dtConss dt
---    ]
+dataTypeDoc :: DataType -> Doc
+dataTypeDoc dt = vcat 
+    [ capIndent 
+        "Type Constructor:" 
+        [ text $ prettyScheme $ dtScheme dt ]
+    , capIndent 
+        "Data Constructors:" $ 
+        map (text . prettyAssump') $ dtConss dt
+    ]
 
 defaultDataTypes :: [DataType]
 defaultDataTypes = 
@@ -160,7 +159,6 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
             checkForUnbounds tvs cargs
             let conType = foldr fn dtype cargs
             return $ (extractName name) :>: (quantifyAll conType)
-            --return (extractName name, quantifyAll conType)
         
         processDCon _ _ _ = errStr "Invalid data constructor"
 
@@ -277,8 +275,6 @@ getConsAssumptions :: [DataType] -> [Assump]
 getConsAssumptions dts = dconsAs ++ defaultConstAssumps
     where
         dconsAs = concat $ map dtConss dts
-        --dcons = concat $ map dtConss dts
-        --dconsAs = map (\(n, sc) -> n :>: sc) dcons
 
 convertFunctionRawAlts :: [Assump] -> FunctionRawAlts -> Err FunctionAlts
 convertFunctionRawAlts consAs (name, rawAlts) = do
