@@ -318,9 +318,10 @@ validateCasesWith validateCase dt cases = do
     caseNames <- traverse validateCase cases
     case missingCase caseNames of
         Nothing -> return ()
-        Just (name, _) -> errStr $ "Missing case '" ++ name ++ "'"
+        Just (name :>: _) -> errStr $ "Missing case '" ++ name ++ "'"
   where
-    missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
+      missingCase caseNames = find (\a -> (assumpName a) `notElem` caseNames) (dtConss dt)
+    --missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
 
 
 validDatatypeFromScheme :: Scheme -> Env -> Err DataType
@@ -333,7 +334,7 @@ validDatatypeFromScheme sc env = case find (\dt -> dtScheme dt == sc) (datatypes
 
 validConsCase :: Term -> DataType -> Err (String, [(TConsArg, IdxName)])
 validConsCase t (DataType _ dcons) = errCtxt invCaseMsg $ do
-    (consName, consScheme) <- findCons cons
+    consName :>: consScheme <- findCons cons
     consType <- runTI $ freshInst consScheme
     let (_, consArgs) = toOldDataConstructor (consName, consType)
     
@@ -349,9 +350,9 @@ validConsCase t (DataType _ dcons) = errCtxt invCaseMsg $ do
         argName (Free v) = return v
         argName _ = errStr "Constructor arguments must be variables"
 
-        findCons (Const name) = case find (\c -> fst c == name) dcons of
+        findCons (Const name) = case find (\c -> assumpName c == name) dcons of
             Nothing -> err (text "Invalid constructor, expected one of"
-                <+> (fsep . punctuate comma . map (quotes . text . fst) $ dcons))
+                <+> (fsep . punctuate comma . map (quotes . text . prettyAssump') $ dcons))
             Just x -> return x
         findCons _ = errStr "Outermost symbol is not a constant"
 

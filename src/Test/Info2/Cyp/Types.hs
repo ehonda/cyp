@@ -5,6 +5,7 @@ import Control.Monad (liftM, liftM2)
 import Data.List (find, (\\), nub)
 import qualified Data.Map.Strict as M
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
+import Text.PrettyPrint
 
 import Test.Info2.Cyp.Typing.Inference
 
@@ -25,17 +26,28 @@ data Env = Env
 
 data DataType = DataType
     { dtScheme :: Scheme
-    , dtConss :: [(String, Scheme)]
+    , dtConss :: [Assump]
+    --, dtConss :: [(String, Scheme)]
     }
     deriving (Eq, Show)
+
+--dataTypeDoc :: DataType -> Doc
+--dataTypeDoc dt = vcat 
+--    [ capIndent 
+--        "Type Constructor:" 
+--        [ text $ prettyScheme $ dtScheme dt ]
+--    , capIndent 
+--        "Data Constructors:" $ 
+--        map (text . prettyAssump') $ dtConss dt
+--    ]
 
 defaultDataTypes :: [DataType]
 defaultDataTypes = 
     [ DataType
         { dtScheme = scListA
         , dtConss = 
-            [ ("[]", scListA)
-            , (":", quantifyAll (tvarA `fn` tListA `fn` tListA))
+            [ ("[]" :>: scListA)
+            , (":" :>: quantifyAll (tvarA `fn` tListA `fn` tListA))
             ] 
         }
     ]
@@ -83,6 +95,10 @@ showWithoutDefaults as = show $ map prettyAssump' $
 
 data Named a = Named String a
     deriving Show
+
+instance Eq a => Eq (Named a) where
+    n == m = (namedName n == namedName m)
+        && (namedVal n == namedVal m)
 
 data TConsArg = TNRec | TRec deriving (Show,Eq)
 
@@ -143,7 +159,8 @@ toCypDataType (Exts.DataDecl Exts.DataType Nothing dh cons [])
             cargs <- mapM toCypType targs
             checkForUnbounds tvs cargs
             let conType = foldr fn dtype cargs
-            return (extractName name, quantifyAll conType)
+            return $ (extractName name) :>: (quantifyAll conType)
+            --return (extractName name, quantifyAll conType)
         
         processDCon _ _ _ = errStr "Invalid data constructor"
 
@@ -258,9 +275,10 @@ convertRawAlt consAs (pats, rhs) = do
 
 getConsAssumptions :: [DataType] -> [Assump]
 getConsAssumptions dts = dconsAs ++ defaultConstAssumps
-    where 
-        dcons = concat $ map dtConss dts
-        dconsAs = map (\(n, sc) -> n :>: sc) dcons
+    where
+        dconsAs = concat $ map dtConss dts
+        --dcons = concat $ map dtConss dts
+        --dconsAs = map (\(n, sc) -> n :>: sc) dcons
 
 convertFunctionRawAlts :: [Assump] -> FunctionRawAlts -> Err FunctionAlts
 convertFunctionRawAlts consAs (name, rawAlts) = do

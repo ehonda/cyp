@@ -75,10 +75,10 @@ matchBlueprintWithRawTerm bp term = do
             | otherwise = err $ errMsg bp term
 
 
-matchBlueprintWithProp :: Prop -> Prop -> Err ()
-matchBlueprintWithProp (Prop bpLhs bpRhs) (Prop lhs rhs) = do
-    matchBlueprintWithTerm bpLhs lhs
-    matchBlueprintWithTerm bpRhs rhs
+--matchBlueprintWithProp :: Prop -> Prop -> Err ()
+--matchBlueprintWithProp (Prop bpLhs bpRhs) (Prop lhs rhs) = do
+--    matchBlueprintWithTerm bpLhs lhs
+--    matchBlueprintWithTerm bpRhs rhs
 
 -- Match theories
 --------------------------------------------------------
@@ -87,13 +87,14 @@ matchBlueprintWithTheory :: String -> String -> Err ()
 matchBlueprintWithTheory blueprint theory = 
     errCtxtStr "While matching blueprint with theory" $ do
         (bpDts, bpSigs, bpFuns, bpAxs, bpGls) <-
-            getTheoryContents readFuncBlueprint blueprint
+            getTheoryContents readFuncBlueprint blueprint "Parsing blueprint"
         (thyDts, thySigs, thyFuns, thyAxs, thyGls) <-
-            getTheoryContents readFunc theory
+            getTheoryContents readFunc theory "Parsing solution"
 
         -- Match Datatypes
-        when (bpDts /= thyDts) $
-            errStr "Datatypes mismatch"
+        --when (bpDts /= thyDts) $
+        --    errStr "Datatypes mismatch"
+        --zipWithM_ compareDts bpDts thyDts
 
         -- Match sigs
         when (bpSigs /= thySigs) $
@@ -103,15 +104,20 @@ matchBlueprintWithTheory blueprint theory =
         zipWithM_ matchBlueprintWithFunction bpFuns thyFuns
         
         -- Match axioms
-        zipWithM_ matchBlueprintWithAxiom bpAxs thyAxs
+        --when (bpAxs /= thyAxs) $
+        --    errStr "Axioms mismatch"
+        --zipWithM_ matchBlueprintWithAxiom bpAxs thyAxs
+        zipWithM_ compareAxioms bpAxs thyAxs
 
         -- Match goals
-        zipWithM_ matchBlueprintWithProp bpGls thyGls
+        when (bpGls /= thyGls) $
+            errStr "Goals mismatch"
+        --zipWithM_ matchBlueprintWithProp bpGls thyGls
 
         return ()
         where
             -- Duplication from Cyp.hs, refactor!
-            getTheoryContents readFunc thy = do
+            getTheoryContents readFunc thy context = errCtxtStr context $ do
                 res <- eitherToErr $ Parsec.parse cthyParser "" thy
                 dts <- fmap (++ defaultDataTypes) $ readDataType res
                 sigs <- readTypeSigs res
@@ -135,9 +141,36 @@ matchBlueprintWithTheory blueprint theory =
                         errStr "Function name mismatch"
                     zipWithM_ matchBlueprintWithAlt bpAlts alts
 
-            matchBlueprintWithAxiom :: Named Prop 
-                -> Named Prop -> Err ()
-            matchBlueprintWithAxiom bp ax = do
-                when (namedName bp /= namedName ax) $
-                    errStr "Axiom name mismatch"
-                matchBlueprintWithProp (namedVal bp) (namedVal ax)
+            compareAxioms :: Named Prop -> Named Prop -> Err ()
+            compareAxioms (Named n p) (Named n' p') = do
+                when (n /= n') $
+                    errStr "Axiom names mismatch"
+                when (p /= p') $
+                    errStr "Axiom props mismatch"
+
+            --comparisonDoc :: String -> (a -> Doc) -> a -> a -> Doc
+            --comparisonDoc header toDoc blueprint solution =
+            --    capIndent
+            --        header
+            --        [ capIndent "blueprint" [toDoc blueprint]
+            --        , capIndent "solution" [toDoc solution]
+            --        ]
+--
+            --compare :: Eq a => String -> (a -> Doc) -> a -> a -> Err ()
+            --compare header header toDoc blueprint solution = 
+            --    when (a /= b) $ err $ 
+            --        comparisonDoc header toDoc blueprint solution
+--
+            --compareDts :: DataType -> DataType -> Err ()
+            --compareDts bp sol = compare "Type mismatch" dataTypeDoc bp sol
+
+            --compareDts = compareAndShowMismatches showMismatch a b
+            --    where
+            --        showMismatch a b 
+
+            --matchBlueprintWithAxiom :: Named Prop 
+            --    -> Named Prop -> Err ()
+            --matchBlueprintWithAxiom bp ax = do
+            --    when (namedName bp /= namedName ax) $
+            --        errStr "Axiom name mismatch"
+            --    matchBlueprintWithProp (namedVal bp) (namedVal ax)

@@ -406,7 +406,7 @@ translateQName (Exts.Special (Exts.TupleCon b n)) = case b of
     Exts.Boxed -> return $ "(#" ++ replicate n ',' ++ "#)"
     Exts.Unboxed -> return $ "(" ++ replicate n ',' ++ ")"
 translateQName (Exts.Special Exts.UnboxedSingleCon) = return "(# #)"
-translateQName (Exts.Special Exts.ExprHole) = errStr "Holes not allowed"
+translateQName (Exts.Special Exts.ExprHole) = errStr "Holes not allowed here"
 translateQName _ = errStr "Unsupported qualified name"
 
 translateName :: Exts.Name -> String
