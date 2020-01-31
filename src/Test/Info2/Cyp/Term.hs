@@ -435,6 +435,10 @@ data UnparseMode a = UnparseMode { unparseFree :: a -> String, unparseSchematic 
 upModeRaw :: UnparseMode String
 upModeRaw = UnparseMode { unparseFree = id, unparseSchematic = \x -> "?" ++ x }
 
+upModeRawPretty :: UnparseMode String
+upModeRawPretty = UnparseMode
+    { unparseFree = id, unparseSchematic = id }
+
 upModeIdx :: UnparseMode IdxName
 upModeIdx = UnparseMode
     { unparseFree = \(x,n) -> x ++ "~" ++ show n
@@ -484,6 +488,7 @@ unparseAbsTerm mode = upDoc . finalizePartialApp . unparseAbsTermRaw mode
 unparseTerm = unparseAbsTerm upModeIdx
 unparseRawTerm = unparseAbsTerm upModeRaw
 unparseTermPretty = unparseAbsTerm upModePretty
+unparseRawTermPretty = unparseAbsTerm upModeRawPretty
 
 unparseAbsProp :: UnparseMode a -> AbsProp a -> Doc
 unparseAbsProp mode (Prop l r) = unparseAbsTerm mode l <+> text symPropEq <+> unparseAbsTerm mode r

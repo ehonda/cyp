@@ -360,6 +360,7 @@ proofParser = do
         [ keyword "by induction" >> inductionProofParser
         , keyword "by extensionality" >> extProofParser
         , keyword "by case analysis" >> caseProofParser
+        -- TODO: REMOVE CHEATING
         , keyword "by cheating" >> lineBreak >> cheatingProofParser
         , lineBreak >> equationProofParser
         ]

@@ -24,9 +24,16 @@ hasHole :: RawTerm -> Bool
 hasHole (Application a b) = (hasHole a) || (hasHole b)
 hasHole term = isHole term
 
--- Utility
-rawTermDoc :: String -> RawTerm -> Doc
-rawTermDoc name t = eqDoc name $ render $ unparseRawTerm t
+-- Utility functions to compare blueprint with solution
+-------------------------------------------------------
+comparisonDoc :: String -> (a -> Doc) -> a -> a -> Doc
+comparisonDoc header toDoc blueprint solution =
+    capIndent
+        header
+        [ capIndent "Blueprint:" [toDoc blueprint]
+        , capIndent "Solution:" [toDoc solution]
+        ]
+
 
 toRawTerm :: Term -> RawTerm
 toRawTerm (Application a b) = 
@@ -54,12 +61,6 @@ matchBlueprintWithRawTerm bp term = do
 
     match bp term
     where
-        errMsg bp term = capIndent
-            "Mismatch between blueprint and term"
-            [ rawTermDoc "blueprint" bp
-            , rawTermDoc "term" term
-            ]
-
         match :: RawTerm -> RawTerm -> Err ()
         -- Hole
         match bp _ 
@@ -73,41 +74,28 @@ matchBlueprintWithRawTerm bp term = do
         -- Rest
         match bp term
             | bp == term = return ()
-            | otherwise = err $ errMsg bp term
+            | otherwise = err $ comparisonDoc 
+                "Term mismatch:"
+                unparseRawTermPretty
+                bp term
 
-
---matchBlueprintWithProp :: Prop -> Prop -> Err ()
---matchBlueprintWithProp (Prop bpLhs bpRhs) (Prop lhs rhs) = do
---    matchBlueprintWithTerm bpLhs lhs
---    matchBlueprintWithTerm bpRhs rhs
 
 -- Match theories
 --------------------------------------------------------
 
 matchBlueprintWithTheory :: String -> String -> Err ()
 matchBlueprintWithTheory blueprint theory = 
-    errCtxtStr "While matching blueprint with theory" $ do
+    errCtxtStr "While matching blueprint theory with solution theory" $ do
         (bpDts, bpSigs, bpFuns, bpAxs, bpGls) <-
             getTheoryContents readFuncBlueprint blueprint "Parsing blueprint"
         (thyDts, thySigs, thyFuns, thyAxs, thyGls) <-
             getTheoryContents readFunc theory "Parsing solution"
 
-        -- Compare Datatypes
         compareDataTypes bpDts thyDts
-
-        -- Match sigs
         compareTypeSignatures bpSigs thySigs
-
-        -- Match functions
-        zipWithM_ matchBlueprintWithFunction bpFuns thyFuns
-        
-        -- Match axioms
+        compareFunctions bpFuns thyFuns
         compareAxioms bpAxs thyAxs
-
-        -- Match goals
         compareGoals bpGls thyGls
-
-        return ()
         where
             -- Duplication from Cyp.hs, refactor!
             getTheoryContents readFunc thy context = errCtxtStr context $ do
@@ -116,34 +104,14 @@ matchBlueprintWithTheory blueprint theory =
                 sigs <- readTypeSigs res
                 syms <- fmap (defaultConsts ++) $ readSym res
                 (_, consts, funsRawAlts) <- readFunc syms res
+                let consAs = getConsAssumptions dts
+                funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
                 axs <- readAxiom consts res
                 gls <- readGoal consts res
-                return (dts \\ defaultDataTypes, sigs, funsRawAlts, axs, gls)
+                return (dts \\ defaultDataTypes, sigs, funsAlts, axs, gls)
 
-            matchBlueprintWithAlt :: RawAlt -> RawAlt -> Err ()
-            matchBlueprintWithAlt (bpPats, bpTerm) (pats, term) = do
-                when (bpPats /= pats) $
-                    errStr "Function pattern mismatch"
-                matchBlueprintWithTerm bpTerm term
-
-            matchBlueprintWithFunction :: FunctionRawAlts
-                -> FunctionRawAlts -> Err ()
-            matchBlueprintWithFunction 
-                (bpName, bpAlts) (name, alts) = do
-                    when (bpName /= name) $
-                        errStr "Function name mismatch"
-                    zipWithM_ matchBlueprintWithAlt bpAlts alts
-
-            -- Utility functions to compare blueprint with solution
-            -------------------------------------------------------
-            comparisonDoc :: String -> (a -> Doc) -> a -> a -> Doc
-            comparisonDoc header toDoc blueprint solution =
-                capIndent
-                    header
-                    [ capIndent "Blueprint:" [toDoc blueprint]
-                    , capIndent "Solution:" [toDoc solution]
-                    ]
-
+            -- Utility to compare the various lists
+            ---------------------------------------------------------
             compareEq :: Eq a => String 
                 -> (a -> Doc)
                 -> a -> a -> Err ()
@@ -193,14 +161,42 @@ matchBlueprintWithTheory blueprint theory =
                 (compareEq "Goal mismatch:" unparsePropPretty)
                 bps sols
 
-            compareFunctions :: [FunctionRawAlts] 
-                -> [FunctionRawAlts] -> Err ()
+            -- Utility to compare/match the functions which can
+            -- contain holes
+            ---------------------------------------------------------
+            matchAlt :: Alt -> Alt -> Err ()
+            matchAlt (bpLhs, bpRhs) (solLhs, solRhs) = do
+                compareEq "Left-hand side mismatch" lhsDoc bpLhs solLhs
+                errCtxtStr "Right-hand side mismatch" $ 
+                    matchBlueprintWithTerm bpRhs solRhs
+                where
+                    lhsDoc lhs = hsep $ map (text . prettyPat) lhs
+
+            compareFunctions :: [FunctionAlts] 
+                -> [FunctionAlts] -> Err ()
             compareFunctions bps sols = compareMany
                 "Number of function declarations doesn't match."
                 matchFuncs
                 bps sols
                 where
-                    matchFuncs :: FunctionRawAlts 
-                        -> FunctionRawAlts -> Err ()
+                    matchFuncs :: FunctionAlts 
+                        -> FunctionAlts -> Err ()
                     matchFuncs (f, fAlts) (g, gAlts) = do
                         compareEq "Function name mismatch:" text f g
+                        errCtxt errContext $ compareMany
+                            "Number of function alternatives doesn't match."
+                            matchAlt
+                            fAlts gAlts
+                        where
+                            funAltsListDoc = vcat
+                                [ capIndent
+                                    ("Blueprint " ++ f ++ " alternatives:") $
+                                    map (altDocWithName f) fAlts
+                                , capIndent
+                                    ("Solution " ++ g ++ " alternatives:") $
+                                    map (altDocWithName g) gAlts
+                                ]
+
+                            errContext = capIndent
+                                "While matching the following functions:"
+                                [funAltsListDoc]

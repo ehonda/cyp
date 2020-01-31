@@ -10,7 +10,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
 import Data.Maybe (fromMaybe)
 import Data.List (union, nub, intersect, intercalate, (\\))
-import Text.PrettyPrint (Doc, text, (<>), ($$), hcat, vcat, nest, render, empty)
+import Text.PrettyPrint (Doc, text, hsep, (<>), ($$), hcat, vcat, nest, render, empty)
 
 
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
@@ -680,7 +680,7 @@ prettyAlt :: Alt -> String
 prettyAlt (lhs, rhs) = concat
     [ intercalate " " $ map prettyPat lhs
     , " = "
-    , render $ CT.unparseTerm rhs
+    , render $ CT.unparseTermPretty rhs
     ]
 
 prettyAlts :: [Alt] -> String
@@ -729,6 +729,9 @@ assumpDoc a = text $ prettyAssump' a
 
 termDoc :: String -> CT.Term -> Doc
 termDoc name t = eqDoc name $ render $ CT.unparseTermPretty t
+
+altDocWithName :: String -> Alt -> Doc
+altDocWithName f alt = hsep $ map text [f, prettyAlt alt]
 
 capIndent :: String -> [Doc] -> Doc
 capIndent cap docs = indent (text cap) $ vcat docs
