@@ -370,7 +370,22 @@ tcProofTest' cthy cprf = do
 natThyBP = "test-data/no_unit/blueprint/nat-add/bpthy"
 natThy = "test-data/no_unit/blueprint/nat-add/cthy"
 
+natPrfBP = "test-data/no_unit/blueprint/nat-add/bpprf"
+natPrf = "test-data/no_unit/blueprint/nat-add/cprf"
+
 bpThyTest bp thy = do
     bpthy <- readFile bp
     cthy <- readFile thy
     return $ matchBlueprintWithTheory bpthy cthy
+
+parsePrfTest rawBpThy rawThy rawBpPrf rawPrf = do
+    bpthy <- readFile rawBpThy
+    cthy <- readFile rawThy
+    bpprf <- readFile rawBpPrf
+    cprf <- readFile rawPrf
+    return $ parsePrfTest' bpthy cthy bpprf cprf
+
+parsePrfTest' bpThy thy bpPrf prf = do
+    env <- processMasterFile "" thy
+    prf <- eitherToErr $ Parsec.runParser cprfParserBlueprint env "" bpPrf
+    return prf

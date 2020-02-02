@@ -284,11 +284,6 @@ iparseTermRawWithTranslation translate f s =
 iparseTermRaw :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
 iparseTermRaw f s = iparseTermRawWithTranslation translateExp f s
 
-iparseTermRawBlueprint :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
-iparseTermRawBlueprint f s = iparseTermRawWithTranslation 
-    translateExpBlueprint f s
-
-
 defaultToFree :: [String] -> String -> Err RawTerm
 defaultToFree consts x = return $ if x `elem` consts then Const x else Free x
 
@@ -306,6 +301,13 @@ iparseTerm f s = do
     checkHasPropEq term
     return term
 
+iparseTermBlueprint :: (String -> Err (AbsTerm a)) -> String -> Err (AbsTerm a)
+iparseTermBlueprint f s = do 
+    term <- iparseTermRawWithTranslation 
+        translateExpBlueprint f s
+    checkHasPropEq term
+    return term
+    
 
 iparseProp :: (String -> Err (AbsTerm a)) -> String -> Err (AbsProp a)
 iparseProp f s = do

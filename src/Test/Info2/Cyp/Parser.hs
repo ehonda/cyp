@@ -69,15 +69,6 @@ trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 toParsec :: (a -> String) -> Either a b -> Parsec c u b
 toParsec f = either (fail . f) return
 
--- Test Functions
-----------------------------------------------------------------
-
-testParse parser file = do
-    content <- readFile file
-    print $ parse parser "test" content
-
-testParseStr parser str = print $ parse parser "test" str
-
 {- Custom combinators ------------------------------------------------}
 
 notFollowedBy' :: (Stream s m t, Show a) => ParsecT s u m a -> String -> ParsecT s u m ()
@@ -216,11 +207,20 @@ typeSigsToParser1 end unexpectedMsg = sepBy1
 equationProofParser :: Parsec [Char] Env ParseProof
 equationProofParser = fmap ParseEquation equationsParser
 
+equationProofParserBlueprint :: Parsec [Char] Env ParseProof
+equationProofParserBlueprint = fmap ParseEquation equationsParserBlueprint
+
 varParser = fmap (\v -> if v `elem` defaultConsts then Const v else Free v) idParser
 varsParser = varParser `sepBy1` (keyword ",")
 
-inductionProofParser :: Parsec [Char] Env ParseProof
-inductionProofParser = do
+--inductionProofParser :: Parsec [Char] Env ParseProof
+--inductionProofParser = inductionProofParserWithEqnPrfParser 
+--    equationProofParser
+
+inductionProofParserWithProofParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseProof
+inductionProofParserWithProofParser proofParser = do
     keyword "on"
     sig <- typeSigToParser sigEnd sigUnexpectedMsg
     manySpacesOrComment
@@ -229,7 +229,7 @@ inductionProofParser = do
       lineSpaces
       typeSigsToParser1 gensEnd unexpectedMsg)
     manySpacesOrComment
-    cases <- many1 caseParser
+    cases <- many1 $ caseParserWithProofParser proofParser
     manySpacesOrComment
 
     -- Read typesigs
@@ -246,8 +246,10 @@ inductionProofParser = do
         gensEnd = eolOrComment
         unexpectedMsg = "end of line or comment"
 
-caseProofParser :: Parsec [Char] Env ParseProof
-caseProofParser = do
+caseProofParserWithProofParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseProof
+caseProofParserWithProofParser proofParser = do
     keyword "on"
 
     -- Read term with type attached, eg
@@ -257,7 +259,7 @@ caseProofParser = do
     sc <- trim <$> toEol1
 
     manySpacesOrComment
-    cases <- many1 caseParser
+    cases <- many1 $ caseParserWithProofParser proofParser
     manySpacesOrComment
 
     -- Read typesig right here and fail if its invalid
@@ -268,8 +270,10 @@ caseProofParser = do
 cheatingProofParser :: Parsec [Char] Env ParseProof
 cheatingProofParser = return ParseCheating
 
-extProofParser :: Parsec [Char] Env ParseProof
-extProofParser = do
+extProofParserWithProofParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseProof
+extProofParserWithProofParser proofParser = do
     keyword "with"
     lineSpaces
     --with <- termParser defaultToFree
@@ -321,12 +325,18 @@ propGenParser mode = do
 termParser :: PropParserMode -> Parsec [Char] Env RawTerm
 termParser = termParserUntil toEol1
 
-termParserUntil toEnd mode = flip label "term" $ do
+termParserBlueprint :: PropParserMode -> Parsec [Char] Env RawTerm
+termParserBlueprint = termParserUntilWith
+    iparseTermBlueprint toEol1
+
+termParserUntil toEnd mode = termParserUntilWith iparseTerm toEnd mode
+
+termParserUntilWith termParser toEnd mode = flip label "term" $ do
     s <- trim <$> toEnd <?> "expression"
     env <- getState
     let term = errCtxtStr "Failed to parse expression" $
-            iparseTerm (mode $ constants env) s
-    toParsec show term 
+            termParser (mode $ constants env) s
+    toParsec show term
 
 namedPropParser :: PropParserMode -> Parsec [Char] Env String -> Parsec [Char] Env (String, RawProp)
 namedPropParser mode p = do
@@ -345,7 +355,16 @@ namedPropGenParser mode p = do
     return (name, gens, prop)
 
 lemmaParser :: Parsec [Char] Env ParseLemma
-lemmaParser =
+lemmaParser = lemmaParserWithProofParser proofParser
+
+lemmaParserBlueprint :: Parsec [Char] Env ParseLemma
+lemmaParserBlueprint = lemmaParserWithProofParser 
+    proofParserBlueprint
+
+lemmaParserWithProofParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseLemma
+lemmaParserWithProofParser proofParser =
     do  keyword "Lemma"
         (name, prop) <- namedPropParser defaultToFree idParser
         manySpacesOrComment
@@ -354,12 +373,24 @@ lemmaParser =
         return $ ParseLemma name prop prf
 
 proofParser :: Parsec [Char] Env ParseProof
-proofParser = do
+proofParser = proofParserWithEqnPrfParser equationProofParser
+
+proofParserBlueprint :: Parsec [Char] Env ParseProof
+proofParserBlueprint = proofParserWithEqnPrfParser 
+    equationProofParserBlueprint
+
+proofParserWithEqnPrfParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseProof
+proofParserWithEqnPrfParser equationProofParser = do
     keyword "Proof"
     p <- choice
-        [ keyword "by induction" >> inductionProofParser
-        , keyword "by extensionality" >> extProofParser
-        , keyword "by case analysis" >> caseProofParser
+        [ keyword "by induction" >> (inductionProofParserWithProofParser $
+            proofParserWithEqnPrfParser equationProofParser)
+        , keyword "by extensionality" >> (extProofParserWithProofParser $
+            proofParserWithEqnPrfParser equationProofParser)
+        , keyword "by case analysis" >> (caseProofParserWithProofParser $
+            proofParserWithEqnPrfParser equationProofParser)
         -- TODO: REMOVE CHEATING
         , keyword "by cheating" >> lineBreak >> cheatingProofParser
         , lineBreak >> equationProofParser
@@ -367,8 +398,16 @@ proofParser = do
     keywordQED
     return p
 
-cprfParser ::  Parsec [Char] Env [ParseLemma]
-cprfParser =
+cprfParser :: Parsec [Char] Env [ParseLemma]
+cprfParser = cprfParserWithLemmaParser lemmaParser
+
+cprfParserBlueprint :: Parsec [Char] Env [ParseLemma]
+cprfParserBlueprint = cprfParserWithLemmaParser lemmaParserBlueprint
+
+cprfParserWithLemmaParser :: 
+    Parsec [Char] Env ParseLemma
+    -> Parsec [Char] Env [ParseLemma]
+cprfParserWithLemmaParser lemmaParser =
     do  lemmas <- many1 lemmaParser
         eof
         return lemmas
@@ -416,7 +455,15 @@ byRuleParser = do
     return cs
 
 equationsParser :: Parsec [Char] Env (EqnSeqq RawTerm)
-equationsParser = do
+equationsParser = equationsParserWith termParser
+
+equationsParserBlueprint :: Parsec [Char] Env (EqnSeqq RawTerm)
+equationsParserBlueprint = equationsParserWith termParserBlueprint
+
+equationsParserWith :: 
+        (PropParserMode -> Parsec [Char] Env RawTerm)
+    ->  Parsec [Char] Env (EqnSeqq RawTerm)
+equationsParserWith termParser = do
     eq1 <- equations
     eq2 <- optionMaybe (notFollowedBy keywordQED >> equations)
     return $ EqnSeqq eq1 eq2
@@ -431,8 +478,13 @@ toShowParser = do
     char ':'
     propParser defaultToFree
 
-caseParser :: Parsec [Char] Env ParseCase
-caseParser = do
+-- TODO: REMOVE
+--caseParser = caseParserWithEqnPrfParser equationProofParser
+
+caseParserWithProofParser :: 
+    Parsec [Char] Env ParseProof
+    -> Parsec [Char] Env ParseCase
+caseParserWithProofParser proofParser = do
     keywordCase
     lineSpaces
     t <- termParser defaultToFree
