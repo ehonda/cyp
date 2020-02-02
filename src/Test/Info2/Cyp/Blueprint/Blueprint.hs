@@ -2,6 +2,7 @@ module Test.Info2.Cyp.Blueprint.Blueprint where
 
 import Control.Monad
 import Data.List
+import Data.Maybe
 import qualified Text.Parsec as Parsec
 
 import Test.Info2.Cyp.Parser
@@ -79,6 +80,30 @@ matchBlueprintWithRawTerm bp term = do
                 unparseRawTermPretty
                 bp term
 
+-- Utility to compare the various lists
+---------------------------------------------------------
+compareEq :: Eq a => String 
+    -> (a -> Doc)
+    -> a -> a -> Err ()
+compareEq header toDoc blueprint solution = 
+    when (blueprint /= solution) $ err $ 
+        comparisonDoc header toDoc blueprint solution
+
+compareMany :: String
+    -> (a -> a -> Err ())
+    -> [a] -> [a] -> Err ()
+compareMany msgLenMismatch cmpAction bps sols = do
+    when (length bps /= length sols) $ err $
+        hcat $ map text $
+            [ msgLenMismatch
+            , " Blueprint has "
+            , show $ length bps
+            , ", Solution has "
+            , show $ length sols
+            , "."
+            ]
+    zipWithM_ cmpAction bps sols
+
 
 -- Match theories
 --------------------------------------------------------
@@ -93,7 +118,7 @@ matchBlueprintWithTheory blueprint theory =
 
         compareDataTypes bpDts thyDts
         compareTypeSignatures bpSigs thySigs
-        compareFunctions bpFuns thyFuns
+        matchFunctions bpFuns thyFuns
         compareAxioms bpAxs thyAxs
         compareGoals bpGls thyGls
         where
@@ -109,30 +134,6 @@ matchBlueprintWithTheory blueprint theory =
                 axs <- readAxiom consts res
                 gls <- readGoal consts res
                 return (dts \\ defaultDataTypes, sigs, funsAlts, axs, gls)
-
-            -- Utility to compare the various lists
-            ---------------------------------------------------------
-            compareEq :: Eq a => String 
-                -> (a -> Doc)
-                -> a -> a -> Err ()
-            compareEq header toDoc blueprint solution = 
-                when (blueprint /= solution) $ err $ 
-                    comparisonDoc header toDoc blueprint solution
-
-            compareMany :: String
-                -> (a -> a -> Err ())
-                -> [a] -> [a] -> Err ()
-            compareMany msgLenMismatch cmpAction bps sols = do
-                when (length bps /= length sols) $ err $
-                    hcat $ map text $
-                        [ msgLenMismatch
-                        , " Blueprint has "
-                        , show $ length bps
-                        , ", Solution has "
-                        , show $ length sols
-                        , "."
-                        ]
-                zipWithM_ cmpAction bps sols
 
             compareDataTypes :: [DataType] -> [DataType] -> Err ()
             compareDataTypes bps sols = compareMany
@@ -172,9 +173,9 @@ matchBlueprintWithTheory blueprint theory =
                 where
                     lhsDoc lhs = hsep $ map (text . prettyPat) lhs
 
-            compareFunctions :: [FunctionAlts] 
+            matchFunctions :: [FunctionAlts] 
                 -> [FunctionAlts] -> Err ()
-            compareFunctions bps sols = compareMany
+            matchFunctions bps sols = compareMany
                 "Number of function declarations doesn't match."
                 matchFuncs
                 bps sols
@@ -200,3 +201,122 @@ matchBlueprintWithTheory blueprint theory =
                             errContext = capIndent
                                 "While matching the following functions:"
                                 [funAltsListDoc]
+
+-- Match proofs
+--------------------------------------------------------
+
+matchBlueprintWithProof :: Env -> String -> String -> Err ()
+matchBlueprintWithProof env blueprint solution = 
+    errCtxtStr "While matching blueprint proof with solution proof" $ do
+        bpLemmas <- getProofContents cprfParserBlueprint env blueprint
+            "Parsing blueprint"
+        solLemmas <- getProofContents cprfParser env solution
+            "Parsing solution"
+        compareMany
+            "Number of lemmas doesn't match."
+            matchLemmas
+            bpLemmas solLemmas
+        where
+            getProofContents ::
+                    Parsec.Parsec [Char] Env [ParseLemma]
+                ->  Env
+                ->  String
+                ->  String
+                ->  Err [ParseLemma]
+            getProofContents proofParser env prf context =
+                errCtxtStr context $ eitherToErr $ 
+                    Parsec.runParser proofParser env "" prf
+
+            matchLemmas :: ParseLemma -> ParseLemma -> Err ()
+            matchLemmas 
+                (ParseLemma bpName bpProp bpProof)
+                (ParseLemma solName solProp solProof) = errCtxt context $ do
+                    compareEq "Lemma name mismatch:" text
+                        bpName solName
+                    compareEq "Lemma proposition mismatch:" 
+                        unparseRawPropPretty bpProp solProp
+                    matchProofs bpProof solProof
+                    where
+                        context = hsep $ map text 
+                            [ "While matching lemmas called", bpName ]
+
+            matchProofs :: ParseProof -> ParseProof -> Err ()
+            -- INDUCTION
+            matchProofs 
+                (ParseInduction bpOver bpGens bpCases)
+                (ParseInduction solOver solGens solCases) = do
+                    compareEq "Induction variable mismatch:" 
+                        assumpDoc bpOver solOver
+                    compareMany
+                        "Number of generalization variables doesn't match."
+                        (compareEq "Generalization variable mismatch:" assumpDoc)
+                        bpGens solGens
+                    matchManyCases bpCases solCases
+
+            -- EQUATIONAL
+            --matchProofs
+            --    (ParseEquation bpEqns) (ParseEquation solEqns) = do
+
+
+            matchManyCases :: [ParseCase] -> [ParseCase] -> Err ()
+            matchManyCases bpCases solCases = compareMany
+                "Number of cases doesn't match."
+                matchCases
+                bpCases solCases
+                where
+                    matchCases :: ParseCase -> ParseCase -> Err ()
+                    matchCases bp sol = errCtxt context $ do
+                        compareEq "Case term mismatch:" unparseRawTermPretty
+                            (pcCons bp) (pcCons sol)
+                        
+                        compareMany
+                            "Number of fixed variables doesn't match."
+                            (compareEq "Fixed variable mismatch:" assumpDoc)
+                            (fromMaybe [] $ pcFixs bp)
+                            (fromMaybe [] $ pcFixs sol)
+
+                        compareMany
+                            "Number of generalizing variables doesn't match."
+                            (compareEq "Generalization variable mismatch:" assumpDoc)
+                            (fromMaybe [] $ pcGens bp)
+                            (fromMaybe [] $ pcGens sol)
+
+                        -- TODO: A bit ugly to use compareMany and convert to list
+                        compareMany
+                            "Number of 'To Show' doesn't match."
+                            (compareEq "'To show' mismatch:" unparseRawPropPretty)
+                            (fromMaybe [] $ fmap (\e -> [e]) $ pcToShow bp)
+                            (fromMaybe [] $ fmap (\e -> [e]) $ pcToShow sol)
+
+                        compareMany
+                            "Number of case assumptions doesn't match."
+                            compareCaseAssumps
+                            (pcAssms bp) (pcAssms sol)
+                        
+                        matchProofs (pcProof bp) (pcProof sol)
+                        where
+                            context = hsep 
+                                [ text "While comparing cases"
+                                , quotes $ unparseRawTermPretty $ pcCons bp
+                                ]
+
+                            compareCaseAssumps ::
+                                    Named ([Assump], RawProp)
+                                ->  Named ([Assump], RawProp)
+                                ->  Err ()
+                            compareCaseAssumps bp sol = errCtxt context $ do
+                                compareEq "Assumption name mismatch." text
+                                    (namedName bp) (namedName sol)
+                                compareEq "Assumption proposition mismatch."
+                                    unparseRawPropPretty
+                                    (snd $ namedVal bp) (snd $ namedVal sol)
+                                compareMany
+                                    "Number of generalization variables doesn't match."
+                                    (compareEq "Generalization variable mismatch." assumpDoc)
+                                    (fst $ namedVal bp) (fst $ namedVal sol)
+                                where
+                                    context = hsep 
+                                        [ text "While comparing case assumptions"
+                                        , quotes $ text $ namedName bp
+                                        ]
+

@@ -369,14 +369,40 @@ tcProofTest' cthy cprf = do
 
 natThyBP = "test-data/no_unit/blueprint/nat-add/bpthy"
 natThy = "test-data/no_unit/blueprint/nat-add/cthy"
-
 natPrfBP = "test-data/no_unit/blueprint/nat-add/bpprf"
 natPrf = "test-data/no_unit/blueprint/nat-add/cprf"
+
+natParams = BlueprintParams
+    { thyBP = natThyBP
+    , thySol = natThy
+    , prfBP = natPrfBP
+    , prfSol = natPrf
+    }
+
+inductionParams = BlueprintParams
+    { thyBP = "test-data/no_unit/blueprint/induction/bpthy"
+    , thySol = "test-data/no_unit/blueprint/induction/cthy"
+    , prfBP = "test-data/no_unit/blueprint/induction/bpprf"
+    , prfSol = "test-data/no_unit/blueprint/induction/cprf"
+    }
+
+
+data BlueprintParams = BlueprintParams
+    { thyBP :: String, thySol :: String
+    , prfBP :: String, prfSol :: String
+    }
 
 bpThyTest bp thy = do
     bpthy <- readFile bp
     cthy <- readFile thy
     return $ matchBlueprintWithTheory bpthy cthy
+
+bpPrfTest params = do
+    bpthy <- readFile $ thyBP params
+    cthy <- readFile $ thySol params
+    bpprf <- readFile $ prfBP params
+    cprf <- readFile $ prfSol params
+    return $ parsePrfTest' bpthy cthy bpprf cprf
 
 parsePrfTest rawBpThy rawThy rawBpPrf rawPrf = do
     bpthy <- readFile rawBpThy
@@ -387,5 +413,4 @@ parsePrfTest rawBpThy rawThy rawBpPrf rawPrf = do
 
 parsePrfTest' bpThy thy bpPrf prf = do
     env <- processMasterFile "" thy
-    prf <- eitherToErr $ Parsec.runParser cprfParserBlueprint env "" bpPrf
-    return prf
+    matchBlueprintWithProof env bpPrf prf

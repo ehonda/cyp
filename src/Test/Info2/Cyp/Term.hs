@@ -498,6 +498,7 @@ unparseAbsProp mode (Prop l r) = unparseAbsTerm mode l <+> text symPropEq <+> un
 unparseProp = unparseAbsProp upModeIdx
 unparseRawProp = unparseAbsProp upModeRaw
 unparsePropPretty = unparseAbsProp upModePretty
+unparseRawPropPretty = unparseAbsProp upModeRawPretty
 
 unparseAbsTermRaw :: UnparseMode a -> AbsTerm a -> Unparse
 unparseAbsTermRaw mode (Application (Application (Application (Const cnst) tb) tcThen) tcElse)
