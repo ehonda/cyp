@@ -123,7 +123,7 @@ inspectProof pthy pprf = do
 ---------------------------------------------------------------
 
 -- let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
-declareEqns _ ParseCheating _ = err $ text "Cheating"
+--declareEqns _ ParseCheating _ = err $ text "Cheating"
 declareEqns prop (ParseEquation reqns) env = do
     let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
     return eqns

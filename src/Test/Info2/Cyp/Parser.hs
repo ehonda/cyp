@@ -59,7 +59,6 @@ data ParseProof
     | ParseEquation (EqnSeqq RawTerm)
     | ParseExt Assump RawProp ParseProof -- (fixedvar :: Type), to show, subproof
     | ParseCases Scheme RawTerm [ParseCase] -- term typescheme, term, cases
-    | ParseCheating
     deriving Show
 
 
@@ -267,9 +266,6 @@ caseProofParserWithProofParser proofParser = do
         Left err -> unexpected $ render err
         Right sc' -> return $ ParseCases sc' over cases
 
-cheatingProofParser :: Parsec [Char] Env ParseProof
-cheatingProofParser = return ParseCheating
-
 extProofParserWithProofParser :: 
     Parsec [Char] Env ParseProof
     -> Parsec [Char] Env ParseProof
@@ -391,8 +387,6 @@ proofParserWithEqnPrfParser equationProofParser = do
             proofParserWithEqnPrfParser equationProofParser)
         , keyword "by case analysis" >> (caseProofParserWithProofParser $
             proofParserWithEqnPrfParser equationProofParser)
-        -- TODO: REMOVE CHEATING
-        , keyword "by cheating" >> lineBreak >> cheatingProofParser
         , lineBreak >> equationProofParser
         ]
     keywordQED

@@ -113,7 +113,6 @@ checkLemma lem@(ParseLemma name rprop proof) env = errCtxt (text "Lemma" <+> tex
     return (proved, env { axioms = Named name proved : axioms env })
 
 checkProof :: Prop -> ParseProof -> Env -> Err Prop
-checkProof _ ParseCheating _ = err $ text "Cheating detected"
 checkProof prop (ParseEquation reqns) env = errCtxtStr "Equational proof" $ do
 --    let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
     let (eqns, env') = toInterpretedEqns reqns env
