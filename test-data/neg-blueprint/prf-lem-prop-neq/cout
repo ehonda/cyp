@@ -1,0 +1,8 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma plus_one: S a .=. plus (S Z) a
+        Lemma proposition mismatch:
+            Blueprint:
+                S a .=. plus (S Z) a
+            Solution:
+                Z .=. Z

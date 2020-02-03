@@ -1,0 +1,9 @@
+data N = Z | S N
+
+plus :: N -> N -> N
+myplus Z b = b
+myplus (S a) b = S (myplus a b)
+
+axiom triv: Z .=. Z
+
+goal S a .=. plus (S Z) a

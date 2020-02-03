@@ -1,0 +1,15 @@
+While matching blueprint theory with solution theory
+    Datatype mismatch:
+        Blueprint:
+            Type Constructor:
+                N
+            Data Constructors:
+                Z :: N
+                S :: N -> N
+        Solution:
+            Type Constructor:
+                N
+            Data Constructors:
+                Z :: N
+                X :: N
+                S :: N -> N

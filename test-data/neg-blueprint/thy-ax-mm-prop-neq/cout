@@ -1,0 +1,6 @@
+While matching blueprint theory with solution theory
+    Axiom mismatch:
+        Blueprint:
+            triv: Z .=. Z
+        Solution:
+            triv: Z .=. S Z

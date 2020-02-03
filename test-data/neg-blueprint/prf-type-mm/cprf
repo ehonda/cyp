@@ -1,0 +1,13 @@
+Lemma plus_one: S a .=. plus (S Z) a
+
+Proof by induction on a :: N
+
+Case Z
+
+  Show: S Z .=. plus (S Z) Z
+
+  Proof
+                  Z
+    (by triv) .=. Z
+  QED
+QED

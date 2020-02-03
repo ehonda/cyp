@@ -1,0 +1,10 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma : length (xs ++ ys) .=. length xs + length ys
+        Blueprint Induction:
+            Induction variable: xs :: forall v0. [v0]
+            Induction variable mismatch:
+                Blueprint:
+                    xs :: forall v0. [v0]
+                Solution:
+                    ys :: forall v0. [v0]

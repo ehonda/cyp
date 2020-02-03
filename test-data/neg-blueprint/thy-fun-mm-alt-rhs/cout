@@ -1,0 +1,14 @@
+While matching blueprint theory with solution theory
+    While matching the following functions:
+        Blueprint plus alternatives:
+            plus Z b = b
+            plus S a b = S (plus a b)
+        Solution plus alternatives:
+            plus Z b = Z
+            plus S a b = S (plus a b)
+        Right-hand side mismatch
+            Term mismatch:
+                Blueprint:
+                    b
+                Solution:
+                    Z

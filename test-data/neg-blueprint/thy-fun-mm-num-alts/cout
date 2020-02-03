@@ -1,0 +1,10 @@
+While matching blueprint theory with solution theory
+    While matching the following functions:
+        Blueprint plus alternatives:
+            plus Z b = b
+            plus S a b = S (plus a b)
+        Solution plus alternatives:
+            plus Z b = b
+            plus S a b = S (plus a b)
+            plus Z = Z
+        Number of function alternatives doesn't match. Blueprint has 2, Solution has 3.

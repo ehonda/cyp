@@ -1,0 +1,6 @@
+While matching blueprint theory with solution theory
+    Goal mismatch:
+        Blueprint:
+            S a .=. plus (S Z) a
+        Solution:
+            Z .=. Z

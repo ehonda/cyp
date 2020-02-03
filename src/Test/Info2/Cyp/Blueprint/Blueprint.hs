@@ -309,14 +309,17 @@ matchBlueprintWithProof env blueprint solution =
                         unparseRawPropPretty bpProp solProp
                     matchProofs bpProof solProof
                     where
-                        context = hsep $ map text 
-                            [ "While matching lemmas called", bpName ]
+                        lemmaDoc name prop = (text $ name ++ ":") <+>
+                            (unparseRawPropPretty prop)
+                        context = capIndent
+                            "While matching lemmas"
+                            [(text "Blueprint lemma") <+> (lemmaDoc bpName bpProp)]
 
             matchProofs :: ParseProof -> ParseProof -> Err ()
             -- INDUCTION
             matchProofs 
                 (ParseInduction bpOver bpGens bpCases)
-                (ParseInduction solOver solGens solCases) = do
+                (ParseInduction solOver solGens solCases) = errCtxt context $ do
                     compareEq "Induction variable mismatch:" 
                         assumpDoc bpOver solOver
                     compareMany
@@ -324,6 +327,17 @@ matchBlueprintWithProof env blueprint solution =
                         (compareEq "Generalization variable mismatch:" assumpDoc)
                         bpGens solGens
                     matchManyCases bpCases solCases
+                    where
+                        context = capIndent
+                            "Blueprint Induction:"
+                            [ text "Induction variable:" <+>
+                                assumpDoc bpOver
+                            , if null bpGens then empty else gensDoc
+                            ]
+
+                        gensDoc = hcat $ (text "Generalization variables:") :
+                            (intersperse (text ", ") $
+                                map assumpDoc bpGens)
 
             -- EQUATIONAL
             matchProofs
@@ -334,22 +348,38 @@ matchBlueprintWithProof env blueprint solution =
             -- EXTENSIONAL
             matchProofs
                 (ParseExt bpWith bpToShow bpProof)
-                (ParseExt solWith solToShow solProof) = do
+                (ParseExt solWith solToShow solProof) = errCtxt context $ do
                     compareEq "Extensionality variable mismatch:"
                         assumpDoc bpWith solWith
                     compareEq "'To show' mismatch:"
                         unparseRawPropPretty bpToShow solToShow
                     matchProofs bpProof solProof
+                    where
+                        context = capIndent
+                            "Blueprint Extensionality:"
+                            [ text "With variable:" <+>
+                                assumpDoc bpWith
+                            , text "To show:" <+>
+                                unparseRawPropPretty bpToShow
+                            ]
 
             -- CASES
             matchProofs
                 (ParseCases bpScheme bpTerm bpCases)
-                (ParseCases solScheme solTerm solCases) = do
+                (ParseCases solScheme solTerm solCases) = errCtxt context $ do
                     compareEq "Case term type scheme mismatch:"
                         (text . prettyScheme) bpScheme solScheme
                     compareEq "Case term mismatch:"
                         unparseRawTermPretty bpTerm solTerm
                     matchManyCases bpCases solCases
+                    where
+                        context = capIndent
+                            "Blueprint Case analysis:"
+                            [ text "Over term:" <+>
+                                unparseRawTermPretty bpTerm
+                            , text "Term Scheme:" <+>
+                                (text $ prettyScheme bpScheme)
+                            ]
 
             -- PROOF TYPES MISMATCH
             matchProofs bp sol = err errMsg

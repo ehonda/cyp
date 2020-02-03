@@ -1,0 +1,6 @@
+While matching blueprint theory with solution theory
+    Type signature mismatch:
+        Blueprint:
+            plus :: N -> N -> N
+        Solution:
+            plus :: N -> N -> Int

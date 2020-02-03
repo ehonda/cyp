@@ -1,0 +1,4 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma plus_one: S a .=. plus (S Z) a
+        Proof types don't match. Blueprint is Equational proof, Solution is Inductional proof.
