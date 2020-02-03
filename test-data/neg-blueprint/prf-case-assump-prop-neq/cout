@@ -1,0 +1,13 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
+        Blueprint Induction:
+            Induction variable: xs :: forall v0. [v0]
+            Generalization variables: ys :: [a]
+            While comparing with blueprint case 'x : xs'
+                While comparing case assumptions 'IH1'
+                    Assumption proposition mismatch.
+                        Blueprint:
+                            itrev xs ys .=. reverse xs ++ ys
+                        Solution:
+                            itrev [] ys .=. reverse xs ++ ys

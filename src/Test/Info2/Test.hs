@@ -414,3 +414,16 @@ parsePrfTest rawBpThy rawThy rawBpPrf rawPrf = do
 parsePrfTest' bpThy thy bpPrf prf = do
     env <- processMasterFile "" thy
     matchBlueprintWithProof env bpPrf prf
+
+
+
+-- EQN SEQ TEST
+--------------------------------------------
+
+eqnSeq = Step x r1 $ Step y r2 $ Single z
+    where
+        x = Free "x"
+        y = Free "y"
+        z = Free "z"
+        r1 = "def r1"
+        r2 = "def r2"

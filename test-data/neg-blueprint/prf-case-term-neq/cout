@@ -1,0 +1,15 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma : not . not .=. id
+        Blueprint Extensionality:
+            With variable: x :: Bool
+            To show: (not . not) x .=. id x
+            Blueprint Case analysis:
+                Over term: x
+                Term Scheme: Bool
+                While comparing with blueprint case 'True'
+                    Case term mismatch:
+                        Blueprint:
+                            True
+                        Solution:
+                            False

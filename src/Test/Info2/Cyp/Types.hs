@@ -344,6 +344,13 @@ eqnSeqFromList :: a -> [(String,a)] -> EqnSeq a
 eqnSeqFromList a [] = Single a
 eqnSeqFromList a ((b', a') : bas) = Step a b' (eqnSeqFromList a' bas)
 
+eqnSeqToList :: EqnSeq a -> [(a, String)]
+eqnSeqToList seq = accumulate seq []
+    where
+        accumulate (Single a) xs = xs ++ [(a, "")]
+        accumulate (Step a rule rest) xs =
+            accumulate rest $ xs ++ [(a, rule)]
+
 eqnSeqEnds :: EqnSeq a -> (a,a)
 eqnSeqEnds (Single x) = (x,x)
 eqnSeqEnds (Step a _ es) = (a, snd $ eqnSeqEnds es)

@@ -233,8 +233,15 @@ eqnSeqDoc toDoc seq = vcat
     , text ".=. ..."
     , text ".=." <+> toDoc end
     ]
+--eqnSeqDoc toDoc seq = empty--vcat $ map (<+>) $ listRepDoc seq
     where
         (start, end) = eqnSeqEnds seq
+
+--        toDocPair (Single term) = (toDoc term, text "")
+--        toDocPair (Step term rule _) = (toDoc term, text rule)
+--
+--        listRepDoc seq = toList $ traverse toDocPair seq
+
 
 eqnSeqRawTermDoc :: EqnSeq RawTerm -> Doc
 eqnSeqRawTermDoc = eqnSeqDoc unparseRawTermPretty
@@ -335,8 +342,8 @@ matchBlueprintWithProof env blueprint solution =
                             , if null bpGens then empty else gensDoc
                             ]
 
-                        gensDoc = hcat $ (text "Generalization variables:") :
-                            (intersperse (text ", ") $
+                        gensDoc = (text "Generalization variables:") <+>
+                            (hcat $ intersperse (text ", ") $
                                 map assumpDoc bpGens)
 
             -- EQUATIONAL
@@ -423,12 +430,10 @@ matchBlueprintWithProof env blueprint solution =
                             (fromMaybe [] $ pcGens bp)
                             (fromMaybe [] $ pcGens sol)
 
-                        -- TODO: A bit ugly to use compareMany and convert to list
-                        compareMany
-                            "Number of 'To Show' doesn't match."
-                            (compareEq "'To show' mismatch:" unparseRawPropPretty)
-                            (fromMaybe [] $ fmap (\e -> [e]) $ pcToShow bp)
-                            (fromMaybe [] $ fmap (\e -> [e]) $ pcToShow sol)
+                        compareMaybes
+                            "'To Show'"
+                            (compareEq "'To Show' mismatch:" unparseRawPropPretty)
+                            (pcToShow bp) (pcToShow sol)
 
                         compareMany
                             "Number of case assumptions doesn't match."
@@ -438,7 +443,7 @@ matchBlueprintWithProof env blueprint solution =
                         matchProofs (pcProof bp) (pcProof sol)
                         where
                             context = hsep 
-                                [ text "While comparing cases"
+                                [ text "While comparing with blueprint case"
                                 , quotes $ unparseRawTermPretty $ pcCons bp
                                 ]
 
