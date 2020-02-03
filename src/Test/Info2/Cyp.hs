@@ -17,6 +17,7 @@ import Data.Maybe
 import qualified Text.Parsec as Parsec
 import Text.PrettyPrint (colon, comma, empty, fsep, int, punctuate, hsep, quotes, text, vcat, (<>), (<+>), ($+$))
 
+import Test.Info2.Cyp.Blueprint.Blueprint
 import Test.Info2.Cyp.Env
 import Test.Info2.Cyp.Parser
 import Test.Info2.Cyp.Proof
@@ -32,6 +33,18 @@ proofFile masterFile studentFile = do
     mContent <- readFile masterFile
     sContent <- readFile studentFile
     return $ proof (masterFile, mContent) (studentFile, sContent)
+
+proofFileBlueprint :: FilePath 
+    -> FilePath 
+    -> FilePath 
+    -> FilePath 
+    -> IO (Err ())
+proofFileBlueprint bpThyFile solThyFile bpPrfFile solPrfFile = do
+    bpThy <- readFile bpThyFile
+    solThy <- readFile solThyFile
+    bpPrf <- readFile bpPrfFile
+    solPrf <- readFile solPrfFile
+    return $ proofBlueprint bpThy solThy bpPrf solPrf
 
 typeCheckTheoryFile :: FilePath -> IO (Err TheoryTypeInfo)
 typeCheckTheoryFile path = do
@@ -56,6 +69,14 @@ proof (mName, mContent) (sName, sContent) = do
             vcat $ map unparseProp xs
   where
     contained props goal = any (\x -> isJust $ matchProp goal (namedVal x) []) props
+
+-- TODO: thy file is read multiple times here, could be done better
+proofBlueprint :: String -> String -> String -> String -> Err ()
+proofBlueprint bpThy solThy bpPrf solPrf = do
+    matchBlueprintWithTheory bpThy solThy
+    env <- processMasterFile "Solution Theory" solThy
+    matchBlueprintWithProof env bpPrf solPrf
+    proof ("Solution Theory", solThy) ("Solution Proof", solPrf)
 
 processMasterFile :: FilePath -> String -> Err Env
 processMasterFile path content = errCtxtStr "Parsing background theory" $ do

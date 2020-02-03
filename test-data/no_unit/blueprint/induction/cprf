@@ -16,7 +16,7 @@ Case []
     QED
 
 Case x:xs
-    Fix x :: Int, xs :: [a]
+    Fix x :: a, xs :: [a]
     Assume 
         IH: length (xs ++ ys) .=. length xs + length ys
     Then

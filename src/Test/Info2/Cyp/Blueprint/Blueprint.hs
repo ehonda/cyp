@@ -82,6 +82,26 @@ matchBlueprintWithRawTerm bp term = do
 
 -- Utility to compare the various lists
 ---------------------------------------------------------
+compareMaybes :: String
+    -> (a -> a -> Err ()) 
+    -> Maybe a -> Maybe a -> Err ()
+compareMaybes _ cmpAction (Just bp) (Just sol) =
+    cmpAction bp sol
+compareMaybes _ _ Nothing Nothing =
+    return ()
+compareMaybes property  _ bp _ = err errMsg
+    where
+        errMsg :: Doc
+        errMsg = hsep $ map text
+            [ has, "has", property
+            , "but", hasnt, "hasn't."
+            ]
+
+        (has, hasnt) = if isJust bp 
+            then ("Blueprint", "Solution")
+            else ("Solution", "Blueprint")
+
+
 compareEq :: Eq a => String 
     -> (a -> Doc)
     -> a -> a -> Err ()
@@ -205,6 +225,58 @@ matchBlueprintWithTheory blueprint theory =
 -- Match proofs
 --------------------------------------------------------
 
+-- Utility used by match proof
+-----------------------------------
+eqnSeqDoc :: (a -> Doc) -> EqnSeq a -> Doc
+eqnSeqDoc toDoc seq = vcat
+    [ nest 4 $ toDoc start
+    , text ".=. ..."
+    , text ".=." <+> toDoc end
+    ]
+    where
+        (start, end) = eqnSeqEnds seq
+
+eqnSeqRawTermDoc :: EqnSeq RawTerm -> Doc
+eqnSeqRawTermDoc = eqnSeqDoc unparseRawTermPretty
+
+matchEqnSeqqs :: EqnSeqq RawTerm -> EqnSeqq RawTerm -> Err ()
+matchEqnSeqqs (EqnSeqq bpS bpT) (EqnSeqq solS solT) = do
+    matchEqnSeqs bpS solS
+    compareMaybes 
+        "inverse equation sequence"
+        matchEqnSeqs
+        bpT solT
+        
+
+matchEqnSeqs :: EqnSeq RawTerm -> EqnSeq RawTerm -> Err ()
+matchEqnSeqs (Single bpTerm) (Single solTerm) = 
+    matchBlueprintWithRawTerm bpTerm solTerm
+matchEqnSeqs bp@(Step bpTerm bpRule bpSeq) 
+    sol@(Step solTerm solRule solSeq) = errCtxt context $ do
+        matchBlueprintWithRawTerm bpTerm solTerm
+        matchRules bpRule solRule
+        matchEqnSeqs bpSeq solSeq
+        where
+            context = comparisonDoc
+                "While matching the equation sequences:"
+                eqnSeqRawTermDoc
+                bp sol
+
+            matchRules :: String -> String -> Err ()
+            matchRules bp sol = unless (isRuleHole bp) $
+                compareEq "Rule mismatch:" text bp sol
+                where
+                    isRuleHole :: String -> Bool
+                    isRuleHole "_" = True
+                    isRuleHole _ = False
+
+-- Single and step match
+-- TODO: BETTER ERROR MESSAGE
+matchEqnSeqs _ _ = errStr "Equation sequence mismatch."
+
+
+-- Match proof
+-----------------------------------
 matchBlueprintWithProof :: Env -> String -> String -> Err ()
 matchBlueprintWithProof env blueprint solution = 
     errCtxtStr "While matching blueprint proof with solution proof" $ do
@@ -254,10 +326,50 @@ matchBlueprintWithProof env blueprint solution =
                     matchManyCases bpCases solCases
 
             -- EQUATIONAL
-            --matchProofs
-            --    (ParseEquation bpEqns) (ParseEquation solEqns) = do
+            matchProofs
+                (ParseEquation bpEqns) (ParseEquation solEqns) = 
+                    errCtxtStr "While matching equational proofs" $
+                        matchEqnSeqqs bpEqns solEqns
 
+            -- EXTENSIONAL
+            matchProofs
+                (ParseExt bpWith bpToShow bpProof)
+                (ParseExt solWith solToShow solProof) = do
+                    compareEq "Extensionality variable mismatch:"
+                        assumpDoc bpWith solWith
+                    compareEq "'To show' mismatch:"
+                        unparseRawPropPretty bpToShow solToShow
+                    matchProofs bpProof solProof
 
+            -- CASES
+            matchProofs
+                (ParseCases bpScheme bpTerm bpCases)
+                (ParseCases solScheme solTerm solCases) = do
+                    compareEq "Case term type scheme mismatch:"
+                        (text . prettyScheme) bpScheme solScheme
+                    compareEq "Case term mismatch:"
+                        unparseRawTermPretty bpTerm solTerm
+                    matchManyCases bpCases solCases
+
+            -- PROOF TYPES MISMATCH
+            matchProofs bp sol = err errMsg
+                where
+                    errMsg = hsep $ map text $
+                        [ "Proof types don't match."
+                        , "Blueprint is"
+                        , (proofType bp) ++ ","
+                        , "Solution is"
+                        , (proofType sol) ++ "."
+                        ]
+
+                    proofType :: ParseProof -> String
+                    proofType (ParseInduction _ _ _) = "Inductional proof"
+                    proofType (ParseEquation _) = "Equational proof"
+                    proofType (ParseExt _ _ _) = "Extensional proof"
+                    proofType (ParseCases _ _ _) = "Case analysis proof"
+
+            -- UTILITY
+            --------------------------------------------------------------
             matchManyCases :: [ParseCase] -> [ParseCase] -> Err ()
             matchManyCases bpCases solCases = compareMany
                 "Number of cases doesn't match."

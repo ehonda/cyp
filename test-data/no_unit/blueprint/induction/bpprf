@@ -8,7 +8,7 @@ Case []
 
     Proof
                                  length ([] ++ ys)
-        (by def ++)          .=. length ys
+        (by _)               .=. _
 
                                  length [] + length ys
         (by def length)      .=. 0 + length ys
@@ -16,7 +16,7 @@ Case []
     QED
 
 Case x:xs
-    Fix x :: Int, xs :: [a]
+    Fix x :: a, xs :: [a]
     Assume 
         IH: length (xs ++ ys) .=. length xs + length ys
     Then
@@ -25,8 +25,8 @@ Case x:xs
     Proof
                                  length ((x:xs) ++ ys)
         (by def ++)          .=. length (x : (xs ++ ys))
-        (by def length)      .=. 1 + length (xs ++ ys)
-        (by IH)              .=. 1 + (length xs + length ys)
+        (by def length)      .=. _ + length (xs ++ ys)
+        (by _)              .=. 1 + (length xs + length ys)
 
                              length (x:xs) + length ys
         (by def length)      .=. (1 + length xs) + length ys
