@@ -344,12 +344,21 @@ eqnSeqFromList :: a -> [(String,a)] -> EqnSeq a
 eqnSeqFromList a [] = Single a
 eqnSeqFromList a ((b', a') : bas) = Step a b' (eqnSeqFromList a' bas)
 
+-- x (by a1) .=. y  =>  [(x, a1), (y, "")]
 eqnSeqToList :: EqnSeq a -> [(a, String)]
 eqnSeqToList seq = accumulate seq []
     where
         accumulate (Single a) xs = xs ++ [(a, "")]
         accumulate (Step a rule rest) xs =
             accumulate rest $ xs ++ [(a, rule)]
+
+-- x (by a1) .=. y  =>  [("", x), (a1, y)]
+eqnSeqToList' :: EqnSeq a -> [(String, a)]
+eqnSeqToList' seq = accumulate seq "" []
+    where
+        accumulate (Single a) rule xs = xs ++ [(rule, a)]
+        accumulate (Step a rule rest) lastRule xs =
+            accumulate rest rule $ xs ++ [(lastRule, a)] 
 
 eqnSeqEnds :: EqnSeq a -> (a,a)
 eqnSeqEnds (Single x) = (x,x)
@@ -364,6 +373,50 @@ eqnSeqqHead (EqnSeqq eqns _) = eqnSeqHead eqns
 
 getVarsEqnSeqq :: EqnSeqq Term -> [String]
 getVarsEqnSeqq eqns = nub $ concat $ fmap getVars eqns
+
+-- Shortened equation seq display, that is
+--                 x
+--  (by rule1) .=. ...
+--  (by rulen) .=. z
+shortenedEqnSeqDoc :: (a -> Doc) -> EqnSeq a -> Doc
+shortenedEqnSeqDoc toDoc seq = process $ eqnSeqToList' seq
+    where
+        process [(_, single)] = toDoc single
+        process seq@[(_, start), (rule, end)] = vcat
+            [ nest (maxNest + 10) $ toDoc start
+            , ruleDoc rule <+> text symPropEq <+> toDoc end
+            ]
+            where
+                maxNest = maxRuleLen $ map fst $ seq
+
+        process ((_, start):rest) = vcat
+            [ nest (maxNest + 10) $ toDoc start
+            , ruleDoc firstRule <+> text ((pad firstIndent) ++ symPropEq) 
+                <+> text "..."
+            , ruleDoc lastRule <+> text ((pad lastIndent) ++ symPropEq) 
+                <+> toDoc end
+            ]
+            where
+                (firstRule, _) = head rest
+                (lastRule, end) = last rest
+
+                rules = [firstRule, lastRule]
+                maxNest = maxRuleLen $ rules
+                [firstIndent, lastIndent] = indentAfterRule 
+                    rules
+
+                pad n = concat $ replicate n " "
+
+        -- Impossible match
+        process [] = empty
+                
+        ruleDoc :: String -> Doc
+        ruleDoc rule = text $ concat ["(by ", rule, ")"]
+
+        ruleLens :: [String] -> [Int]
+        ruleLens = map length
+        maxRuleLen = maximum . ruleLens
+        indentAfterRule rules = map ((maxRuleLen rules) -) $ ruleLens rules
 
 {- Named operations --------------------------------------------------}
 

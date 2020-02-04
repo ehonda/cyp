@@ -1,0 +1,15 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma plus_one: S a .=. plus (S Z) a
+        While matching equational proofs
+            While matching equation sequences
+                Blueprint:
+                                      S a
+                    (by def plus) .=. S (plus Z a)
+                    
+                                      plus (S Z) a
+                    (by def plus) .=. S (plus Z a)
+                Solution:
+                                      S a
+                    (by def plus) .=. S (plus Z a)
+                Blueprint has inverse equation sequence but Solution hasn't.

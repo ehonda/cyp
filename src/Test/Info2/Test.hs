@@ -425,5 +425,15 @@ eqnSeq = Step x r1 $ Step y r2 $ Single z
         x = Free "x"
         y = Free "y"
         z = Free "z"
-        r1 = "def r1"
+        r1 = "def r10"
         r2 = "def r2"
+
+singleSeq = Single x
+    where
+        x = Free "x"
+
+stepSeq = Step x r1 $ Single y
+    where
+        x = Free "x"
+        y = Free "y"
+        r1 = "def r1"

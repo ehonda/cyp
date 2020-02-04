@@ -1,0 +1,18 @@
+While matching blueprint proof with solution proof
+    While matching lemmas
+        Blueprint lemma plus_one: S a .=. plus (S Z) a
+        While matching equational proofs
+            While matching equation sequences
+                Blueprint:
+                                      S a
+                    (by def plus) .=. ...
+                    (by def plus) .=. plus (S Z) a
+                Solution:
+                                      S a
+                    (by triv)     .=. ...
+                    (by def plus) .=. plus (S Z) a
+                Rule mismatch:
+                    Blueprint:
+                        def plus
+                    Solution:
+                        triv

@@ -228,47 +228,46 @@ matchBlueprintWithTheory blueprint theory =
 -- Utility used by match proof
 -----------------------------------
 eqnSeqDoc :: (a -> Doc) -> EqnSeq a -> Doc
-eqnSeqDoc toDoc seq = vcat
-    [ nest 4 $ toDoc start
-    , text ".=. ..."
-    , text ".=." <+> toDoc end
-    ]
---eqnSeqDoc toDoc seq = empty--vcat $ map (<+>) $ listRepDoc seq
-    where
-        (start, end) = eqnSeqEnds seq
-
---        toDocPair (Single term) = (toDoc term, text "")
---        toDocPair (Step term rule _) = (toDoc term, text rule)
---
---        listRepDoc seq = toList $ traverse toDocPair seq
-
+eqnSeqDoc toDoc seq = shortenedEqnSeqDoc toDoc seq
 
 eqnSeqRawTermDoc :: EqnSeq RawTerm -> Doc
 eqnSeqRawTermDoc = eqnSeqDoc unparseRawTermPretty
 
+eqnSeqqDoc :: (a -> Doc) -> EqnSeqq a -> Doc
+eqnSeqqDoc toDoc (EqnSeqq seq invSeq) =
+    vcat [seqDoc, invSeqDoc]
+    where
+        seqDoc = eqnSeqDoc toDoc seq
+        invSeqDoc = fromMaybe empty $ fmap 
+            (\seq -> text "" $+$ eqnSeqDoc toDoc seq) invSeq
+
+eqnSeqqRawTermDoc :: EqnSeqq RawTerm -> Doc
+eqnSeqqRawTermDoc = eqnSeqqDoc unparseRawTermPretty
+
 matchEqnSeqqs :: EqnSeqq RawTerm -> EqnSeqq RawTerm -> Err ()
-matchEqnSeqqs (EqnSeqq bpS bpT) (EqnSeqq solS solT) = do
-    matchEqnSeqs bpS solS
-    compareMaybes 
-        "inverse equation sequence"
-        matchEqnSeqs
-        bpT solT
+matchEqnSeqqs bp@(EqnSeqq bpS bpT) sol@(EqnSeqq solS solT) = 
+    errCtxt context $ do
+        matchEqnSeqs bpS solS
+        compareMaybes 
+            "inverse equation sequence"
+            matchEqnSeqs
+            bpT solT
+        where
+            context = comparisonDoc
+                "While matching equation sequences"
+                eqnSeqqRawTermDoc
+                bp sol
         
 
 matchEqnSeqs :: EqnSeq RawTerm -> EqnSeq RawTerm -> Err ()
 matchEqnSeqs (Single bpTerm) (Single solTerm) = 
     matchBlueprintWithRawTerm bpTerm solTerm
-matchEqnSeqs bp@(Step bpTerm bpRule bpSeq) 
-    sol@(Step solTerm solRule solSeq) = errCtxt context $ do
+matchEqnSeqs (Step bpTerm bpRule bpSeq) 
+    (Step solTerm solRule solSeq) = do
         matchBlueprintWithRawTerm bpTerm solTerm
         matchRules bpRule solRule
         matchEqnSeqs bpSeq solSeq
         where
-            context = comparisonDoc
-                "While matching the equation sequences:"
-                eqnSeqRawTermDoc
-                bp sol
-
             matchRules :: String -> String -> Err ()
             matchRules bp sol = unless (isRuleHole bp) $
                 compareEq "Rule mismatch:" text bp sol
@@ -277,9 +276,9 @@ matchEqnSeqs bp@(Step bpTerm bpRule bpSeq)
                     isRuleHole "_" = True
                     isRuleHole _ = False
 
--- Single and step match
--- TODO: BETTER ERROR MESSAGE
-matchEqnSeqs _ _ = errStr "Equation sequence mismatch."
+-- Single and step match -> Can only happen if lengts
+-- are not equal
+matchEqnSeqs _ _ = errStr "Equation sequence lengths don't match."
 
 
 -- Match proof

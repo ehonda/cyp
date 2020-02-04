@@ -1,0 +1,9 @@
+Lemma plus_one: S a .=. plus (S Z) a
+
+Proof
+                    S a
+  (by def plus) .=. S (plus Z a)
+
+                    plus (S Z) a
+  (by def plus) .=. S (plus Z a)
+QED
