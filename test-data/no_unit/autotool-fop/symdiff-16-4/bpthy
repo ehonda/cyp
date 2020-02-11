@@ -1,0 +1,25 @@
+-- Exercise 16-1 FOP SS18
+data N = Z | S N
+
+pred :: N -> N
+pred Z = Z
+pred (S x) = x
+
+plus :: N -> N -> N
+plus Z y = y
+plus (S x) y = S (plus x y)
+
+symdiff :: N -> N -> N
+symdiff Z y = _
+symdiff x Z = _
+symdiff x y = _
+
+
+-- Goals
+----------------------------------------
+
+-- Lemma symdiff_sym (spec1):
+goal symdiff x y .=. symdiff y x
+
+-- Lemma symdiff_plus (spec2):
+goal symdiff x (plus x y) .=. y

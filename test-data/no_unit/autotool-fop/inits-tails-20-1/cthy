@@ -1,0 +1,41 @@
+-- Exercise 20-1 FOP SS18
+
+-- List functions used for inits/tails declaration
+----------------------------------------------------------
+
+foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f init [] = init
+foldr f init (x:xs) = f x (foldr f init xs)
+
+map :: (a -> b) -> [a] -> [b]
+map f [] = []
+map f (x:xs) = (f x) : (map f xs)
+
+-- Inits
+----------------------------------------------------------
+
+-- fmi -> f_map_inits
+fmi :: a -> [a] -> [a]
+fmi x xs = x : xs
+
+-- ffi -> f_fold_inits
+ffi :: a -> [[a]] -> [[a]]
+ffi x is = [] : (map (fmi x) is)
+
+inits :: [a] -> [[a]]
+inits xs = foldr ffi [[]] xs
+
+-- Tails
+----------------------------------------------------------
+
+--ff_tails :: a -> [a] -> [a]
+--ff_tails x ts = x : ts
+
+--tails :: [a] -> [[a]]
+--tails xs = foldr ff_tails xs
+
+-- Goals
+----------------------------------------------------------
+
+-- Lemma inits_12:
+goal inits [1, 2] .=. [[], [1], [1, 2]]

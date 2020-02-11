@@ -1,0 +1,61 @@
+Lemma symdiff_sym: symdiff x y .=. symdiff y x
+
+Proof by induction on x :: N generalizing y :: N
+  Case Z
+    For fixed y :: N
+    Show: symdiff Z y .=. symdiff y Z
+
+    Proof
+                 symdiff Z y
+      (by _) .=. _
+      (by _) .=. symdiff y Z
+    QED
+
+  Case S x
+    Fix x :: N
+    Assume
+      IH: forall y :: N: symdiff x y .=. symdiff y x
+    
+    Then for fixed y :: N
+    Show: symdiff (S x) y .=. symdiff y (S x)
+
+    Proof
+                 symdiff (S x) y
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. symdiff y (S x)
+    QED
+QED
+
+
+
+Lemma symdiff_plus: symdiff x (plus x y) .=. y
+
+Proof by induction on x :: N
+  Case Z
+    Show: symdiff Z (plus Z y) .=. y
+
+    Proof
+                           symdiff Z (plus Z y)
+      (by _)           .=. _
+      (by def plus)    .=. y
+    QED
+
+  Case S x
+    Fix x :: N
+    Assume
+      IH: symdiff x (plus x y) .=. y
+    Then
+    Show: symdiff (S x) (plus (S x) y) .=. y
+
+    Proof
+                 symdiff (S x) (plus (S x) y)
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. _
+      (by _) .=. y
+    QED
+QED

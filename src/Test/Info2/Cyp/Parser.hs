@@ -361,7 +361,8 @@ lemmaParserWithProofParser ::
     Parsec [Char] Env ParseProof
     -> Parsec [Char] Env ParseLemma
 lemmaParserWithProofParser proofParser =
-    do  keyword "Lemma"
+    do  manySpacesOrComment
+        keyword "Lemma"
         (name, prop) <- namedPropParser defaultToFree idParser
         manySpacesOrComment
         prf <- proofParser

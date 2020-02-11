@@ -1,0 +1,28 @@
+-- Exercise 19-2 FOP SS18
+data Bool = False | True
+
+-- Functions
+---------------------------------------------------------------
+
+takeWhile :: (a -> Bool) -> [a] -> [a]
+takeWhile p [] = []
+takeWhile p (x:xs) = if p x then x : (takeWhile p xs) else []
+
+dropWhile :: (a -> Bool) -> [a] -> [a]
+dropWhile p [] = []
+dropWhile p (x:xs) = if p x then (dropWhile p xs) else (x:xs)
+
+(++) :: [a] -> [a] -> [a]
+[] ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+-- Axioms
+---------------------------------------------------------------
+
+axiom if_True: (if True then x else y) .=. x
+axiom if_False: (if False then x else y) .=. y
+
+-- Goals
+---------------------------------------------------------------
+
+goal (takeWhile p xs) ++ (dropWhile p xs) .=. xs

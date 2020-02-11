@@ -1,0 +1,74 @@
+-- Proof for inits
+-----------------------------------------------------------------------------
+
+-- Map
+---------------------------------------------------------
+Lemma map_list_1: map f [x] .=. [f x]
+Proof
+                   map f [x]
+  (by def map) .=. (f x) : (map f [])
+  (by def map) .=. (f x) : []
+  (by def)     .=. [f x]
+QED
+
+
+Lemma map_list_2: map f [x, y] .=. [f x, f y]
+Proof
+                      map f [x, y]
+  (by def map)    .=. (f x) : (map f [y])
+  (by map_list_1) .=. (f x) : [f y]
+  (by def)        .=. [f x, f y]
+QED
+
+-- Substeps
+---------------------------------------------------------
+Lemma map_fmi_2: map (fmi 2) [[]] .=. [[2]]
+Proof
+                      map (fmi 2) [[]]
+  (by map_list_1) .=. [ fmi 2 [] ]
+  (by def fmi)    .=. [ 2:[] ]
+  (by def)        .=. [[2]]
+QED
+
+
+Lemma ffi_2: ffi 2 [[]] .=. [[], [2]]
+Proof
+                     ffi 2 [[]]
+  (by def ffi)   .=. [] : (map (fmi 2) [[]])
+  (by map_fmi_2) .=. [] : [[2]]
+  (by def)       .=. [[], [2]]
+QED
+
+
+Lemma map_fmi_1: map (fmi 1) [[], [2]] .=. [[1], [1, 2]]
+Proof
+                      map (fmi 1) [[], [2]]
+  (by map_list_2) .=. [ fmi 1 [], fmi 1 [2] ]
+  (by def fmi)    .=. [ 1:[], fmi 1 [2] ]
+  (by def fmi)    .=. [ 1:[], 1:[2] ]
+  (by def)        .=. [ [1], 1:[2] ]
+  (by def)        .=. [ [1], [1, 2] ]
+QED
+
+
+Lemma ffi_1: ffi 1 [[], [2]] .=. [[], [1], [1, 2]]
+Proof
+                     ffi 1 [[], [2]]
+  (by def ffi)   .=. [] : (map (fmi 1) [[], [2]])
+  (by map_fmi_1) .=. [] : [[1], [1, 2]]
+  (by def)       .=. [[], [1], [1, 2]]
+QED
+
+-- Main result
+---------------------------------------------------------
+
+Lemma inits_12: inits [1, 2] .=. [[], [1], [1, 2]]
+Proof
+inits [1, 2]
+(by def inits) .=. foldr ffi [[]] [1, 2]
+(by def foldr) .=. ffi 1 (foldr ffi [[]] [2])
+(by def foldr) .=. ffi 1 (ffi 2 (foldr ffi [[]] []))
+(by def foldr) .=. ffi 1 (ffi 2 [[]])
+(by ffi_2)     .=. ffi 1 [[], [2]]
+(by ffi_1)     .=. [[], [1], [1, 2]]
+QED

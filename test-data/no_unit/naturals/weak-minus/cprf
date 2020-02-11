@@ -1,0 +1,24 @@
+Lemma wmin_Z_right_id: wmin x Z .=. x
+
+Proof by induction on x :: N
+  Case Z
+    Show: wmin Z Z .=. Z
+
+    Proof
+      wmin Z Z
+      (by def wmin) .=. Z
+    QED
+
+  Case S x
+    Fix x :: N
+    Assume
+      IH: wmin x Z .=. x
+    Then
+    Show: wmin (S x) Z .=. S x
+
+    Proof
+      wmin (S x) Z
+      (by def wmin) .=. S (wmin x Z)
+      (by IH) .=. S x
+    QED
+QED

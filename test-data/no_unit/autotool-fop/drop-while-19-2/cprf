@@ -1,0 +1,55 @@
+Lemma take_drop: (takeWhile p xs) ++ (dropWhile p xs) .=. xs
+
+Proof by induction on xs :: [a]
+  Case []
+    Show: (takeWhile p []) ++ (dropWhile p []) .=. []
+
+    Proof
+                             (takeWhile p []) ++ (dropWhile p [])
+      (by def dropWhile) .=. (takeWhile p []) ++ []
+      (by def takeWhile) .=. [] ++ []
+      (by def ++)        .=. []
+    QED
+
+  Case x:xs
+    Fix x :: a, xs :: [a]
+    Assume
+      IH: (takeWhile p xs) ++ (dropWhile p xs) .=. xs
+    Then
+    Show: (takeWhile p (x:xs)) ++ (dropWhile p (x:xs)) .=. x:xs
+
+    Proof by case analysis on (p x) :: Bool
+      Case True
+        Assume
+          AS: p x .=. True
+        Then
+
+        Proof
+                                 (takeWhile p (x:xs)) ++ (dropWhile p (x:xs))
+          (by def takeWhile) .=. (if p x then x : (takeWhile p xs) else []) ++ (dropWhile p (x:xs))
+          (by AS)            .=. (if True then x : (takeWhile p xs) else []) ++ (dropWhile p (x:xs))
+          (by if_True)       .=. (x : (takeWhile p xs)) ++ (dropWhile p (x:xs))
+          (by def dropWhile) .=. (x : (takeWhile p xs)) ++ (if p x then (dropWhile p xs) else (x:xs))
+          (by AS)            .=. (x : (takeWhile p xs)) ++ (if True then (dropWhile p xs) else (x:xs))
+          (by if_True)       .=. (x : (takeWhile p xs)) ++ (dropWhile p xs)
+          (by def ++)        .=. x : ((takeWhile p xs) ++ (dropWhile p xs))
+          (by IH)            .=. x:xs
+        QED
+
+      Case False
+        Assume
+          AS: p x .=. False
+        Then
+
+        Proof
+                                 (takeWhile p (x:xs)) ++ (dropWhile p (x:xs))
+          (by def takeWhile) .=. (if p x then x : (takeWhile p xs) else []) ++ (dropWhile p (x:xs))
+          (by AS)            .=. (if False then x : (takeWhile p xs) else []) ++ (dropWhile p (x:xs))
+          (by if_False)      .=. [] ++ (dropWhile p (x:xs))
+          (by def ++)        .=. dropWhile p (x:xs)
+          (by def dropWhile) .=. if p x then (dropWhile p xs) else (x:xs)
+          (by AS)            .=. if False then (dropWhile p xs) else (x:xs)
+          (by if_False)      .=. x:xs
+        QED
+    QED
+QED
