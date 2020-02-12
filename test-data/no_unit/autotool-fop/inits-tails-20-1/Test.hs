@@ -1,3 +1,5 @@
+import Prelude hiding (foldr, map, (++), reverse)
+
 -- Exercise 20-1 FOP SS18
 
 -- List functions
@@ -15,9 +17,6 @@ map f (x:xs) = (f x) : (map f xs)
 [] ++ ys = ys
 (x:xs) ++ ys = x : (xs ++ ys)
 
-app_1 :: a -> [a] -> [a]
-app_1 x xs = xs ++ [x]
-
 reverse :: [a] -> [a]
 reverse [] = []
 reverse (x:xs) = reverse xs ++ [x]
@@ -25,34 +24,22 @@ reverse (x:xs) = reverse xs ++ [x]
 -- Inits
 ----------------------------------------------------------
 
--- m_i -> f_map_inits
-m_i :: a -> [a] -> [a]
-m_i x xs = x : xs
+-- fmi -> f_map_inits
+fmi :: a -> [a] -> [a]
+fmi x xs = x : xs
 
--- f_i -> f_fold_inits
-f_i :: a -> [[a]] -> [[a]]
-f_i x is = [] : (map (m_i x) is)
+-- ffi -> f_fold_inits
+ffi :: a -> [[a]] -> [[a]]
+ffi x is = [] : (map (fmi x) is)
 
 inits :: [a] -> [[a]]
-inits xs = foldr f_i [[]] xs
+inits xs = foldr ffi [[]] xs
 
 -- Tails
 ----------------------------------------------------------
 
-f_t :: a -> [[a]] -> [[a]]
-f_t x (t:ts) = (x:t) : (t:ts)
+fft :: a -> [[a]] -> [[a]]
+fft x (t:ts) = (x : t) : (t:ts)
 
 tails :: [a] -> [[a]]
-tails xs = foldr f_t [[]] xs
-
--- Goals
-----------------------------------------------------------
-
--- Lemma inits_12:
-goal inits [1, 2] .=. [[], [1], [1, 2]]
-
--- Lemma tails_12:
-goal tails [1, 2] .=. [[1, 2], [2], []]
-
--- Lemma rev_inits_tails:
---goal reverse (inits xs) .=. map reverse (tails (reverse xs))
+tails xs = foldr fft [[]] xs

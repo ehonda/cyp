@@ -1,7 +1,7 @@
 -- Proof for inits
 -----------------------------------------------------------------------------
 
--- Map
+-- map, list-n versions
 ---------------------------------------------------------
 Lemma map_list_1: map f [x] .=. [f x]
 Proof
@@ -20,55 +20,285 @@ Proof
   (by def)        .=. [f x, f y]
 QED
 
--- Substeps
+-- f_fold_inits, list-n versions
 ---------------------------------------------------------
-Lemma map_fmi_2: map (fmi 2) [[]] .=. [[2]]
+Lemma f_i_list_1: f_i x [as] .=. [[], x:as]
 Proof
-                      map (fmi 2) [[]]
-  (by map_list_1) .=. [ fmi 2 [] ]
-  (by def fmi)    .=. [ 2:[] ]
-  (by def)        .=. [[2]]
+                      f_i x [as]
+  (by def f_i)    .=. [] : (map (m_i x) [as])
+  (by map_list_1) .=. [] : [ m_i x as ]
+  (by def m_i)    .=. [] : [x:as]
+  (by def)        .=. [[], x:as]
 QED
 
 
-Lemma ffi_2: ffi 2 [[]] .=. [[], [2]]
+Lemma f_i_list_2: f_i x [as, bs] .=. [[], x:as, x:bs]
 Proof
-                     ffi 2 [[]]
-  (by def ffi)   .=. [] : (map (fmi 2) [[]])
-  (by map_fmi_2) .=. [] : [[2]]
-  (by def)       .=. [[], [2]]
+                      f_i x [as, bs]
+  (by def f_i)    .=. [] : (map (m_i x) [as, bs])
+  (by map_list_2) .=. [] : [ m_i x as, m_i x bs ]
+  (by def m_i)    .=. [] : [ x:as, m_i x bs ]
+  (by def m_i)    .=. [] : [x:as, x:bs]
+  (by def)        .=. [[], x:as, x:bs]
 QED
 
-
-Lemma map_fmi_1: map (fmi 1) [[], [2]] .=. [[1], [1, 2]]
-Proof
-                      map (fmi 1) [[], [2]]
-  (by map_list_2) .=. [ fmi 1 [], fmi 1 [2] ]
-  (by def fmi)    .=. [ 1:[], fmi 1 [2] ]
-  (by def fmi)    .=. [ 1:[], 1:[2] ]
-  (by def)        .=. [ [1], 1:[2] ]
-  (by def)        .=. [ [1], [1, 2] ]
-QED
-
-
-Lemma ffi_1: ffi 1 [[], [2]] .=. [[], [1], [1, 2]]
-Proof
-                     ffi 1 [[], [2]]
-  (by def ffi)   .=. [] : (map (fmi 1) [[], [2]])
-  (by map_fmi_1) .=. [] : [[1], [1, 2]]
-  (by def)       .=. [[], [1], [1, 2]]
-QED
-
--- Main result
+-- Main proof inits
 ---------------------------------------------------------
 
 Lemma inits_12: inits [1, 2] .=. [[], [1], [1, 2]]
 Proof
-inits [1, 2]
-(by def inits) .=. foldr ffi [[]] [1, 2]
-(by def foldr) .=. ffi 1 (foldr ffi [[]] [2])
-(by def foldr) .=. ffi 1 (ffi 2 (foldr ffi [[]] []))
-(by def foldr) .=. ffi 1 (ffi 2 [[]])
-(by ffi_2)     .=. ffi 1 [[], [2]]
-(by ffi_1)     .=. [[], [1], [1, 2]]
+                        inits [1, 2]
+(by def inits)      .=. foldr f_i [[]] [1, 2]
+(by def foldr)      .=. f_i 1 (foldr f_i [[]] [2])
+(by def foldr)      .=. f_i 1 (f_i 2 (foldr f_i [[]] []))
+(by def foldr)      .=. f_i 1 (f_i 2 [[]])
+(by f_i_list_1)     .=. f_i 1 [[], [2]]
+(by f_i_list_2)     .=. [[], [1], [1, 2]]
 QED
+
+
+
+-- Proof for tails
+-----------------------------------------------------------------------------
+Lemma tails_12: tails [1, 2] .=. [[1, 2], [2], []]
+Proof
+                     tails [1, 2]
+  (by def tails) .=. foldr f_t [[]] [1, 2]
+  (by def foldr) .=. f_t 1 (foldr f_t [[]] [2])
+  (by def foldr) .=. f_t 1 (f_t 2 (foldr f_t [[]] []))
+  (by def foldr) .=. f_t 1 (f_t 2 [[]])
+  (by def f_t)   .=. f_t 1 ( (2:[]) : [[]] )
+  (by def)       .=. f_t 1 [[2], []]
+  (by def f_t)   .=. (1:[2]) : [[2], []]
+  (by def)       .=. [[1, 2], [2], []]
+QED
+
+
+
+-- Proof reverse
+-----------------------------------------------------------------------------
+Lemma map_append: map f (xs ++ ys) .=. (map f xs) ++ (map f ys)
+Proof by induction on xs :: [a]
+  Case []
+    Show: map f ([] ++ ys) .=. (map f []) ++ (map f ys)
+
+    Proof
+                       map f ([] ++ ys)
+      (by def ++)  .=. map f ys
+      (by def ++)  .=. [] ++ (map f ys)
+      (by def map) .=. (map f []) ++ (map f ys)
+    QED
+
+  Case x:xs
+    Fix x :: a, xs :: [a]
+    Assume
+      IH: map f (xs ++ ys) .=. (map f xs) ++ (map f ys)
+    Then
+    Show: map f ((x:xs) ++ ys) .=. (map f (x:xs)) ++ (map f ys)
+
+    Proof
+                       map f ((x:xs) ++ ys)
+      (by def ++)  .=. map f (x : (xs ++ ys))
+      (by def map) .=. (f x) : (map f (xs ++ ys))
+      (by IH)      .=. (f x) : ((map f xs) ++ (map f ys))
+      (by def ++)  .=. ((f x) : (map f xs)) ++ (map f ys)
+      (by def map) .=. (map f (x:xs)) ++ (map f ys)
+    QED
+QED
+
+
+Lemma map_rev_comm: map f (reverse xs) .=. reverse (map f xs)
+Proof by induction on xs :: [a]
+  Case []
+    Show: map f (reverse []) .=. reverse (map f [])
+
+    Proof
+                           map f (reverse [])
+      (by def reverse) .=. map f []
+      (by def map)     .=. []
+      (by def reverse) .=. reverse []
+      (by def map)     .=. reverse (map f [])
+    QED
+
+  Case x:xs
+  Fix x :: a, xs :: [a]
+  Assume
+    IH: map f (reverse xs) .=. reverse (map f xs)
+  Then
+  Show: map f (reverse (x:xs)) .=. reverse (map f (x:xs))
+
+  Proof
+                         map f (reverse (x:xs))
+    (by def reverse) .=. map f (reverse xs ++ [x])
+    (by map_append)  .=. (map f (reverse xs)) ++ (map f [x])
+    (by IH)          .=. reverse (map f xs) ++ (map f [x])
+    (by map_list_1)  .=. reverse (map f xs) ++ [f x]
+    (by def reverse) .=. reverse ( (f x) : (map f xs) )
+    (by def map)     .=. reverse (map f (x:xs))
+  QED
+QED
+
+
+Lemma rev_list_1: reverse [x] .=. [x]
+Proof
+                       reverse [x]
+  (by def reverse) .=. reverse [] ++ [x]
+  (by def reverse) .=. [] ++ [x]
+  (by def ++)      .=. [x]
+QED
+
+
+Lemma f_tails_m_inits: f_t x (t:ts) .=. (m_i x t) : (m_i t ts)
+Proof
+                   f_t x (t:ts)
+  (by def f_t) .=. (x:t) : (t:ts)
+  (by def m_i) .=. (m_i x t) : (t:ts)
+  (by def m_i) .=. (m_i x t) : (m_i t ts)
+QED
+
+
+Lemma tails_list_0: tails [] .=. [[]]
+Proof
+                     tails []
+  (by def tails) .=. foldr f_t [[]] []
+  (by def foldr) .=. [[]]
+QED
+
+
+Lemma tails_list_1: tails [x] .=. [[x], []]
+Proof
+                     tails [x]
+  (by def tails) .=. foldr f_t [[]] [x]
+  (by def foldr) .=. f_t x (foldr f_t [[]] [])
+  (by def foldr) .=. f_t x [[]]
+  (by def f_t)   .=. (x:[]) : ([]:[])
+  (by def)       .=. [[x], []]
+QED
+
+
+--Lemma tails_cons: tails (v:xs) .=. (v:xs) : (tails xs)
+--Proof by induction on xs :: [a]
+--  Case []
+--    Show: tails [v] .=. [v] : (tails [])
+--
+--    Proof
+--                            tails [v]
+--      (by tails_list_1) .=. [v] : [[]]
+--      (by tails_list_0) .=. [v] : (tails [])
+--    QED
+--
+--  Case x:xs
+--    Fix x :: a, xs :: [a]
+--    Assume
+--      IH: tails (v:xs) .=. (v:xs) : (tails xs)
+--    Then
+--    Show: tails (v:(x:xs)) .=. (v:(x:xs)) : (tails (x:xs))
+--
+--    Proof
+--tails (v:(x:xs))
+--(by def tails) .=. foldr f_t [[]] (v:(x:xs))
+--(by def foldr) .=. f_t v (foldr f_t [[]] (x:xs))
+--(by def tails) .=. f_t v (tails (x:xs))
+--(by def f_t) .=. 
+--    QED
+--QED
+
+
+--Lemma tails_app_1: tails (app_1 v xs) .=. map (app_1 v) (tails xs) ++ [[]]
+--Proof by induction on xs :: [a]
+--  Case []
+--    Show: tails (app_1 v []) .=. map (app_1 v) (tails []) ++ [[]]
+--
+--    Proof
+--                         tails (app_1 v [])
+--      (by def app_1) .=. tails ([] ++ [v])
+--      (by def ++)    .=. tails ([v])
+--      (by def tails) .=. foldr f_t [[]] [v]
+--      (by def foldr) .=. f_t x (foldr f_t [[]] [])
+--      (by def foldr) .=. f_t x [[]]
+--      (by def f_t)   .=. (v:[]) : ([]:[])
+--      (by def)       .=. [[v], []]
+--
+--                          map (app_1 v) (tails []) ++ [[]]
+--      (by def tails)  .=. map (app_1 v) (foldr f_t [[]] []) ++ [[]]
+--      (by def foldr)  .=. map (app_1 v) [[]] ++ [[]]
+--      (by map_list_1) .=. [app_1 v []] ++ [[]]
+--      (by def app_1)  .=. [[] ++ [v]] ++ [[]]
+--      (by def ++)     .=. [[v]] ++ [[]]
+--      (by def ++)     .=. [v] : ([] ++ [[]])
+--      (by def ++)     .=. [v] : [[]]
+--      (by def)        .=. [[v], []]
+--    QED
+--
+--  Case x:xs
+--    Fix x :: a, xs :: [a]
+--    Assume
+--      IH: tails (app_1 v xs) .=. map (app_1 v) (tails xs) ++ [[]]
+--    Then
+--    Show: tails (app_1 v (x:xs)) .=. map (app_1 v) (tails (x:xs)) ++ [[]]
+--
+--  Proof
+--                        tails (app_1 v (x:xs))
+--    (by def app_1)  .=. tails ((x:xs) ++ [v])
+--    (by def ++)     .=. tails (x : (xs ++ [v]))
+--    (by tails_cons) .=. ( x : (xs ++ [v]) ) ++ tails (xs ++ [v])
+--    (by def ++)     .=. ( (x:xs) ++ [v] ) ++ tails (xs ++ [v])
+--    (by def app_1)  .=. (app_1 v (x:xs)) ++ tails (xs ++ [v])
+--    (by def app_1)  .=. (app_1 v (x:xs)) ++ tails (app_1 v xs)
+--    (by IH)         .=. (app_1 v (x:xs)) ++ ( map (app_1 v) (tails xs) ++ [[]] )
+--    (by app_comm)   .=. ( app_1 v (x:xs) ++ map (app_1 v) (tails xs) ) ++ [[]]
+--
+--                        map (app_1 v) (tails (x:xs)) ++ [[]]
+--    (by tails_cons) .=. ( map (app_1 v) ((x:xs) ++ tails xs) ) ++ [[]]
+--    (by map_append) .=. ( map (app_1 v) (x:xs) ++ map (app_1 v) (tails xs) ) ++ [[]]
+--  QED
+--QED
+
+
+--
+--Lemma inits_cons: inits (x:xs) .=. [] : (map (m_i x) (inits xs))
+--Proof
+--                     inits (x:xs)
+--  (by def inits) .=. foldr f_i [[]] (x:xs)
+--  (by def foldr) .=. f_i x (foldr f_i [[]] xs)
+--  (by def inits) .=. f_i x (inits xs)
+--  (by def f_i)   .=. [] : (map (m_i x) (inits xs))
+--QED
+--
+--
+--Lemma rev_inits_tails: reverse (inits xs) .=. map reverse (tails (reverse xs))
+--Proof by induction on xs :: [a]
+--  Case []
+--    Show: reverse (inits []) .=. map reverse (tails (reverse []))
+--
+--    Proof
+--                          reverse (inits [])
+--      (by def inits)  .=. reverse (foldr f_i [[]] [])
+--      (by def foldr)  .=. reverse [[]]
+--      (by rev_list_1) .=. [[]]
+--
+--                           map reverse (tails (reverse []))
+--      (by def reverse) .=. map reverse (tails [])
+--      (by def tails)   .=. map reverse (foldr f_t [[]] [])
+--      (by def foldr)   .=. map reverse [[]]
+--      (by map_list_1)  .=. [reverse []]
+--      (by def reverse) .=. [[]]
+--    QED
+--
+--  Case x:xs
+--    Fix x :: a, xs :: [a]
+--    Assume
+--      IH: reverse (inits xs) .=. map reverse (tails (reverse xs))
+--    Then
+--    Show: reverse (inits (x:xs)) .=. map reverse (tails (reverse (x:xs)))
+--
+--    Proof
+--reverse (inits (x:xs))
+--(by inits_cons) .=. reverse ( [] : (map (m_i x) (inits xs)) )
+--(by def reverse) .=. reverse (map (m_i x) (inits xs)) ++ [[]]
+--(by map_rev_comm) .=. map (m_i x) (reverse (inits xs)) ++ [[]]
+--(by IH) .=. map (m_i x) (map reverse (tails (reverse xs))) ++ [[]]
+--(by def map) .=. map (m_i x) (map reverse (tails (reverse xs))) ++ [map (m_i x) []]
+--(by def reverse) .=. reverse ( (map (m_i x
+--    QED
+--QED

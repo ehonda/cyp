@@ -136,16 +136,17 @@ cthyParser =
        return result
 
 cthyParsers :: Parsec [Char] () ParseDeclTree
-cthyParsers =
-    do manySpacesOrComment
-       result <- 
-            (goalParser 
-            <|> dataParser 
-            <|> axiomParser 
-            <|> symParser
-            <|> try typeSigParser 
-            <|> try funParser)
-       return result
+cthyParsers = do 
+    manySpacesOrComment
+    result <- 
+        (   goalParser 
+        <|> dataParser 
+        <|> axiomParser 
+        <|> symParser 
+        <|> try typeSigParser 
+        <|> try funParser)
+    manySpacesOrComment
+    return result
 
 keywordToEolParser :: String -> (String -> a) -> Parsec [Char] () a
 keywordToEolParser s f =
