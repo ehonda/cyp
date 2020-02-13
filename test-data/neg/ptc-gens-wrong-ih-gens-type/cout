@@ -1,6 +1,6 @@
 Lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
     While typechecking the proof
-        While typechecking induction proof over xs :: forall v0. [v0] generalizing ys :: [a]
+        While typechecking induction proof over xs :: [a] generalizing ys :: [a]
             While typechecking the case 'x : xs'
             With fixed variables
                 x :: a

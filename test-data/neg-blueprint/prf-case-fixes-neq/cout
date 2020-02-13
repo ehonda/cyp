@@ -2,7 +2,7 @@ While matching blueprint proof with solution proof
     While matching lemmas
         Blueprint lemma itrev_rev: itrev xs ys .=. reverse xs ++ ys
         Blueprint Induction:
-            Induction variable: xs :: forall v0. [v0]
+            Induction variable: xs :: [a]
             Generalization variables: ys :: [a]
             While comparing with blueprint case 'x : xs'
                 Fixed variable mismatch:

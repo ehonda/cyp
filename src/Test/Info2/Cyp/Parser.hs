@@ -233,7 +233,8 @@ inductionProofParserWithProofParser proofParser = do
     manySpacesOrComment
 
     -- Read typesigs
-    case readExactlyOneTypeSig sig of
+    --case readExactlyOneTypeSig sig of
+    case readExactlyOneTypeSigFixed sig of
         Left err -> unexpected $ render err
         Right sig' -> case readTypeSigsFixed gensSigs of
             Left err -> unexpected $ render err

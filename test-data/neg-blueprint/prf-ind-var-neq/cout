@@ -2,9 +2,9 @@ While matching blueprint proof with solution proof
     While matching lemmas
         Blueprint lemma : length (xs ++ ys) .=. length xs + length ys
         Blueprint Induction:
-            Induction variable: xs :: forall v0. [v0]
+            Induction variable: xs :: [a]
             Induction variable mismatch:
                 Blueprint:
-                    xs :: forall v0. [v0]
+                    xs :: [a]
                 Solution:
-                    ys :: forall v0. [v0]
+                    ys :: [a]

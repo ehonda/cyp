@@ -358,7 +358,18 @@ freshInst :: Scheme -> TI Type
 freshInst (Forall ks t) = do
     ts <- mapM newTVar ks
     return (inst ts t)
-    
+
+schemeInstsAreUnifiable :: Scheme -> Scheme -> Bool
+schemeInstsAreUnifiable sc sc' = case runTI tryUnify of
+    Left _ -> False
+    Right _ -> True
+    where
+        tryUnify :: TI ()
+        tryUnify = do
+            t <- freshInst sc
+            t' <- freshInst sc'
+            unify t t'
+
 class Instantiate t where
     inst :: [Type] -> t -> t
 

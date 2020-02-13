@@ -22,6 +22,9 @@ reverse :: [a] -> [a]
 reverse [] = []
 reverse (x:xs) = reverse xs ++ [x]
 
+head :: [a] -> a
+head (x:xs) = x
+
 -- Inits
 ----------------------------------------------------------
 
@@ -40,7 +43,7 @@ inits xs = foldr f_i [[]] xs
 ----------------------------------------------------------
 
 f_t :: a -> [[a]] -> [[a]]
-f_t x (t:ts) = (x:t) : (t:ts)
+f_t x ts = (x : (head ts)) : ts
 
 tails :: [a] -> [[a]]
 tails xs = foldr f_t [[]] xs
@@ -55,4 +58,4 @@ goal inits [1, 2] .=. [[], [1], [1, 2]]
 goal tails [1, 2] .=. [[1, 2], [2], []]
 
 -- Lemma rev_inits_tails:
---goal reverse (inits xs) .=. map reverse (tails (reverse xs))
+goal reverse (inits xs) .=. map reverse (tails (reverse xs))

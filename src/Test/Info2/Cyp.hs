@@ -341,16 +341,15 @@ validateCasesWith validateCase dt cases = do
         Just (name :>: _) -> errStr $ "Missing case '" ++ name ++ "'"
   where
       missingCase caseNames = find (\a -> (assumpName a) `notElem` caseNames) (dtConss dt)
-    --missingCase caseNames = find (\(name, _) -> name `notElem` caseNames) (dtConss dt)
-
 
 validDatatypeFromScheme :: Scheme -> Env -> Err DataType
-validDatatypeFromScheme sc env = case find (\dt -> dtScheme dt == sc) (datatypes env) of
-    Nothing -> err $ fsep $
-        [ text "Invalid datatype" <+> quotes (text $ prettyScheme sc) <> text "."
-        , text "Expected one of:" ]
-        ++ punctuate comma (map (quotes . text . prettyScheme . dtScheme) $ datatypes env)
-    Just dt -> Right dt
+validDatatypeFromScheme sc env = case 
+    find (\dt -> schemeInstsAreUnifiable sc $ dtScheme dt) (datatypes env) of
+        Nothing -> err $ fsep $
+            [ text "Invalid datatype" <+> quotes (text $ prettyScheme sc) <> text "."
+            , text "Expected one of:" ]
+            ++ punctuate comma (map (quotes . text . prettyScheme . dtScheme) $ datatypes env)
+        Just dt -> Right dt
 
 validConsCase :: Term -> DataType -> Err (String, [(TConsArg, IdxName)])
 validConsCase t (DataType _ dcons) = errCtxt invCaseMsg $ do
