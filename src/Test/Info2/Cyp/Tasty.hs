@@ -36,7 +36,7 @@ instance IsTest CypTest where
 instance IsTest CypTestBlueprint where
   testOptions = Tagged []
   run _ t _ = either (testFailed . render) (const $ testPassed "Proof is valid") 
-    <$> Cyp.proofFileBlueprint (bpTheory t) (solTheory t) (bpProof t) (solProof t)
+    <$> Cyp.proofFileBlueprint (bpTheory t) (solTheory t) (Just $ bpProof t) (solProof t)
 
 data NegCypTest = NegCypTest FilePath CypTest deriving Typeable
 data NegCypTestBlueprint = NegCypTestBlueprint FilePath CypTestBlueprint 
@@ -53,7 +53,7 @@ instance IsTest NegCypTest where
 instance IsTest NegCypTestBlueprint where
   testOptions = Tagged []
   run _ (NegCypTestBlueprint expected t) _ =
-    Cyp.proofFileBlueprint (bpTheory t) (solTheory t) (bpProof t) (solProof t) 
+    Cyp.proofFileBlueprint (bpTheory t) (solTheory t) (Just $ bpProof t) (solProof t) 
       >>= \case
         Left failure -> checkExpectedFailure expected failure
         Right () ->

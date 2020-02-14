@@ -36,13 +36,14 @@ proofFile masterFile studentFile = do
 
 proofFileBlueprint :: FilePath 
     -> FilePath 
-    -> FilePath 
+    -> Maybe FilePath   -- BP Proof does not have to be supplied 
     -> FilePath 
     -> IO (Err ())
 proofFileBlueprint bpThyFile solThyFile bpPrfFile solPrfFile = do
     bpThy <- readFile bpThyFile
     solThy <- readFile solThyFile
-    bpPrf <- readFile bpPrfFile
+    bpPrf <- maybe (return Nothing) 
+        (\bp -> do c <- readFile bp; return $ Just c) bpPrfFile
     solPrf <- readFile solPrfFile
     return $ proofBlueprint bpThy solThy bpPrf solPrf
 
@@ -71,12 +72,14 @@ proof (mName, mContent) (sName, sContent) = do
     contained props goal = any (\x -> isJust $ matchProp goal (namedVal x) []) props
 
 -- TODO: thy file is read multiple times here, could be done better
-proofBlueprint :: String -> String -> String -> String -> Err ()
+proofBlueprint :: String -> String -> Maybe String -> String -> Err ()
 proofBlueprint bpThy solThy bpPrf solPrf = do
     matchBlueprintWithTheory bpThy solThy
     env <- processMasterFile "Solution Theory" solThy
-    matchBlueprintWithProof env bpPrf solPrf
+    maybe noAction (\bp -> matchBlueprintWithProof env bp solPrf) bpPrf
     proof ("Solution Theory", solThy) ("Solution Proof", solPrf)
+    where
+        noAction = return ()
 
 processMasterFile :: FilePath -> String -> Err Env
 processMasterFile path content = errCtxtStr "Parsing background theory" $ do
