@@ -1,4 +1,8 @@
-While inferring the type of a constructor pattern:
-    p = X
-    X :: Int -> DX
-    Wrong number of arguments in p. Expected = 1, Actual = 0.
+While typechecking the theory
+    While inferring the types of the implicit bindings f
+        While inferring the function (represented by <f>) alternative type
+            <f> X = Y
+            While inferring the type of a constructor pattern:
+                p = X
+                X :: Int -> DX
+                Wrong number of arguments in p. Expected = 1, Actual = 0.

@@ -21,8 +21,10 @@ import Test.Info2.Cyp.Util
 getTheoryAssumps :: Env -> Err [Assump]
 getTheoryAssumps env = do
     let consAs = getConsAssumptions $ datatypes env
-    funAs <- runTI $ typeCheckBindings env
+    funAs <- runTI $ withErrorContext errContext $ typeCheckBindings env
     return (consAs ++ funAs)
+    where
+        errContext = text "While typechecking the theory"
 
 -- TODO: MOVE TO ANOTHER PLACE?
 toBindings :: [FunctionAlts] -> [Assump] 

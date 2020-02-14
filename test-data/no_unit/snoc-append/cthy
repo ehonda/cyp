@@ -1,0 +1,9 @@
+(++) :: [a] -> [a] -> [a]
+[] ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+snoc :: [a] -> [a] -> [a]
+snoc [] y = [y]
+snoc (x:xs) y = x : snoc xs y
+
+goal snoc xs y .=. xs ++ [y]

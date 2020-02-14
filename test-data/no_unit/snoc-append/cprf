@@ -1,0 +1,32 @@
+Lemma: snoc xs y .=. xs ++ [y]
+
+Proof by induction on xs :: [a]
+
+Case []
+
+    Show: snoc [] y .=. [] ++ [y]
+
+    Proof
+                            snoc [] y
+        (by def snoc)   .=. [y]
+        (by def ++)     .=. [] ++ [y]
+
+    QED
+
+Case x:xs
+    Fix x :: a, xs :: [a]
+    Assume
+        IH: snoc xs y .=. xs ++ [y]
+    Then
+    Show: snoc (x:xs) y .=. (x:xs) ++ [y]
+
+    Proof
+                            snoc (x:xs) y
+        (by def snoc)   .=. x : snoc xs y
+        (by IH)         .=. x : (xs ++ [y])
+
+                            (x:xs) ++ [y]
+        (by def ++)     .=. x : (xs ++ [y])
+    QED
+
+QED

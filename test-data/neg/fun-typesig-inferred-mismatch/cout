@@ -1,3 +1,5 @@
-Inferred type of h is incompatible with its type signature:
-    expected = h :: forall v0. v0 -> v0
-    inferred = h :: DX -> DX
+While typechecking the theory
+    While checking the type of the explicit binding h :: forall v0. v0 -> v0
+        Inferred type of h is incompatible with its type signature:
+            expected = h :: forall v0. v0 -> v0
+            inferred = h :: DX -> DX

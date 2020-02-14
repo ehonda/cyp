@@ -9,7 +9,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
 import Data.Maybe (fromMaybe)
-import Data.List (union, nub, intersect, intercalate, (\\))
+import Data.List (union, nub, intersect, intercalate, (\\), intersperse)
 import Text.PrettyPrint (Doc, text, hsep, (<>), ($$), hcat, vcat, nest, render, empty)
 
 
@@ -519,16 +519,25 @@ tiTerm as term = withErrorContext errContext $
 type Alt = ([Pat], CT.Term)
 
 tiAlt :: Infer Alt Type
-tiAlt as (pats, term) = do
+tiAlt as alt@(pats, term) = withErrorContext errContext $ do
     (as', ts) <- tiPats pats
     t <- tiTerm (as' ++ as) term
     return $ foldr fn t ts
+    where
+        errContext = capIndent
+            "While inferring the function (represented by <f>) alternative type"
+            [altDocWithName "<f>" alt]
+        
 
 tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
 tiAlts as alts t = do
     ts <- mapM (tiAlt as) alts
-    -- TODO: UNIFY WITH ERROR MESSAGE
-    mapM_ (unify t) ts
+    mapM_ (\(tAlt, alt) -> withErrorContext (errContext alt) $ unify t tAlt) $ 
+        zip ts alts
+    where
+        errContext alt = capIndent
+            "While typechecking the function (represented by <f>) alternative"
+            [altDocWithName "<f>" alt]
 
 
 -- TYPE INFERENCE FOR BINDINGS
@@ -540,7 +549,7 @@ tiAlts as alts t = do
 type ExplicitBinding = (Assump, [Alt])
 
 tiExplBind :: [Assump] -> ExplicitBinding -> TI ()
-tiExplBind as (sig@(i :>: sc), alts) = do
+tiExplBind as (sig@(i :>: sc), alts) = withErrorContext errContext $ do
     -- Instantiate the scheme and check if
     -- alts agree with that type
     t <- freshInst sc
@@ -554,11 +563,17 @@ tiExplBind as (sig@(i :>: sc), alts) = do
         gs = (tv t') \\ fs      -- generic vars
         sc' = quantify gs t'
     if sc /= sc' 
-    then lift $ throwE $ errMsg (i :>: sc') sig
+    --then lift $ throwE $ errMsg (i :>: sc') sig
+    then liftWithContexts $ throwE $ errMsg (i :>: sc') sig
     else return ()
     where
         -- Add type signature to assumptions
         as' = sig : as
+
+        errContext = hsep $ map text
+            [ "While checking the type of the explicit binding"
+            , prettyAssump' sig
+            ]
 
         errMsg :: Assump -> Assump -> Doc
         errMsg a@(f :>: _) sig = capIndent 
@@ -575,7 +590,7 @@ tiExplBind as (sig@(i :>: sc), alts) = do
 type ImplicitBinding = (Id, [Alt])
 
 tiImplBinds :: Infer [ImplicitBinding] [Assump]
-tiImplBinds as binds = do
+tiImplBinds as binds = withErrorContext errContext $ do
     -- Make new tvars and assumptions about
     -- those tvars (to support polymorphic
     -- recursions) for all binds
@@ -595,6 +610,11 @@ tiImplBinds as binds = do
         gs = foldr1 union vss \\ fs
         scs' = map (quantify gs) funTypes'
     return $ zipWith (:>:) ids scs'
+    where
+        errContext = hsep $ map text
+            [ "While inferring the types of the implicit bindings"
+            , concat $ intersperse ", " $ map fst binds
+            ]
 
 -- Bind Groups
 ---------------------------------------------------------
