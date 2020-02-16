@@ -23,13 +23,33 @@ Proof by induction on x :: N generalizing y :: N
     Then for fixed y :: N
     Show: symdiff (S x) y .=. symdiff y (S x)
 
-    Proof
-                           symdiff (S x) y
-      (by def symdiff) .=. symdiff (pred (S x)) (pred y)
-      (by def pred)    .=. symdiff x (pred y)
-      (by IH)          .=. symdiff (pred y) x
-      (by def pred)    .=. symdiff (pred y) (pred (S x))
-      (by def symdiff) .=. symdiff y (S x)
+    Proof by case analysis on y :: N
+      Case Z
+        Assume
+          AS: y .=. Z
+        Then
+
+        Proof
+                               symdiff (S x) y
+          (by AS)          .=. symdiff (S x) Z
+          (by def symdiff) .=. S x
+          (by def symdiff) .=. symdiff Z (S x)
+          (by AS)          .=. symdiff y (S x)
+        QED
+
+      Case S y'
+        Assume
+          AS: y .=. S y'
+        Then
+
+        Proof
+                               symdiff (S x) y
+          (by AS)          .=. symdiff (S x) (S y')
+          (by def symdiff) .=. symdiff x y'
+          (by IH)          .=. symdiff y' x
+          (by def symdiff) .=. symdiff (S y') (S x)
+          (by AS)          .=. symdiff y (S x)
+        QED
     QED
 QED
 
@@ -56,14 +76,11 @@ Proof by induction on x :: N
 
     Proof
                            symdiff (S x) (plus (S x) y)
-      (by def symdiff) .=. symdiff (pred (S x)) (pred (plus (S x) y))
-      (by def pred)    .=. symdiff x (pred (plus (S x) y))
-      (by def plus)    .=. symdiff x (pred (S (plus x y)))
-      (by def pred)    .=. symdiff x (plus x y)
+      (by def plus)    .=. symdiff (S x) (S (plus x y))
+      (by def symdiff) .=. symdiff x (plus x y)
       (by IH)          .=. y
     QED
 QED
-
 
 
 
@@ -95,14 +112,31 @@ QED
 
 
 
--- spec1, spec2 =>
---    f_spec (S x) (S y) = f_spec x y
----------------------------------------
---Lemma spec_unqiue_3: f_spec (S x) (S y) .=. f_spec x y
---
---Proof
---f_spec (S x) (S y)
---(by spec2_pred) .=. f_spec (S x) (plus (S x) (S y))
---(by def plus) .=. f_spec (S x) (S (plus x (S y)))
---(by def 
---QED
+-- Lemma 3
+-------------------------------------
+Lemma su3_case_y_gt_x: f_spec (S x) (S (plus x z)) .=. f_spec x (plus x z)
+
+Proof
+                      f_spec (S x) (S (plus x z))
+  (by def plus)   .=. f_spec (S x) (plus (S x) z)
+  (by spec2_pred) .=. z
+  (by spec2_pred) .=. f_spec x (plus x z)
+QED
+
+
+Lemma su3_case_x_gt_y: f_spec (S (plus y z)) (S y) .=. f_spec (plus y z) y
+
+Proof
+                           f_spec (S (plus y z)) (S y)
+  (by spec1_pred)      .=. f_spec (S y) (S (plus y z))
+  (by su3_case_y_gt_x) .=. f_spec y (plus y z)
+  (by spec1_pred)      .=. f_spec (plus y z) y
+QED
+
+
+Lemma su3: f_spec (S x) (S y) .=. plus x y
+
+Proof
+f_spec (S x) (S y)
+(by spec2_pred) .=. f_spec (S x) (S ( f_spec x (plus x y)  ))
+QED

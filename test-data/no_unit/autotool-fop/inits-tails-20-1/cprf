@@ -404,13 +404,13 @@ Proof by induction on ys :: [[a]]
     Show: map (m_i x) (map reverse (y:ys)) .=. map reverse (map (app_1 x) (y:ys))
 
     Proof
-                     map (m_i x) (map reverse (y:ys))
-(by def map)     .=. map (m_i x) ( (reverse y) : (map reverse ys) )
-(by def map)     .=. (m_i x (reverse y)) : (map (m_i x) (map reverse ys))
-(by IH)          .=. (m_i x (reverse y)) : (map reverse (map (app_1 x) ys))
-(by rev_mi_app_1) .=. (reverse (app_1 x y)) : (map reverse (map (app_1 x) ys))
-(by def map)     .=. map reverse ( (app_1 x y) : (map (app_1 x) ys) )
-(by def map)     .=. map reverse (map (app_1 x) (y:ys))
+                            map (m_i x) (map reverse (y:ys))
+      (by def map)      .=. map (m_i x) ( (reverse y) : (map reverse ys) )
+      (by def map)      .=. (m_i x (reverse y)) : (map (m_i x) (map reverse ys))
+      (by IH)           .=. (m_i x (reverse y)) : (map reverse (map (app_1 x) ys))
+      (by rev_mi_app_1) .=. (reverse (app_1 x y)) : (map reverse (map (app_1 x) ys))
+      (by def map)      .=. map reverse ( (app_1 x y) : (map (app_1 x) ys) )
+      (by def map)      .=. map reverse (map (app_1 x) (y:ys))
     QED
 QED
 

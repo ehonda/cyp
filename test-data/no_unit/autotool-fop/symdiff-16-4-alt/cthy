@@ -1,10 +1,6 @@
 -- Exercise 16-1 FOP SS18
 data N = Z | S N
 
-pred :: N -> N
-pred Z = Z
-pred (S x) = x
-
 plus :: N -> N -> N
 plus Z y = y
 plus (S x) y = S (plus x y)
@@ -12,7 +8,7 @@ plus (S x) y = S (plus x y)
 symdiff :: N -> N -> N
 symdiff Z y = y
 symdiff x Z = x
-symdiff x y = symdiff (pred x) (pred y)
+symdiff (S x) (S y) = symdiff x y
 
 
 -- Goals
@@ -66,10 +62,28 @@ goal f_spec Z y .=. y
 goal f_spec x Z .=. x
 
 
--- Lemma spec_unique_3 (su3):
+
+-- Lemma su3_case_y_geq_x:
+--    Case y > x => ex z: y = x + z
+--
+--      spec1, spec2, y = x + z => 
+--        f_spec (S x) (S y) = f_spec x y
+--
+--  <=> su1, su2, y = x + z =>
+--        f_spec (S x) (S (x + z)) = f_spec x (x + z)
+goal f_spec (S x) (S (plus x z)) .=. f_spec x (plus x z)
+
+
+-- Lemma su3_case_x_geq_y:
+--    Case x > y => ex z: x = y + z
+goal f_spec (S (plus y z)) (S y) .=. f_spec (plus y z) y
+
+
+-- Lemma spec_unique_4 (su4):
 --      spec1, spec2 => 
 --        f_spec (S x) (S y) = f_spec x y
 --
 --  <=> su1, su2 =>
 --        f_spec (S x) (S y) = f_spec x y
---goal f_spec (S x) (S y) .=. f_spec x y
+goal f_spec (S x) (S y) .=. f_spec x y
+
