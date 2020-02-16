@@ -142,17 +142,20 @@ matchBlueprintWithTheory blueprint theory =
         compareAxioms bpAxs thyAxs
         compareGoals bpGls thyGls
         where
-            -- Duplication from Cyp.hs, refactor!
+            -- Duplication from Cyp.hs, REFACTOR!
             getTheoryContents readFunc thy context = errCtxtStr context $ do
                 res <- eitherToErr $ Parsec.parse cthyParser "" thy
                 dts <- fmap (++ defaultDataTypes) $ readDataType res
                 sigs <- readTypeSigs res
-                syms <- fmap (defaultConsts ++) $ readSym res
-                (_, consts, funsRawAlts) <- readFunc syms res
+                (_, consts, funsRawAlts) <- readFunc defaultConsts res
+
                 let consAs = getConsAssumptions dts
+                    consts' = nub $ consts ++ (map assumpName sigs)
+
                 funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
-                axs <- readAxiom consts res
-                gls <- readGoal consts res
+                
+                axs <- readAxiom consts' res
+                gls <- readGoal consts' res
                 return (dts \\ defaultDataTypes, sigs, funsAlts, axs, gls)
 
             compareDataTypes :: [DataType] -> [DataType] -> Err ()

@@ -91,25 +91,32 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     -- Read user type signatures
     typeSigs <- readTypeSigs mResult
 
-    -- Symbols
-    syms <- fmap (defaultConsts ++) $ readSym mResult
-
     -- Functions
-    (fundefs, consts, funsRawAlts) <- readFunc syms mResult
+    (fundefs, consts, funsRawAlts) <- readFunc defaultConsts mResult
     funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
     -- Bindings
-    let (expls, impls) = toBindings funsAlts typeSigs
+    let definedFunsNames = map fst funsAlts
+        abstractFunsNames = map assumpName $ filter 
+            (\(f :>: _) -> f `notElem` definedFunsNames)
+            typeSigs
+
+        funsAlts' = funsAlts ++ (map (\f -> (f, [])) abstractFunsNames)
+        (expls, impls) = toBindings funsAlts' typeSigs
+        -- Add type sigs to consts to support
+        -- declaring a function without providing
+        -- an implementation
+        consts' = nub $ consts ++ (map assumpName typeSigs)
     
     -- Axioms and Goals
-    axs <- readAxiom consts mResult
-    gls <- readGoal consts mResult
+    axs <- readAxiom consts' mResult
+    gls <- readGoal consts' mResult
 
     return $ Env 
         { datatypes = dts
         , explicitBindings = expls
         , implicitBindings = impls
         , axioms = fundefs ++ axs
-        , constants = nub $ consts
+        , constants = consts'
         , fixes = M.empty
         , goals = gls 
         }

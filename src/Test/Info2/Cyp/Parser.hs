@@ -34,7 +34,6 @@ import Test.Info2.Cyp.Typing.Inference --(Assump(..), assumpName, quantifyAll, p
 
 data ParseDeclTree
     = DataDecl String
-    | SymDecl String
     | Axiom String String
     | FunDef String
     | Goal String
@@ -141,8 +140,7 @@ cthyParsers = do
     result <- 
         (   goalParser 
         <|> dataParser 
-        <|> axiomParser 
-        <|> symParser 
+        <|> axiomParser
         <|> try typeSigParser 
         <|> try funParser)
     manySpacesOrComment
@@ -167,9 +165,6 @@ dataParser = keywordToEolParser "data" DataDecl
 
 goalParser :: Parsec [Char] () ParseDeclTree
 goalParser = keywordToEolParser "goal" Goal
-
-symParser :: Parsec [Char] () ParseDeclTree
-symParser = keywordToEolParser "declare_sym" SymDecl
 
 funParser :: Parsec [Char] () ParseDeclTree
 funParser = do
@@ -605,17 +600,6 @@ readGoal consts = sequence . map (fmap $ interpretProp declEnv)  . mapMaybe pars
   where
     parseGoal (Goal s) = Just $ iparseProp (defaultToFree consts) s
     parseGoal _ = Nothing
-
-readSym :: [ParseDeclTree] -> Err [String]
-readSym = sequence . mapMaybe parseSym
-  where
-    parseSym (SymDecl s) = Just $ do
-        term <- iparseTerm (Right . Const) s
-        case term of
-            Const v -> Right v
-            _ -> errStr $ "Expression '" ++ s ++ "' is not a symbol"
-    parseSym _ = Nothing
-
 
 readFuncWithExpTranslation ::
         ((String -> Err RawTerm) -> Exts.Exp -> Err RawTerm)

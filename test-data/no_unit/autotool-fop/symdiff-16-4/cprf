@@ -1,3 +1,7 @@
+------------------------------------------------------------------
+-- Implementation conforms to spec
+------------------------------------------------------------------
+
 Lemma symdiff_sym: symdiff x y .=. symdiff y x
 
 Proof by induction on x :: N generalizing y :: N
@@ -58,4 +62,29 @@ Proof by induction on x :: N
       (by def pred)    .=. symdiff x (plus x y)
       (by IH)          .=. y
     QED
+QED
+
+
+
+
+------------------------------------------------------------------
+-- Spec uniqueness
+------------------------------------------------------------------
+
+-- spec2 => f_spec Z y .=. y
+--
+--   Assumes su1_pred: spec2
+--
+--Lemma spec_unique_1: f_spec Z y .=. y
+--
+--Proof
+--f_spec Z y
+--(by su1_pred) .=. f_spec 
+--QED
+
+Lemma test: f_spec x (plus x y) .=. y
+
+Proof
+f_spec x (plus x y)
+(by su1_pred) .=. y
 QED

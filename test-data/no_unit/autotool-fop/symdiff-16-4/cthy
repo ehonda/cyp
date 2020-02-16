@@ -23,3 +23,34 @@ goal symdiff x y .=. symdiff y x
 
 -- Lemma symdiff_plus (spec2):
 goal symdiff x (plus x y) .=. y
+
+
+
+------------------------------------------------------------------------
+-- Spec uniqueness
+--    These lemmas could (if cyp had
+--    predicate logic) be used to show
+--    that the spec implies that if any
+--    function conforms to it then it is
+--    unique.
+--    Since cyp doesn't haev predicate
+--    logic we have to work around that
+--    by defining axioms representing
+--    the predicates of the implications
+--    we want to prove. These can't be
+--    used in any other proof
+--    We refer to a function conforming
+--    to the spec here as f_spec
+------------------------------------------------------------------------
+
+-- f_spec declaration
+f_spec :: N -> N -> N
+
+-- Lemma spec_unique_1 (su1):
+--    spec2 => f_spec Z y = y
+-----------------------------------------
+axiom su1_pred: f_spec x (plus x y) .=. y
+--goal f_spec Z y .=. y
+
+-- test
+goal f_spec x (plus x y) .=. y

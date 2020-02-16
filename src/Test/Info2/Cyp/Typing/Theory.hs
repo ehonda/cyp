@@ -21,6 +21,9 @@ import Test.Info2.Cyp.Util
 getTheoryAssumps :: Env -> Err [Assump]
 getTheoryAssumps env = do
     let consAs = getConsAssumptions $ datatypes env
+        -- Need to add assumps from type sigs as well
+        -- to support declared but not defined functions
+        --consAs' = ()
     funAs <- runTI $ withErrorContext errContext $ typeCheckBindings env
     return (consAs ++ funAs)
     where
