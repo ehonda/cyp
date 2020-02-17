@@ -4,25 +4,43 @@ plus :: N -> N -> N
 plus Z y = y
 plus (S x) y = S (plus x y)
 
--- This is a function conforming to
--- the symdiff spec
------------------------------------
+-------------------------------------------------
+-- Definition of the original symdiff and
+-- declaration of a function (without definition)
+-- that conforms to the spec as well
+-------------------------------------------------
+symdiff :: N -> N -> N
+symdiff Z y = y
+symdiff x Z = x
+symdiff (S x) (S y) = symdiff x y
+
 sd :: N -> N -> N
 axiom spec1: sd x y .=. sd y x
 axiom spec2: sd x (plus x y) .=. y
 
+-------------------------------------------------
 -- We then show that this function
 -- has the implementation of symdiff
------------------------------------
+-------------------------------------------------
+
+-- First, Second branch
+------------------------
 -- Lemma sd_left_id:
 goal sd Z y .=. y
 
 -- Lemma sd_right_id:
 goal sd x Z .=. x
 
+-- Third branch
+------------------------
 -- Lemma sd_sx_splusxy:
 goal sd (S x) (S (plus x y)) .=. sd x (plus x y)
 
 -- Lemma sd_sx_sy:
 axiom sd_switch_succ: sd (S x) y .=. sd x (S y)
 goal sd (S x) (S y) .=. sd x y
+
+-- Equality of functions
+------------------------
+-- Lemma sd_eq_symdiff:
+goal sd .=. symdiff
