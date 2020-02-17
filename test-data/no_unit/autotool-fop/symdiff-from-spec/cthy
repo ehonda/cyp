@@ -1,0 +1,28 @@
+data N = Z | S N
+
+plus :: N -> N -> N
+plus Z y = y
+plus (S x) y = S (plus x y)
+
+-- This is a function conforming to
+-- the symdiff spec
+-----------------------------------
+sd :: N -> N -> N
+axiom spec1: sd x y .=. sd y x
+axiom spec2: sd x (plus x y) .=. y
+
+-- We then show that this function
+-- has the implementation of symdiff
+-----------------------------------
+-- Lemma sd_left_id:
+goal sd Z y .=. y
+
+-- Lemma sd_right_id:
+goal sd x Z .=. x
+
+-- Lemma sd_sx_splusxy:
+goal sd (S x) (S (plus x y)) .=. sd x (plus x y)
+
+-- Lemma sd_sx_sy:
+axiom sd_switch_succ: sd (S x) y .=. sd x (S y)
+goal sd (S x) (S y) .=. sd x y

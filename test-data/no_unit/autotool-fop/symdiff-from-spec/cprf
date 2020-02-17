@@ -1,0 +1,57 @@
+Lemma sd_left_id: sd Z y .=. y
+
+Proof
+                    sd Z y
+  (by def plus) .=. sd Z (plus Z y)
+  (by spec2)    .=. y
+QED
+
+
+Lemma sd_right_id: sd x Z .=. x
+
+Proof
+                      sd x Z
+  (by spec1)      .=. sd Z x
+  (by sd_left_id) .=. x
+QED
+
+
+Lemma sd_sx_splusxy: sd (S x) (S (plus x y)) .=. sd x (plus x y)
+
+Proof
+                    sd (S x) (S (plus x y))
+  (by def plus) .=. sd (S x) (plus (S x) y)
+  (by spec2)    .=. y
+  (by spec2)    .=. sd x (plus x y)
+QED
+
+
+Lemma sd_sx_sy: sd (S x) (S y) .=. sd x y
+
+Proof by induction on x :: N generalizing y :: N
+  Case Z
+    For fixed y :: N
+    Show: sd (S Z) (S y) .=. sd Z y
+
+    Proof
+                             sd (S Z) (S y)
+      (by def plus)      .=. sd (S Z) (S (plus Z y))
+      (by sd_sx_splusxy) .=. sd Z (plus Z y)
+      (by def plus)      .=. sd Z y
+    QED
+
+  Case S x
+    Fix x :: N
+    Assume
+      IH: forall y :: N: sd (S x) (S y) .=. sd x y
+
+    Then for fixed y :: N
+    Show: sd (S (S x)) (S y) .=. sd (S x) y
+
+    Proof
+                              sd (S (S x)) (S y)
+      (by sd_switch_succ) .=. sd (S x) (S (S y))
+      (by IH)             .=. sd x (S y)
+      (by sd_switch_succ) .=. sd (S x) y
+    QED
+QED
