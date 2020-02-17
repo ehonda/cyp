@@ -16,7 +16,7 @@ Proof
 QED
 
 
-Lemma sd_sx_splusxy: sd (S x) (S (plus x y)) .=. sd x (plus x y)
+Lemma sd_sx_sy_2nd_arg: sd (S x) (S (plus x y)) .=. sd x (plus x y)
 
 Proof
                     sd (S x) (S (plus x y))
@@ -26,34 +26,13 @@ Proof
 QED
 
 
-Lemma sd_sx_sy: sd (S x) (S y) .=. sd x y
+Lemma sd_sx_sy_1st_arg: sd (S (plus y x)) (S y) .=. sd (plus y x) y
 
-Proof by induction on x :: N generalizing y :: N
-  Case Z
-    For fixed y :: N
-    Show: sd (S Z) (S y) .=. sd Z y
-
-    Proof
-                             sd (S Z) (S y)
-      (by def plus)      .=. sd (S Z) (S (plus Z y))
-      (by sd_sx_splusxy) .=. sd Z (plus Z y)
-      (by def plus)      .=. sd Z y
-    QED
-
-  Case S x
-    Fix x :: N
-    Assume
-      IH: forall y :: N: sd (S x) (S y) .=. sd x y
-
-    Then for fixed y :: N
-    Show: sd (S (S x)) (S y) .=. sd (S x) y
-
-    Proof
-                              sd (S (S x)) (S y)
-      (by sd_switch_succ) .=. sd (S x) (S (S y))
-      (by IH)             .=. sd x (S y)
-      (by sd_switch_succ) .=. sd (S x) y
-    QED
+Proof
+                            sd (S (plus y x)) (S y)
+  (by spec1)            .=. sd (S y) (S (plus y x))
+  (by sd_sx_sy_2nd_arg) .=. sd y (plus y x)
+  (by spec1)            .=. sd (plus y x) y
 QED
 
 

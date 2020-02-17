@@ -1,10 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 
+import Control.Monad.Trans.Except
 import Control.Monad.State
 import qualified Text.Parsec as Parsec
 import Text.PrettyPrint.HughesPJ
 import qualified Language.Haskell.Exts.Simple.Syntax as Exts
 import qualified Language.Haskell.Exts.Simple.Parser as P
+import Data.Either
 
 import Test.Info2.Cyp.Blueprint.Blueprint
 import Test.Info2.Cyp.Env
@@ -437,3 +439,19 @@ stepSeq = Step x r1 $ Single y
         x = Free "x"
         y = Free "y"
         r1 = "def r1"
+
+
+-- error context demo
+errorContextDemo :: TI a
+errorContextDemo =
+    withErrorContext (context 0) $
+        withErrorContext (context 1) $
+            liftWithContexts $ throwE $ text "Error"
+            where
+                context :: Int -> Doc
+                context n = hsep $ map text $ ["Context", show n]
+
+-- *Main> fromLeft empty $ runTI $ errorContextDemo 
+-- Context 0
+--     Context 1
+--         Error

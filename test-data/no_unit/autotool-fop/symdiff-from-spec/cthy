@@ -33,14 +33,17 @@ goal sd x Z .=. x
 
 -- Third branch
 ------------------------
--- Lemma sd_sx_splusxy:
+-- Lemma sd_sx_sy_2nd_arg:
 goal sd (S x) (S (plus x y)) .=. sd x (plus x y)
 
--- Lemma sd_sx_sy:
-axiom sd_switch_succ: sd (S x) y .=. sd x (S y)
-goal sd (S x) (S y) .=. sd x y
+-- Lemma sd_sx_sy_1st_arg:
+goal sd (S (plus y x)) (S y) .=. sd (plus y x) y
 
 -- Equality of functions
 ------------------------
+-- This could be proven with predicate logic
+-- from the two lemmas above
+axiom sd_sx_sy: sd (S x) (S y) .=. sd x y
+
 -- Lemma sd_eq_symdiff:
 goal sd .=. symdiff
