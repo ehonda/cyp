@@ -90,19 +90,9 @@ liftTI ti = do
 ------------------------------------------------------------
 typeCheckLemma :: ParseLemma -> ProofTC ()
 typeCheckLemma (ParseLemma name rawProp proof) = do 
-    --ptcWithErrorContext errContext $ do
     as <- getAssumps
     ptcProp as rawProp
     typeCheckProof proof
-    where
-        -- Don't need this, there is already an error
-        -- context about the lemma from outside
-        --errContext = hsep
-        --    [ text "Checking Lemma"
-        --    , text $ name ++ ":"
-        --    , quotes $ unparseRawProp rawProp
-        --    ]
-
 
 -- Original proposition is passed around so generalization
 -- variables can be checked in induction proofs
@@ -124,7 +114,7 @@ typeCheckEquationalProof reqns = ptcWithErrorContext errContext $ do
     as <- getAssumps
     liftTI $ tiEquations as eqns
     where
-        errContext = text "Type checking equational proof"
+        errContext = text "While typechecking equational proof"
 
         eqns = fmap interpretTermDefault reqns
 
@@ -139,20 +129,25 @@ typeCheckEquationalProof reqns = ptcWithErrorContext errContext $ do
 
 typeCheckExtensionalProof :: Assump -> RawProp -> ParseProof -> ProofTC ()
 typeCheckExtensionalProof varAssump rawProp proof = 
-    ptcWithErrorContext errToShow $ do
+    ptcWithErrorContext errExt $ do
     -- Add assumptions about ext var
     addAssump varAssump
     as <- getAssumps
 
     -- Typecheck to show
-    ptcProp as rawProp
+    ptcWithErrorContext errToShow $ ptcProp as rawProp
     
     typeCheckProof proof
     where
+        errExt = hsep $ map text
+            [ "While typechecking extensional proof on"
+            , prettyAssump' varAssump
+            ]
+
         errToShow :: Doc
-        errToShow = capIndent 
-            "While checking 'To Show:' under the assumption:"
-            [assumpDoc varAssump]
+        errToShow = hsep
+            [ text "While checking"
+            , quotes $ text $ "To Show:" ]
 
 
 typeCheckCasesProof :: Scheme -> RawTerm -> [ParseCase] -> ProofTC ()

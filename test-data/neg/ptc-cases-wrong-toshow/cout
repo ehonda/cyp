@@ -1,7 +1,6 @@
 Lemma : not . not .=. id
     While typechecking the proof
-        While checking 'To Show:' under the assumption:
-            x :: Bool
+        While typechecking extensional proof on x :: Bool
             While typechecking case analysis on x :: Bool
                 While typechecking the case 'True'
                     While typechecking the assumption

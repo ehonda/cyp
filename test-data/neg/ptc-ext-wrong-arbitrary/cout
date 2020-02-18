@@ -1,14 +1,14 @@
 Lemma : not . not .=. id
     While typechecking the proof
-        While checking 'To Show:' under the assumption:
-            x :: a
-            While typechecking the proposition:
-                (not . not) x .=. id x
-                While inferring the type of the term:
-                    (not . not) x
-                    While unifying:
-                        expected = a -> v6
-                        actual = Bool -> Bool
-                        Types do not unify:
-                            t = a
-                            s = Bool
+        While typechecking extensional proof on x :: a
+            While checking 'To Show:'
+                While typechecking the proposition:
+                    (not . not) x .=. id x
+                    While inferring the type of the term:
+                        (not . not) x
+                        While unifying:
+                            expected = a -> v6
+                            actual = Bool -> Bool
+                            Types do not unify:
+                                t = a
+                                s = Bool

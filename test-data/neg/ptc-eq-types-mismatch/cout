@@ -1,6 +1,6 @@
 Lemma : z : zs .=. zs ++ z : []
     While typechecking the proof
-        Type checking equational proof
+        While typechecking equational proof
             While checking the type of a term:
                 term = zs ++ z : []
                 While unifying:
