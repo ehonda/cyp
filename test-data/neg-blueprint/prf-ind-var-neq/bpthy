@@ -4,6 +4,7 @@ length (x:xs) = 1 + length xs
 [] ++ ys = ys
 (x:xs) ++ ys = x : xs ++ ys
 
+(+) :: Int -> Int -> Int
 axiom arith: 0 + b .=. b
 axiom arith: (a + b) + c .=. a + (b + c)
 

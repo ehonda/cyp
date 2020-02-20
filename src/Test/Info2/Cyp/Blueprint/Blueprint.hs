@@ -147,7 +147,9 @@ matchBlueprintWithTheory blueprint theory =
                 res <- eitherToErr $ Parsec.parse cthyParser "" thy
                 dts <- fmap (++ defaultDataTypes) $ readDataType res
                 sigs <- readTypeSigs res
-                (_, consts, funsRawAlts) <- readFunc defaultConsts res
+
+                let rfConsts = defaultConsts ++ (map assumpName sigs)
+                (_, consts, funsRawAlts) <- readFunc rfConsts res
 
                 let consAs = getConsAssumptions dts
                     consts' = nub $ consts ++ (map assumpName sigs)

@@ -60,114 +60,13 @@ parseTransform content f = do
     f result
 
 parseDataTypes c = parseTransform c readDataType
---parseSymbols c = parseTransform c readSym
-----
-----parseFuncsConsts c = parseTransform c $ \r -> do
-----    syms <- fmap (defaultConsts ++) $ readSym r
-----    readFunc syms r
---
---parseFuncs c = do
---    (fs, _, _) <- parseFuncsConsts c
---    return fs
---
---parseConsts c = do
---    (_, cs, _) <- parseFuncsConsts c
---    return cs
---
---parseAxioms c = do
---    (_, cs, _) <- parseFuncsConsts c
---    parseTransform c $ readAxiom cs
---
---parseGoals c = do
---    (_, cs, _) <- parseFuncsConsts c
---    parseTransform c $ readGoal cs
---
---inspectTheory path f = do
---    c <- readFile path
---    case f c of
---        Right nodes -> mapM_ print nodes
---        Left err -> print err
---    
---thyParse path = do
---    c <- readFile path
---    case eitherToErr $ Parsec.parse cthyParser path c of
---        Right nodes -> mapM_ print nodes
---        Left err -> print err
---
---envTheory path = do
---    thy <- readFile path
---    case processMasterFile "thy" thy of
---        Right env -> print env
---        Left err -> print err
---
+
 getEnv path = do
     thy <- readFile path
     case processMasterFile "thy" thy of
         Right env -> return env
         Left _ -> return declEnv
---    
---
----- Proof file inspection as in processProofFile
------------------------------------------------------------------
---
---parseProof thy prf = do
---    env <- processMasterFile "thy" thy
---    processProofFile env "prf" prf
---
---inspectProof pthy pprf = do
---    thy <- readFile pthy
---    prf <- readFile pprf
---    case parseProof thy prf of
---        Right ls -> mapM_ print ls
---
---
----- Inspect checkProof stuff
------------------------------------------------------------------
---
----- let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
-----declareEqns _ ParseCheating _ = err $ text "Cheating"
---declareEqns prop (ParseEquation reqns) env = do
---    let (eqns, env') = runState (traverse (state . declareTerm) reqns) env
---    return eqns
-----declareEqns prop (ParseExt withRaw toShowRaw proof) = do
---
---
---declEqns :: String -> Env -> Err (EqnSeqq Term)
---declEqns prf env = do
---    -- processProofFile
---    lemmas <- eitherToErr $ Parsec.runParser cprfParser env "" prf
---    -- checkProofs
---    case lemmas of
---        [] -> return $ EqnSeqq (Single (Const "Err")) Nothing
---        (l@(ParseLemma name rprop proof) : ls) -> do
---            -- checkLemma
---            let (prop, env') = declareProp rprop env
---            -- checkProof
---            declareEqns prop proof env'
---
----- rewrite stuff
-----rewriteEqns prf env = do
-----    let t1 = Application (Application (Const ":") (Free ("z",0))) (Free ("zs",0))
-----    return $ rewrite t1 $ ((axioms env) !! 0)
---
---testRe1 =
---    let t = Free ("z", 0)
---    in case rewriteTop t (Prop t t) of
---        Just t' -> print t'
---        Nothing -> print "rewrite failed"
 
---testRe2 =
---    let lhs = Application (Application (Const "+") (Literal (Int () 0 "0"))) (Schematic ("b",0))
---        rhs = Schematic ("b",0)
---    in case rewriteTop lhs (Prop lhs rhs) of
---        Just t' -> print t'
---        Nothing -> print "rewrite failed"
-        
-
---tiSeq :: String -> Env -> Err [TI Type]
---tiSeq prf env = do
---    eqns <- declEqns prf env
---    
 
 inspectProofFunc pthy pprf f = do
     thy <- readFile pthy
@@ -228,63 +127,6 @@ testTCBindings path = do
 
 prettyIOAssumps :: IO (Err [Assump]) -> IO (Err [String])
 prettyIOAssumps = fmap (fmap (map prettyAssump))
-
--- TI EXPL BINDING
-----------------------------------------
---testExplBinding path = do
---    env <- getEnv path
---    return $ testExplBinding' env
---
---testExplBinding' env = runTI $ 
---    mapM (tiExplBind as) expls
---    where
---        funAlts = functionsAlts env
---        typeSigs = typeSignatures env
---        as = getConsAssumptions $ datatypes env
---
---        expls = zip typeSigs $ map snd funAlts
-
--- TI IMPL BINDING
-----------------------------------------
---testImplBinding path = do
---    env <- getEnv path
---    return $ testImplBinding' env
---
---testImplBinding' env = runTI $ 
---    tiImplBinds as impls
---    where
---        --tv = TVar $ Tyvar "a" Star
---        --sigD = "d" :>: quantifyAll (tv `fn` tv)
---        --as = sigD : (getConsAssumptions $ datatypes env)
---        as = getConsAssumptions $ datatypes env
---
---        impls = functionsAlts env
-
--- TI BIND GROUP
-----------------------------------------
-
--- prettyIOAssumps $ testTIBindGroup tcFunDouble
-
---testTIBindGroup path = do
---    env <- getEnv path
---    return $ testTIBindGroup' env
---
---testTIBindGroup' env = runTI $
---    tiBindGroup as bg
---    where
---        as = getConsAssumptions $ datatypes env
---        funAlts = functionsAlts env
---        --typeSigs = typeSignatures env
-----
---        --expls = zip typeSigs $ map snd funAlts
---        impls = functionsAlts env
---
---        -- succeeds, d in bindgroup before t
---        --bg = ([], map (\a -> [a]) impls)
---
---        -- Fails, all in same bindgroup
---        bg = ([], [impls])
---
 
 
 -- MAKE DEP GRAPH

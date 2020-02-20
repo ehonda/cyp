@@ -1,1 +1,2 @@
+(++) :: [a] -> [a] -> [a]
 axiom app_snoc: xs ++ [x] .=. (x:xs)

@@ -205,13 +205,6 @@ equationProofParser = fmap ParseEquation equationsParser
 equationProofParserBlueprint :: Parsec [Char] Env ParseProof
 equationProofParserBlueprint = fmap ParseEquation equationsParserBlueprint
 
-varParser = fmap (\v -> if v `elem` defaultConsts then Const v else Free v) idParser
-varsParser = varParser `sepBy1` (keyword ",")
-
---inductionProofParser :: Parsec [Char] Env ParseProof
---inductionProofParser = inductionProofParserWithEqnPrfParser 
---    equationProofParser
-
 inductionProofParserWithProofParser :: 
     Parsec [Char] Env ParseProof
     -> Parsec [Char] Env ParseProof
@@ -297,7 +290,6 @@ propGenParser :: PropParserMode -> Parsec [Char] Env ([Assump], RawProp)
 propGenParser mode = do
     gensSigs <- option [] (do
       keyword "forall"
-      --gens <- varsParser
       gensSigs <- typeSigsToParser1 gensEnd unexpectedMsg
       char ':'
       lineSpaces

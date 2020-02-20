@@ -10,7 +10,6 @@ module Test.Info2.Cyp.Term where
 --    , collectFrees
 --    , collectFreesProp
 --    , constSymbols
---    , defaultConsts
 --    , defaultToFree
 --    , generalizeExcept
 --    , generalizeExceptProp
@@ -258,10 +257,10 @@ generalizeOnlyProp vs = propMap (generalizeOnly vs)
 
 {- Parsing ----------------------------------------------------------}
 
+-- TODO: Since this is now only symPropEq, this could be removed
+-- and handled another way.
 defaultConsts :: [String]
---defaultConsts = symPropEq : map (\(Fixity _ _ qName) -> translateQName qName) baseFixities
-defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
--- TODO: Do we want to allow <, <=, etc. as well?
+defaultConsts = [symPropEq]
 
 iparseTermRawWithTranslation ::
         ((String -> Err (AbsTerm a)) -> Exts.Exp -> Err (AbsTerm a))

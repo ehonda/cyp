@@ -92,8 +92,16 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
     typeSigs <- readTypeSigs mResult
 
     -- Functions
-    (fundefs, consts, funsRawAlts) <- readFunc defaultConsts mResult
+    -- TODO: This should be done cleaner. Need to add type
+    --       sigs so abstract functions are recognized as such
+    --       when used in the definition of a concrete function
+    --
+    --      also the kind of same thing is done further down,
+    --      with abstractFunsNames and consts' -> REFACTOR
+    let rfConsts = defaultConsts ++ (map assumpName typeSigs)
+    (fundefs, consts, funsRawAlts) <- readFunc rfConsts mResult
     funsAlts <- traverse (convertFunctionRawAlts consAs) funsRawAlts
+
     -- Bindings
     let definedFunsNames = map fst funsAlts
         abstractFunsNames = map assumpName $ filter 

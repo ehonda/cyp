@@ -1,8 +1,0 @@
-While typechecking the proposition:
-    xs ++ ys .=. 0
-    While unifying:
-        expected = [v2]
-        actual = Int
-        Types do not unify:
-            t = [v2]
-            s = Int

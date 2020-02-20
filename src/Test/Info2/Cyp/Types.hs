@@ -56,42 +56,6 @@ defaultDataTypes =
         scListA = quantifyAll tListA
 
 
---defaultConsts = [symPropEq, symIf, ".", "*", "/", "+", "-", "++", "==", "/="]
-defaultConstAssumps :: [Assump]
-defaultConstAssumps =
-    [ -- if :: Bool -> a -> a -> a
-      symIf :>: quantifyAll (tBool `fn` a `fn` a `fn` a)
-      -- (.) :: (b -> c) -> (a -> b) -> a -> c 
-    , "." :>: quantifyAll ((b `fn` c) `fn` (a `fn` b) `fn` a `fn` c)
-      -- BinOps without typeclasses are all :: a -> a -> a
-      --    -> Missing constraints like Num a, Fractional a
-    , "*" :>: scBinOp
-    , "/" :>: scBinOp
-    , "+" :>: scBinOp
-    , "-" :>: scBinOp
-      -- (++) :: [a] -> [a] -> [a]
-    , "++" :>: quantifyAll (tListA `fn` tListA `fn` tListA)
-      -- The comparison operators miss the Eq a constraint
-      -- TODO: Should bool be default datatype?
-    , "==" :>: quantifyAll (a `fn` a `fn` tBool)
-    , "/=" :>: quantifyAll (a `fn` a `fn` tBool)
-    ]
-    where
-        a = TVar $ Tyvar "a" Star
-        b = TVar $ Tyvar "b" Star
-        c = TVar $ Tyvar "c" Star
-        scBinOp = quantifyAll (a `fn` a `fn` a)
-        -- TODO: Duplication from default datatype
-        tListA = TAp tList tvarA
-        tBool = TCon (Tycon "Bool" Star)
-
-
--- This is mostly for debugging purposes
-showWithoutDefaults :: [Assump] -> String
-showWithoutDefaults as = show $ map prettyAssump' $
-    as \\ defaultConstAssumps
-
-
 data Named a = Named String a
     deriving Show
 
@@ -272,7 +236,7 @@ convertRawAlt consAs (pats, rhs) = do
 
 
 getConsAssumptions :: [DataType] -> [Assump]
-getConsAssumptions dts = dconsAs ++ defaultConstAssumps
+getConsAssumptions dts = dconsAs
     where
         dconsAs = concat $ map dtConss dts
 
