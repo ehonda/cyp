@@ -1,0 +1,7 @@
+data X = X
+
+f :: X -> X
+f :: a -> a
+f X = X
+
+goal f X .=. X

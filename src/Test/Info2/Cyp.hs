@@ -90,6 +90,16 @@ processMasterFile path content = errCtxtStr "Parsing background theory" $ do
 
     -- Read user type signatures
     typeSigs <- readTypeSigs mResult
+    -- Check for duplicate type sigs
+    let sigGroups = groupBy
+            (\a a' -> assumpName a == assumpName a')
+            typeSigs
+
+        checkGroup :: [Assump] -> Err ()
+        checkGroup g = unless (length g == 1) $
+            errCtxtStr "Duplicate type signatures:" $
+                err $ vcat $ map assumpDoc g
+    mapM_ checkGroup sigGroups
 
     -- Functions
     -- TODO: This should be done cleaner. Need to add type

@@ -1,0 +1,13 @@
+Lemma contradiction_f: False .=. True
+Proof
+                 False
+  (by def f) .=. f False
+  (by def f) .=. True
+QED
+
+Lemma contradiction_g: False .=. True
+Proof
+  False
+  (by gf) .=. g False
+  (by gx) .=. True
+QED

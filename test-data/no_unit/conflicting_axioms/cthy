@@ -1,0 +1,14 @@
+data Bool = False | True
+
+f :: Bool -> Bool
+f x = True
+f False = False
+
+-- The definition of f leads
+-- to the following axioms
+-- being introduced
+g :: Bool -> Bool
+axiom gx: g x .=. True
+axiom gf: g False .=. False
+
+goal False .=. True

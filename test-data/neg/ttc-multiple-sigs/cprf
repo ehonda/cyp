@@ -1,0 +1,5 @@
+Lemma triv: f X .=. X
+Proof
+                 f X
+  (by def f) .=. X
+QED

@@ -1,0 +1,4 @@
+Parsing background theory
+    Duplicate type signatures:
+        f :: X -> X
+        f :: forall v0. v0 -> v0
