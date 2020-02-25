@@ -1,0 +1,49 @@
+data N = Z | S N
+
+plus :: N -> N -> N
+plus Z y = y
+plus (S x) y = S (plus x y)
+
+-------------------------------------------------
+-- Definition of the original symdiff and
+-- declaration of a function (without definition)
+-- that conforms to the spec as well
+-------------------------------------------------
+symdiff :: N -> N -> N
+symdiff Z y = y
+symdiff x Z = x
+symdiff (S x) (S y) = symdiff x y
+
+sd :: N -> N -> N
+axiom spec1: sd x y .=. sd y x
+axiom spec2: sd x (plus x y) .=. y
+
+-------------------------------------------------
+-- We then show that this function
+-- has the implementation of symdiff
+-------------------------------------------------
+
+-- First, Second branch
+------------------------
+-- Lemma sd_left_id:
+goal sd Z y .=. y
+
+-- Lemma sd_right_id:
+goal sd x Z .=. x
+
+-- Third branch
+------------------------
+-- Lemma sd_sx_sy_2nd_arg:
+goal sd (S x) (S (plus x c)) .=. sd x (plus x c)
+
+-- Lemma sd_sx_sy_1st_arg:
+goal sd (S (plus y c)) (S y) .=. sd (plus y c) y
+
+-- Equality of functions
+------------------------
+-- This could be proven with predicate logic
+-- from the two lemmas above
+axiom sd_sx_sy: sd (S x) (S y) .=. sd x y
+
+-- Lemma sd_eq_symdiff:
+goal sd .=. symdiff

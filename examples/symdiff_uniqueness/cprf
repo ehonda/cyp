@@ -1,0 +1,96 @@
+Lemma sd_left_id: sd Z y .=. y
+
+Proof
+                    sd Z y
+  (by def plus) .=. sd Z (plus Z y)
+  (by spec2)    .=. y
+QED
+
+
+Lemma sd_right_id: sd x Z .=. x
+
+Proof
+                      sd x Z
+  (by spec1)      .=. sd Z x
+  (by sd_left_id) .=. x
+QED
+
+
+Lemma sd_sx_sy_2nd_arg: sd (S x) (S (plus x c)) .=. sd x (plus x c)
+
+Proof
+                    sd (S x) (S (plus x c))
+  (by def plus) .=. sd (S x) (plus (S x) c)
+  (by spec2)    .=. c
+  (by spec2)    .=. sd x (plus x c)
+QED
+
+
+Lemma sd_sx_sy_1st_arg: sd (S (plus y c)) (S y) .=. sd (plus y c) y
+
+Proof
+                            sd (S (plus y c)) (S y)
+  (by spec1)            .=. sd (S y) (S (plus y c))
+  (by sd_sx_sy_2nd_arg) .=. sd y (plus y c)
+  (by spec1)            .=. sd (plus y c) y
+QED
+
+
+Lemma sd_eq_symdiff: sd .=. symdiff
+
+Proof by extensionality with x :: N
+  Show: sd x .=. symdiff x
+
+  Proof by extensionality with y :: N
+    Show: sd x y .=. symdiff x y
+
+    Proof by induction on x :: N generalizing y :: N
+      Case Z
+        For fixed y :: N
+        Show: sd Z y .=. symdiff Z y
+
+        Proof
+                               sd Z y
+          (by sd_left_id)  .=. y
+          (by def symdiff) .=. symdiff Z y
+        QED
+
+      Case S x
+        Fix x :: N
+        Assume
+          IH_x: forall y :: N: sd x y .=. symdiff x y
+        
+        Then for fixed y :: N
+        Show: sd (S x) y .=. symdiff (S x) y
+
+        Proof by case analysis on y :: N
+          Case Z
+            Assume
+              AS_y: y .=. Z
+            Then
+
+            Proof
+                                   sd (S x) y
+              (by AS_y)        .=. sd (S x) Z
+              (by sd_right_id) .=. S x
+              (by def symdiff) .=. symdiff (S x) Z
+              (by AS_y)        .=. symdiff (S x) y
+            QED
+
+          Case S y'
+            Assume
+              AS_y: y .=. S y'
+            Then
+
+            Proof
+                                   sd (S x) y
+              (by AS_y)        .=. sd (S x) (S y')
+              (by sd_sx_sy)    .=. sd x y'
+              (by IH_x)        .=. symdiff x y'
+              (by def symdiff) .=. symdiff (S x) (S y')
+              (by AS_y)        .=. symdiff (S x) y
+            QED
+        QED
+    QED
+  QED
+QED

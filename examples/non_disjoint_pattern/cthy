@@ -1,0 +1,28 @@
+-- This example highlights one of the limitations of CYP,
+-- namely that the following function definitions with
+-- non-disjoint pattern in the lhs aren't treated the way
+-- ghc(i) would treat them
+data Bool = False | True
+
+-- More general first
+f x = True
+f False = False
+
+-- More general last
+g False = False
+g x = True
+
+
+-- In ghc(i), this would lead to the second branch of f
+-- being ignored, and (g x) being True iff x is True. In
+-- CYP however, both declarations are the same as intro-
+-- ducing an abstract function h and declaring the follow-
+-- ing conflicting axioms about it
+h :: Bool -> Bool
+axiom h_x: h x .=. True
+axiom h_False: h False .=. False
+
+
+-- We can then prove the following contradiction, using
+-- any of the above definitions as is shown in cprf
+goal False .=. True

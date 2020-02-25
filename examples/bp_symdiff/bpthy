@@ -1,0 +1,18 @@
+data N = Z | S N
+
+plus :: N -> N -> N
+plus Z y = y
+plus (S x) y = S (plus x y)
+
+symdiff :: N -> N -> N
+symdiff Z y = _
+symdiff x Z = _
+symdiff (S x) (S y) = _
+
+-- Lemma symdiff_sym (spec1):
+--    -> symdiff is symmetric in x, y
+goal symdiff x y .=. symdiff y x
+
+-- Lemma symdiff_plus (spec2):
+--    -> symdiff x y' = y' - x for y' >= x
+goal symdiff x (plus x y) .=. y
