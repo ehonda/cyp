@@ -530,14 +530,22 @@ tiAlt as alt@(pats, term) = withErrorContext errContext $ do
         
 
 tiAlts :: [Assump] -> [Alt] -> Type -> TI ()
-tiAlts as alts t = do
+tiAlts as alts t = withErrorContext errContextOuter $ do
     ts <- mapM (tiAlt as) alts
-    mapM_ (\(tAlt, alt) -> withErrorContext (errContext alt) $ unify t tAlt) $ 
-        zip ts alts
+    mapM_ checkAlt $ zip ts alts
     where
-        errContext alt = capIndent
+        errContextOuter = capIndent
+            "While typechecking the function (represented by <f>) alternatives"
+            [ typeDoc "Expected type" t
+            , capIndent "Alternatives:" $ map (altDocWithName "<f>") alts
+            ]
+
+        errContextInner alt = capIndent
             "While typechecking the function (represented by <f>) alternative"
             [altDocWithName "<f>" alt]
+
+        checkAlt (tAlt, alt) = withErrorContext 
+            (errContextInner alt) $ unify t tAlt
 
 
 -- TYPE INFERENCE FOR BINDINGS
@@ -703,7 +711,11 @@ prettyAssump' (i :>: sc) = concat [i, " :: ", prettyScheme sc]
 prettyPat :: Pat -> String
 prettyPat (PVar x) = x
 prettyPat (PLit l) = ExtsPretty.prettyPrint l
-prettyPat (PCon (c :>: _) ps) = intercalate " " $ c : (map prettyPat ps)
+prettyPat (PCon (c :>: _) ps) = if null ps
+    then c
+    else concat [ "(", conStr, ")"]
+    where
+        conStr = intercalate " " $ c : (map prettyPat ps)
 
 -- Alt
 ------------------------------------------------

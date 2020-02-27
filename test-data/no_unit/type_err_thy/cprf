@@ -1,0 +1,6 @@
+Lemma plus_one_eq_succ: S x .=. plus (S Z) x
+Proof
+                    S x
+  (by def plus) .=. S (plus Z x)
+  (by def plus) .=. plus (S Z) x
+QED

@@ -2,10 +2,10 @@ While matching blueprint theory with solution theory
     While matching the following functions:
         Blueprint plus alternatives:
             plus Z b = b
-            plus S a b = S (plus a b)
+            plus (S a) b = S (plus a b)
         Solution plus alternatives:
             plus Z Z = Z
-            plus S a b = S (plus a b)
+            plus (S a) b = S (plus a b)
         Left-hand side mismatch
             Blueprint:
                 Z b
