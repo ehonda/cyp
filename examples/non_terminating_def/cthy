@@ -1,0 +1,3 @@
+f x = f x
+
+goal f x .=. f x

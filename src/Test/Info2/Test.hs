@@ -297,3 +297,18 @@ errorContextDemo =
 -- Context 0
 --     Context 1
 --         Error
+
+
+
+
+
+-- Proof content
+
+showProofContent thyFile prfFile = do
+    thy <- readFile thyFile
+    prf <- readFile prfFile
+    return $ showProofContent' thy prf
+
+showProofContent' thy prf = do
+    env <- processMasterFile "thy" thy
+    return $ processProofFile env "prf" prf

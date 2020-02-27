@@ -1,0 +1,4 @@
+Lemma non_terminating: f x .=. f x
+Proof
+  f x
+QED
