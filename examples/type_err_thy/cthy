@@ -1,0 +1,6 @@
+data N = Z | S N
+
+plus 0 y = y
+plus (S x) y = S (plus x y)
+
+goal S x .=. plus (S Z) x
