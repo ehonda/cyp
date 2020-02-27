@@ -450,6 +450,12 @@ tiPats pats = do
 -- Type inference for Terms
 ---------------------------------
 
+-- Identifier
+tiIdentifier :: Infer Id Type
+tiIdentifier as x = do
+    sc <- liftWithContexts $ schemeFromAssumps x as
+    freshInst sc
+
 tiRawTerm :: Infer CT.RawTerm Type
 
 -- Literals
@@ -463,20 +469,10 @@ tiRawTerm as (CT.Literal l) = tiLit l
         tiLit l = liftWithContexts $ throwE $ text $ concat
             ["Unsupported literal: ", show l]
 
--- Free
-tiRawTerm as (CT.Free x) = do
-    sc <- liftWithContexts $ schemeFromAssumps x as
-    freshInst sc
-
--- Schematic
-tiRawTerm as (CT.Schematic x) = do
-    sc <- liftWithContexts $ schemeFromAssumps x as
-    freshInst sc 
-
--- Const
-tiRawTerm as (CT.Const x) = do
-    sc <- liftWithContexts $ schemeFromAssumps x as
-    freshInst sc
+-- Free, Schematic, Const
+tiRawTerm as (CT.Free x) = tiIdentifier as x
+tiRawTerm as (CT.Schematic x) = tiIdentifier as x
+tiRawTerm as (CT.Const x) = tiIdentifier as x
 
 -- Application
 tiRawTerm as (CT.Application e f) = do
