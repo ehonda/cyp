@@ -1,0 +1,28 @@
+Lemma foo_lem: foo t .=. True
+
+Proof by induction on t :: Tree a
+  Case Leaf
+    Show: foo Leaf .=. True
+
+    Proof
+                       foo Leaf
+      (by def foo) .=. True
+    QED
+
+  Case Branch l n r
+    Fix l, r :: Tree a, n :: a
+    Assume
+      IH_l: foo l .=. True
+      IH_r: foo r .=. True
+
+    Then
+    Show: foo (Branch l n r) .=. True
+
+    Proof
+                       foo (Branch l n r)
+      (by def foo) .=. (foo l) && (foo r)
+      (by IH_l)    .=. True && (foo r)
+      (by IH_r)    .=. True && True
+      (by def &&)  .=. True
+    QED
+QED

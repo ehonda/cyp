@@ -1,0 +1,19 @@
+----------------------------------------------------
+-- This example showcases a datatype with multiple
+-- recursive arguments to the Branch dataconstructor,
+-- yielding an induction proof with multiple IHs
+----------------------------------------------------
+
+data Bool = False | True
+data Tree a = Leaf | Branch (Tree a) a (Tree a)
+
+(&&) :: Bool -> Bool -> Bool
+False && b = False
+True && False = False
+True && True = True
+
+foo :: Tree a -> Bool
+foo Leaf = True
+foo (Branch l n r) = (foo l) && (foo r)
+
+goal foo t .=. True
