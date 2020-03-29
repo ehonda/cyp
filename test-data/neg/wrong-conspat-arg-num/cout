@@ -1,7 +1,7 @@
 While typechecking the theory
     While inferring the types of the implicit bindings f
         While typechecking the function (represented by <f>) alternatives
-            Expected type = v0
+            Expected type = v2
             Alternatives:
                 <f> X = Y
             While inferring the function (represented by <f>) alternative type

@@ -1,9 +1,9 @@
-resolver: lts-14.6
+resolver: lts-15.5
 allow-newer: true
 
 packages:
 - '.'
 
 extra-deps:
-- haskell-src-exts-simple-1.21.1.0
+- haskell-src-exts-simple-1.22.0.0
 

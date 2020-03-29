@@ -1,6 +1,6 @@
 module Test.Info2.Cyp.Typing.Theory where
 
-import Data.Either (lefts, rights)
+import Data.Either (lefts, rights, fromRight)
 import Data.List (find, nub)
 import qualified Data.List.NonEmpty as NL
 import Data.Maybe (fromMaybe)
@@ -101,7 +101,11 @@ makeBindGroups graph = groups
     where
         -- Since SCC gives an acylcic graph,
         -- topSort will always succeed
-        sortedSCCs = fromMaybe [] $
+        
+        -- old algebraic graphs used maybe here
+        --sortedSCCs = fromMaybe [] $
+        --    fmap reverse $ topSort $ scc graph
+        sortedSCCs = fromRight [] $
             fmap reverse $ topSort $ scc graph
 
         isExpl, isImpl :: DGVertex -> Bool
