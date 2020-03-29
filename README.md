@@ -101,6 +101,8 @@ goal foo t .=. True
 
 In the Haskell part, datatypes and functions can be declared using the common Haskell syntax. Not all valid Haskell declarations are supported by cyp, the above example covers most of what can be done. For simplicity, cyp assumes all type variables introduced by datatype declarations (eg. `a` in `Tree a` above) to be of kind `*`. It is possibly to provide a function type signature without declaring any equations for it, we call this an abstract function. These can then only be used via axioms declared about them.
 
+Line breaks within declarations (continuing one indentation level deeper on the next line, like it is possible in [standard](https://www.haskell.org/onlinereport/haskell2010/haskellch2.html#x7-210002.7) haskell) are not allowed in cyp.
+
 All datatypes and functions to be used in cyp have to be explicity declared, with the exception of the list datatype `[a]`, which is implicitly available in every cyp-theory.
 
 In the cyp part, axioms and goals can be declared. These are simply equations (using the cyp syntax `lhs .=. rhs` for equations). Axioms get a name and can then be referenced via that name in proofs, goals have no name and need to be proved by the proof provided to cyp.
@@ -108,7 +110,7 @@ In the cyp part, axioms and goals can be declared. These are simply equations (u
 Syntax of Proofs
 ================
 
-In this section, the syntax of Lemmas and the different types of proofs is presented. Concrete examples are linked to at the beginning of each subsection.
+In this section, the syntax of Lemmas and the different types of proofs is presented. Concrete examples are linked to at the beginning of each subsection. Some of the line breaks in the syntax for proofs are optional (e.g. the line break after `Then` in a `Case`), but most aren't. Any time a variable or term (with or without type signature) is read, they are parsed until the end of line (or until a delimiter, if several variables/terms with type signature can be written down in a list, like in `Fix`, or `generalizing`). In these cases, the line breaks are needed for a correct parse and thus not optional. In any case, it is recommended to also insert the optional line breaks as presented here, to improve readability.
 
 Lemmas
 ------

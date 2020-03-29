@@ -1,0 +1,35 @@
+Lemma: not . not .=. id
+
+Proof by extensionality with x :: Bool 
+  Show: (not . not) x .=. id x 
+
+  Proof by case analysis on x :: Bool
+		Case True 
+      Assume
+				AS: x .=. True 
+      Then Proof
+								         (not . not) x 
+        (by AS)		   .=. (not . not) True
+				(by def .)   .=. not (not True)
+				(by def not) .=. not False
+				(by def not) .=. True
+				(by def id)  .=. id True
+				(by AS)		   .=. id x
+			QED
+
+		Case False
+			Assume
+				AS: x .=. False
+			Then
+
+			Proof
+								         (not . not) x
+				(by AS)		   .=. (not . not) False
+				(by def .)   .=. not (not False)
+				(by def not) .=. not True
+				(by def not) .=. False
+				(by def id)  .=. id False
+				(by AS)		   .=. id x
+			QED
+	QED
+QED
