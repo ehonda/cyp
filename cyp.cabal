@@ -39,7 +39,7 @@ library
 -- This is needed for pretty printing of type constructors in Parser.hs:
     , haskell-src-exts
     -- Graph library for dependency graph of the functions in a thy file
-    , algebraic-graphs ==0.4.*
+    , algebraic-graphs ==0.5.*
 
 executable cyp
   main-is:           Main.hs
