@@ -1,0 +1,3 @@
+data U = U
+
+goal x .=. y

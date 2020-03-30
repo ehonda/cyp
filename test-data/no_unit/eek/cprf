@@ -1,0 +1,21 @@
+Lemma eek: x .=. y
+
+Proof by case analysis on x :: U
+  Case U
+    Assume
+      AS_x: x .=. U
+    Then
+    
+    Proof by case analysis on y :: U
+      Case U
+        Assume
+          AS_y: y .=. U
+        Then
+
+        Proof
+                        x
+          (by AS_x) .=. U
+          (by AS_y) .=. y
+        QED
+    QED
+QED
