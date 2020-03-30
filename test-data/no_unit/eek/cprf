@@ -19,3 +19,11 @@ Proof by case analysis on x :: U
         QED
     QED
 QED
+
+
+Lemma contradiction: False .=. True
+
+Proof
+               False
+  (by eek) .=. True
+QED

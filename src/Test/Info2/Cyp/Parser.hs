@@ -392,7 +392,7 @@ cprfParserWithLemmaParser ::
     Parsec [Char] Env ParseLemma
     -> Parsec [Char] Env [ParseLemma]
 cprfParserWithLemmaParser lemmaParser =
-    do  lemmas <- many1 lemmaParser
+    do  lemmas <- many lemmaParser
         eof
         return lemmas
 
@@ -461,9 +461,6 @@ toShowParser = do
     keyword "Show"
     char ':'
     propParser defaultToFree
-
--- TODO: REMOVE
---caseParser = caseParserWithEqnPrfParser equationProofParser
 
 caseParserWithProofParser :: 
     Parsec [Char] Env ParseProof
